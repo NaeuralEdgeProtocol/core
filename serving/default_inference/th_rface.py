@@ -3,7 +3,7 @@
     Add GPU SYNC !
 """
 from core import constants as ct
-from core.serving.base import BasicTorchServer as ParentServingProcess
+from core.serving.base import UnifiedFirstStage as ParentServingProcess
 from core.local_libraries.nn.th.utils import th_resize_with_pad
 
 _CONFIG = {
@@ -46,8 +46,8 @@ class ThRface(ParentServingProcess):
   def has_second_stage_classifier(self):
     return self._has_second_stage_classifier and self.server_name == self.predict_server_name
 
-  def _get_model(self, fn):
-    model = self._prepare_ts_model(fn_model=fn, post_process_classes=False)
+  def _get_model(self, config):
+    model = self._prepare_ts_model(fn_model=config, post_process_classes=False)
     return model
 
   def _pre_process_images(self, images):

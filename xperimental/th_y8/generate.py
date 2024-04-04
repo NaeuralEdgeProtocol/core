@@ -51,7 +51,12 @@ import torchvision as tv
 import json
 import cv2
 
-import time 
+import time
+import argparse
+import shutil
+import gc
+from pathlib import Path
+import itertools as it
 
 try:
   from ultralytics import YOLO
@@ -64,57 +69,13 @@ from core.local_libraries.nn.th.utils import th_resize_with_pad
 from plugins.serving.architectures.y5.general import scale_coords
 
 from core.xperimental.th_y8.utils import predict
-from core.xperimental.th_y8.utils import Y5, Y8
-import gc
+from core.xperimental.th_y8.utils import Y5, Y8, BackendType
   
+from core.xperimental.onnx.utils import create_from_torch
+from core.xperimental.th_y8.y_generate import yolo_models
 
-
-if __name__ == "__main__":
-  
-  GENERATE = False
-  GENERATE_FULL = True
-  GENERATE_TOPK = True
-  TOP_K_VALUES = [False, True] if GENERATE_TOPK else [False]
-  generated_models = []
-  TRANSFER_CLASSNAMES = False
-  CLASSNAMES = None
-  CLASSNAMES_DONATE_FROM = r'C:\repos\edge-node\_local_cache\_models\20230723_y8l_nms.ths'
-  TEST = True
-  TEST_FP16 = False
-  FP_VALUES = [False, True] if TEST_FP16 else [False]
-  SHOW = True
-  SHOW_LABELS = True
-  DEVICE = 'cuda'
-  dev = th.device(DEVICE)  
-  N_TESTS = 100 if 'cuda' in DEVICE.lower() else 10
-
-  top_candidates = 6
-
-  if CLASSNAMES is None:
-    extra_files = {'config.txt': ''}
-    model = th.jit.load(CLASSNAMES_DONATE_FROM, map_location='cpu', _extra_files=extra_files)
-    CLASSNAMES = json.loads(extra_files['config.txt'])['names']
-  # end if CLASSNAMES is None
-
-  log = Logger('Y8', base_folder='.', app_folder='_local_cache')
-  log.P("Using {}".format(dev))
-  models_folder = log.get_models_folder()
-  model_date = time.strftime('%Y%m%d', time.localtime(time.time()))
-  pyver = sys.version.split()[0].replace('.','')
-  thver = th.__version__.replace('.','')
-  # MODELS = [
-  #   {
-  #     'model'   : 'yolov8l',
-  #     'imgsz'   : [640, 896],
-  #   },
-  #   {
-  #     'model'   : 'yolov8s',
-  #     'imgsz'   : [448, 640],
-  #   },
-  # ]
+def get_test_images():
   folder = os.path.split(__file__)[0]
-  # os.chdir(folder)
-  # img = cv2.imread(os.path.join(folder,'bus.jpg'))
   img_names = [
     'bus.jpg',
     'faces9.jpg',
@@ -128,250 +89,562 @@ if __name__ == "__main__":
   ]
 
   # assert img is not None
-  origs = [
+  imgs = [
     cv2.imread(os.path.join(folder, im_name))
     for im_name in img_names
   ]
-  images = origs
-  # images = [
-  #   np.ascontiguousarray(img[:,:,::-1])
-  #   for img in origs
-  # ]
-  
-  # if GENERATE:
-  #   for dct_model in MODELS:
-  #     model = YOLO(dct_model['model'] + '.pt')
-  #     success = model.export(format="torchscript", imgsz=dct_model['imgsz'])
-  #     fn = "{}_{}_{}x{}_th{}_py{}.ths".format(
-  #       model_date,
-  #       dct_model['model'].replace('yolov','y'),
-  #       dct_model['imgsz'][0],dct_model['imgsz'][1],
-  #       thver, pyver,
-  #     )
-  #     fn = os.path.join(models_folder, fn)
-  #     os.rename(success, fn)
-  #     os.remove(dct_model['model'] + '.pt')
-  #     dct_model['pts'] = fn
-      
-  # prepare models either for .thes or/and testing
-  models_for_nms_prep = [
-    {
-      'pts': os.path.join(models_folder, x),
-      'model': (
-        x[x.find('lpd'):] if 'lpd' in x else x[x.find('y'):]
-      ).split('.ths')[0].split('.torchscript')[0]
-    } for x in os.listdir(models_folder) if ('.ths' in x or '.torchscript' in x) and ('_nms' not in x) and ('y' in x)
-  ]
+  return imgs
 
 
-  
-  if GENERATE_FULL:
-    log.P("Generating for:\n   {}".format("\n   ".join([m['pts'] for m in models_for_nms_prep])))
-    for m in models_for_nms_prep:
-      for topk in TOP_K_VALUES:
-        fn_path = m['pts']
-        model_name = os.path.splitext(os.path.split(fn_path)[1])[0]
-        is_y5 = '_y5' in model_name
-        # if '_y5s' not in model_name:
-        #   continue
-        if is_y5:
-          model = Y5(fn_path, dev=dev, topk=topk)
-        else:
-          model = Y8(fn_path, dev=dev, topk=topk)
+def get_shape_for_pt_file(filename):
+  sizes = filename.split('_')
+  sizes = sizes[2]
+  sizes = sizes.split('x')
+  return (int(sizes[0]), int(sizes[1]))
 
-        model.eval()
-        # fn_model_name = model_name[model_name.find('_y')+1:].split('_')[0]
-        fn_model_name = model_name[model_name.find('y'):].split('.ths')[0]
-        imgsz = model.config.get('imgsz')
-        if imgsz is None:
-          imgsz = model.config.get('shape')
-        config = {
-          **model.config,
-          'input_shape': (*imgsz, 3),
-          'python': sys.version.split()[0],
-          'torch': th.__version__,
-          'torchvision': tv.__version__,
-          'device': DEVICE,
-          'optimize': False,
-          'n_candidates': top_candidates,
-          'date': model_date,
-          'model': fn_model_name,
-          'names': CLASSNAMES if TRANSFER_CLASSNAMES else model.config['names'],
+def load_ths(path, log, dev, half=None, max_batch_size=None):
+  extra_files = {'config.txt' : ''}
+  loaded_model = th.jit.load(
+    path,
+    map_location=dev,
+    _extra_files=extra_files
+  )
+  config = json.loads(extra_files['config.txt' ].decode('utf-8'))
+  if half is not None and half:
+    loaded_model = loaded_model.half()
+  return loaded_model, config
+
+def load_trt(path, log, dev, half=None, max_batch_size=None):
+  from core.serving.base.backends.trt import TensorRTModel
+  loaded_model = TensorRTModel(log=log)
+  if half is None and max_batch_size is None:
+    engine_p, config_p = TensorRTModel._get_engine_and_config_path(path, half, max_batch_size)
+
+    loaded_model.load_model(engine_p, config_p, device=dev)
+    max_batch_size = loaded_model._metadata[TensorRTModel.METADATA_MAX_BATCH]
+    half = (loaded_model._metadata[TensorRTModel.ONNX_METADATA_KEY]['precision'] == 'fp16')
+    loaded_model.check_engine_file(
+      dev,
+      path,
+      config_p,
+      engine_p,
+      half,
+      max_batch_size
+    )
+  else:
+    loaded_model.load_or_rebuild_model(
+      onnx_path=path,
+      fp16=half,
+      max_batch_size=max_batch_size,
+      device=dev
+  )
+  config = loaded_model._metadata[TensorRTModel.ONNX_METADATA_KEY]
+  return loaded_model, config
+
+def load_onnx(path, log, dev, half=None, max_batch_size=None):
+  from core.serving.base.backends.onnx import ONNXModel
+  if max_batch_size is None:
+    max_batch_size = 64
+  loaded_model = ONNXModel()
+  loaded_model.load_model(
+    model_path=path,
+    max_batch_size=max_batch_size,
+    device=dev
+  )
+  config = loaded_model.get_metadata()
+  return loaded_model, config
+
+def load_model(path, log, dev, half=None, max_batch_size=None):
+  if path.endswith('.ths') or path.endswith('.torchscript'):
+    return load_ths(path, log, dev, half, max_batch_size)
+  elif path.endswith('_trt.onnx'):
+    return load_trt(path, log, dev, half, max_batch_size)
+  elif path.endswith('.onnx'):
+    return load_onnx(path, log, dev, half, max_batch_size)
+  raise ValueError("Unknown model extension")
+
+def is_valid_model_input(filename):
+  if ('_nms' not in file_name) and ('y' in file_name):
+    return False
+
+def get_model_config_name(file_name):
+  ext_pos = file_name.rfind('.')
+  if ext_pos == -1:
+    # File doesn't have extension, no idea what this is so skip
+    return None
+
+  extension = file_name[ext_pos:]
+  if extension not in ['.ths', '.torchscript']:
+    return None
+
+  # Get the filename without the extension.
+  fn = file_name[:ext_pos]
+
+  if ('_nms' in file_name) or ('y' not in fn):
+    return None
+
+  if 'lpd' in fn:
+    fn = fn[fn.find('lpd'):]
+  else:
+    fn = fn[fn.find('y'):]
+  return fn
+
+def is_valid_for_export(precision, device_str, topk, backend):
+  if device_str == 'cpu' and precision == 16:
+    # FP16 will crash and burn on cpu
+    return False
+  if device_str == 'cpu' and backend != 'onnx':
+    return False
+  if device_str == 'cuda' and backend not in ['ths', 'trt']:
+    return False
+  if topk and backend != 'ths':
+    # Only torch support topk at the moment
+    return False
+  if precision == 16 and backend not in ['onnx', 'trt']:
+    # We only need fp16 binaries when exporting to onnx
+    return False
+  return True
+
+
+def get_generation_configs(log):
+  models_folder = log.get_models_folder()
+  files = os.listdir(models_folder)
+
+  export_grid = {
+    'topk' : [True, False],
+    'device' : ['cpu', 'cuda'],
+    'precision' : [16, 32]
+  }
+
+  combinations = list(it.product(*(export_grid[Param] for Param in export_grid.keys())))
+
+  for file_name in files:
+    fn = get_model_config_name(file_name)
+    if fn is None:
+      continue
+
+    for topk, device, precision in combinations:
+      if is_valid_for_export(precision, device, topk, 'ths'):
+        continue
+        conf = {
+          'path' : os.path.join(models_folder, file_name),
+          'model_name': fn,
+          'backend' : 'ths',
+          'precision' : precision,
+          'device' : device,
+          'topk' : topk
         }
-        log.P("  Model {}: {},{}".format(model_name, fn_path, list(model.config.keys())), color='m')
+        yield conf
+    #endfor all combinations
+  #endfor all models
 
-        h, w = imgsz[-2:]
-        log.P("  Resizing from {} to {}".format([x.shape for x in images],(h,w)))
-        results = th_resize_with_pad(
-          img=images,
-          h=h,
-          w=w,
-          device=dev,
-          normalize=True,
-          return_original=False
-        )
-        if len(results) < 3:
-          prep_inputs, lst_original_shapes = results
-        else:
-          prep_inputs, lst_original_shapes, lst_original_images = results
+  # For onnx/trt we need to start from pytorch model directly, so the exported
+  # torchscript files won't help us (except for getting the actual configuration).
+  for model, export_kwargs in yolo_models(log):
+    pt_path = os.path.join(models_folder, model.model.pt_path)
+    extra_files = {'config.txt' : ''}
+    fn = get_model_config_name(pt_path)
 
+    # Read the config from the already exported model.
+    # Ideally YOLO would give us a way to generate this ourselves.
+    ths_m = th.jit.load(pt_path, map_location='cpu', _extra_files=extra_files)
+    config = json.loads(extra_files['config.txt' ].decode('utf-8'))
+    shape = config['imgsz']
+    for backend in ['trt', 'onnx']:
+      for topk, device, precision in combinations:
+        if is_valid_for_export(precision, device, topk, backend):
+          real_model = model.model
+          if precision == 16:
+            real_model = real_model.half()
+          conf = {
+            'path' : os.path.join(models_folder, pt_path),
+            'config' : config,
+            'backend' : backend,
+            'model_name' : fn,
+            'th_model' : real_model,
+            'precision' : precision,
+            'device' : device,
+            'topk' : topk
+          }
+          yield conf
+  #endfor
+  return
 
+def get_test_configs(log):
+  models_folder = log.get_models_folder()
+  files = os.listdir(models_folder)
+
+  test_grid = {
+    'device' : ['cpu', 'cuda'],
+    'precision' : [16, 32]
+  }
+  combinations = list(it.product(*(test_grid[Param] for Param in test_grid.keys())))
+
+  for file_name in files:
+    backend = None
+    is_onnx = file_name.endswith('.onnx')
+    is_trt = file_name.endswith('_trt.onnx')
+    is_ths = file_name.endswith('.ths') or file_name.endswith('.torchscript')
+    if is_onnx and not is_trt:
+      backend = 'onnx'
+    if is_trt:
+      backend = 'trt'
+    if is_ths:
+      backend = 'ths'
+    if backend is None:
+      continue
+
+    is_half = 'f16' in file_name
+    for device, precision in combinations:
+      if (is_onnx or is_trt) and is_half != (precision==16):
+        continue
+      if is_trt and device != 'cuda':
+        continue
+      if (is_onnx and not is_trt) and device != 'cpu':
+        continue
+      if precision == 16 and device == 'cpu':
+        continue
+      if is_half and precision != 16:
+        continue
+      yield {
+        'path': os.path.join(models_folder, file_name),
+        'model_name': file_name,
+        'precision': precision,
+        'backend': backend,
+        'device': device
+      }
+    #endfor
+  #endfor
+  return
+
+if __name__ == "__main__":
+  parser = argparse.ArgumentParser(description='Build flavours of YOLO')
+  parser.add_argument(
+    "--notest",
+    action='store_true',
+    help='Skip running validation tests'
+  )
+  parser.add_argument(
+    "--show",
+    action='store_true',
+    help='Show image results'
+  )
+  args = parser.parse_args()
+
+  GENERATE_FULL = True
+  GENERATE_TOPK = True
+  TOP_K_VALUES = [False, True] if GENERATE_TOPK else [False]
+  generated_models = []
+  TRANSFER_CLASSNAMES = False
+  CLASSNAMES = None
+  CLASSNAMES_DONATE_FROM = os.path.join('_local_cache', '_models', '20230723_y8l_nms.ths') 
+  TEST = not args.notest
+  SHOW = args.show
+  SHOW_LABELS = True
+  dev = th.device('cuda')
+
+  top_candidates = 6
+
+  if not th.cuda.is_available():
+    log.P('CUDA is not available, exiting')
+    exit(-1)
+  if th.cuda.device_count() < 1:
+    log.P('No available CUDA devices, exiting')
+    exit(-1)
+
+  if CLASSNAMES is None:
+    extra_files = {'config.txt': ''}
+    model = th.jit.load(CLASSNAMES_DONATE_FROM, map_location='cpu', _extra_files=extra_files)
+    CLASSNAMES = json.loads(extra_files['config.txt'])['names']
+  # end if CLASSNAMES is None
+
+  log = Logger('Y8', base_folder='.', app_folder='_local_cache')
+  models_folder = log.get_models_folder()
+  model_date = time.strftime('%Y%m%d', time.localtime(time.time()))
+  pyver = sys.version.split()[0].replace('.','')
+  thver = th.__version__.replace('.','')
+
+  # assert img is not None
+  origs = get_test_images()
+  images = origs
+  
+  model_ext = {
+    'ths' : 'ths',
+    'trt' : 'onnx',
+    'onnx' : 'onnx'
+  }
+
+  if GENERATE_FULL:
+    for m in get_generation_configs(log):
+      export_type = m['backend']
+      trt = (export_type == 'trt')
+      onnx = (export_type == 'onnx')
+      fn_path = m['path']
+      y_model = fn_path
+      topk = m['topk']
+      device = m['device']
+      config = m.get('config')
+      precision = m['precision']
+      if device.startswith('cuda'):
+        dev = th.device('cuda:0')
+      else:
+        dev = th.device(device)
+
+      backend_type = BackendType.TORCH
+      if trt and not device.startswith('cuda'):
+        # Only the cuda device is supported for trt
+        continue
+
+      if trt or onnx:
+        # We can't use torchscript in the model for trt so load it as a torch model.
+        y_model_arg = (m['th_model'], m['config'])
+        backend_type = BackendType.TENSORRT if trt else BackendType.ONNX
+      else:
+        y_model_arg = fn_path
+
+      log.P("Generating for: {} and backend {}".format(m['path'], m['backend']))
+      fn_path = m['path']
+      model_name = os.path.splitext(os.path.split(fn_path)[1])[0]
+      is_y5 = '_y5' in model_name
+
+      if is_y5 and (onnx or trt):
+        # No support for y5 in onnx at the moment (although
+        # may be trivial to add).
+        continue
+
+      if is_y5:
+        model = Y5(y_model_arg, dev=dev, topk=topk)
+      else:
+        model = Y8(y_model_arg, dev=dev, topk=topk, backend_type=backend_type)
+
+      model.eval()
+      fn_model_name = model_name[model_name.find('y'):]
+      # Remove model extension
+      fn_model_name = fn_model_name[:fn_model_name.rfind('.')]
+      fn_model_name = model_name[model_name.find('y'):].split('.ths')[0]
+      imgsz = model.config.get('imgsz')
+      if imgsz is None:
+        imgsz = model.config.get('shape')
+
+      input_names = ['inputs']
+      output_names = ['preds', 'num_preds']
+      config = {
+        **model.config,
+        'input_shape': (*imgsz, 3),
+        'python': sys.version.split()[0],
+        'torch': th.__version__,
+        'torchvision': tv.__version__,
+        'device': device,
+        'optimize': False,
+        'n_candidates': top_candidates,
+        'date': model_date,
+        'model': fn_model_name,
+        'names': CLASSNAMES if TRANSFER_CLASSNAMES else model.config['names'],
+        'input_names' : input_names,
+        'output_names' : output_names,
+        'includes_nms' : True,
+        'includes_topk' : topk
+      }
+      config['includes_nms'] = True
+      config['includes_topk'] = topk
+      if export_type == 'trt' or export_type == 'onnx':
+        # ONNX is strongly typed so whatever datatype we have is baked
+        # into it. We therefore need to record the precision since we
+        # can't cast the model on the target. This is not related to TRT.
+        config['precision'] = 'fp' + str(precision)
+
+      log.P("  Model {}: {},{}".format(model_name, fn_path, list(model.config.keys())), color='m')
+
+      h, w = imgsz[-2:]
+      log.P("  Resizing from {} to {}".format([x.shape for x in images],(h,w)))
+      results = th_resize_with_pad(
+        img=images,
+        h=h,
+        w=w,
+        device=dev,
+        normalize=True,
+        half=(precision==16),
+        return_original=False
+      )
+      if len(results) < 3:
+        prep_inputs, lst_original_shapes = results
+      else:
+        prep_inputs, lst_original_shapes, lst_original_images = results
+
+      model.to(dev)
+
+      model_name_suffix = f'nms_top{top_candidates}' if topk else 'nms'
+      dtype_suffix = '' if not (trt or onnx) else ('_f' + str(precision))
+      # Add a backend info descriminator in the name to separate pure ONNX models
+      # from tensorrt ones.
+      backend_info = ''
+      if trt:
+        backend_info = '_trt'
+      extension = model_ext[export_type]
+      fn = os.path.join(
+        models_folder,
+        f'{model_date}_{fn_model_name}_{model_name_suffix}{dtype_suffix}{backend_info}.{extension}'
+      )
+
+      if export_type == 'ths':
         log.P("  Scripting...")
-        model.to(dev)
-        with th.no_grad():
-          traced_model = th.jit.trace(model, prep_inputs[:1], strict=False)
-
-          log.P("  Forwarding using traced...")
-          output = traced_model(prep_inputs)
-        # endwith no_grad
-
-        config['includes_nms'] = True
-        config['includes_topk'] = topk
+        traced_model = th.jit.trace(model, prep_inputs, strict=False)
+        log.P("  Forwarding using traced...")
+        output = traced_model(prep_inputs)
         extra_files = {'config.txt' : json.dumps(config)}
-        model_name_suffix = f'nms_top{top_candidates}' if topk else 'nms'
-        fn = os.path.join(models_folder, f'{model_date}_{fn_model_name}_{model_name_suffix}.ths')
         log.P(f"  Saving '{fn}'...")
         traced_model.save(fn, _extra_files=extra_files)
+      elif export_type == 'trt' or export_type == 'onnx':
+        from core.serving.base.backends.trt import TensorRTModel
+        if export_type == 'trt':
+          log.P("  Exporting to ONNX for TensorRT...")
+          log.P("  Exporting with config {}".format(config))
+          log.P("  Saving '{}'...".format(fn))
+        elif export_type == 'onnx':
+          log.P("  Exporting to ONNX for ONNX/OpenVINO...")
+          log.P("  Exporting with config {}".format(config))
+          log.P("  Saving '{}'...".format(fn))
+        create_from_torch(
+          model,
+          dev,
+          fn,
+          precision==16,
+          config['input_names'],
+          config['output_names'],
+          args=prep_inputs,
+          batch_axes=None,
+          metadata=config
+        )
+        log.P("  Done")
+      else:
+        raise ValueError("Unknown backend {}".format())
 
-        extra_files['config.txt'] = ''
-        loaded_model = th.jit.load(fn, _extra_files=extra_files)
-        config = json.loads(extra_files['config.txt' ].decode('utf-8'))
-        log.P("  Loaded config with {}".format(list(config.keys())))
-        prep_inputs_test = th.cat([prep_inputs[:1], prep_inputs[:1]])
-        log.P("  Running forward...")
-        res, n_det = loaded_model(prep_inputs_test)
-        log.P("  Done running forward. Ouput:/n{}".format(res.shape))
-        generated_models.append({
-          'pts': fn,
-          'model': m['model'],
-        })
-        del loaded_model
-        del traced_model
-        gc.collect()
-        th.cuda.empty_cache()
-      # endfor include topk or not
+      del model
+      gc.collect()
+      th.cuda.empty_cache()
+
+      loaded_model, config = load_model(fn, log, dev, precision==16, 2*len(images))
+      log.P("  Loaded config with {}".format(list(config.keys())))
+      prep_inputs_test = th.cat([prep_inputs,prep_inputs])
+      log.P("  Running forward...")
+      res, n_det = loaded_model(prep_inputs_test)
+      log.P("  Done running forward. Ouput:/n{}".format(res.shape))
+
+      del loaded_model
+      gc.collect()
+      th.cuda.empty_cache()
     # endfor m in models
   # endif GENERATE_FULL
 
-  dev = th.device('cuda')  
+  dev = th.device('cuda')
+
   if TEST:
-    models_for_test = [
-      {
-        'pts': os.path.join(models_folder, x),
-        'model': (
-          x[x.find('lpd'):] if 'lpd' in x else x[x.find('_y') + 1:].split('_')[0]
-        ).split('.ths')[0].split('.torchscript')[0].split('_nms')[0]
-      } for x in os.listdir(models_folder) if ('.ths' in x or '.torchscript' in x)
-    ]
-    # now lets test WITH nms from libaries
-    models_for_test = [
-      *models_for_nms_prep,
-      *generated_models
-    ]
-   
     painter = DrawUtils(log=log)
-
-    log.P(f"Testing {len(models_for_test)} models{' with FP16' if TEST_FP16 else ''} with {N_TESTS} runs (+{20} for warmup) each on {DEVICE}")
-    log.P("Testing on :\n   {}".format("\n   ".join([m['pts'] for m in models_for_test])))
     dct_results = {}
-    for m in models_for_test:
-      for use_fp16 in FP_VALUES:
-        fn_path = m['pts']
-        extra_files = {'config.txt' : ''}
-        model = th.jit.load(
-          f=fn_path,
-          map_location=dev,
-          _extra_files=extra_files,
-        )
-        if use_fp16:
-          model.half()
-        # endif use_fp16
-        log.P("Done loading model on device {}".format(dev))
-        config = json.loads(extra_files['config.txt' ].decode('utf-8'))
-        imgsz = config.get('imgsz', config.get('shape'))
-        includes_nms = config.get('includes_nms')
-        includes_topk = config.get('includes_topk')
-        model_name = m['model']
+    for m in get_test_configs(log):
+      print("Running for {}".format(m))
+      dev = th.device(m['device'])
+      fn_path = m['path']
+      use_fp16 = m['precision'] == 16
+      model, config = load_model(
+        fn_path,
+        log,
+        dev,
+        half=use_fp16,
+        max_batch_size=2*len(images)
+      )
+      if use_fp16 and m['backend'] == 'ths':
+        model = model.half()
+      imgsz = config.get('imgsz', config.get('shape'))
+      includes_nms = config.get('includes_nms')
+      includes_topk = config.get('includes_topk')
+      model_name = m['model_name']
+      model_result_name = model_name
+      if m['backend'] == 'ths':
         model_result_name = (model_name + '_fp16') if use_fp16 else model_name
-        if model_result_name not in dct_results:
-          dct_results[model_result_name] = {}
-        is_y5 = 'y5' in model_name
-        if includes_topk:
-          model_name = model_result_name + '_topk'
-        else:
-          model_name = model_result_name + ('_inclnms' if includes_nms else '')
-        log.P("Model {}: {}, {}:".format(model_name, imgsz, fn_path,), color='m')
-        maxl = max([len(k) for k in config])
-        for k,v in config.items():
-          if not (isinstance(v, dict) and len(v) > 5):
-            log.P("  {}{}".format(k + ':' + " " * (maxl - len(k) + 1), v), color='m')
+      if model_result_name not in dct_results:
+        dct_results[model_result_name] = {}
+      is_y5 = 'y5' in model_name
+      if includes_topk:
+        model_name = model_result_name + '_topk'
+      else:
+        model_name = model_result_name + ('_inclnms' if includes_nms else '')
+      log.P("Model {}: {}, {}:".format(model_name, imgsz, fn_path,), color='m')
+      maxl = max([len(k) for k in config])
+      for k,v in config.items():
+        if not (isinstance(v, dict) and len(v) > 5):
+          log.P("  {}{}".format(k + ':' + " " * (maxl - len(k) + 1), v), color='m')
 
-        h, w = imgsz[-2:]
-        log.P("  Resizing from {} to {}".format([x.shape for x in images],(h,w)))
-        class_names = config['names']
-        results = th_resize_with_pad(
-          img=images + images,
-          h=h,
-          w=w,
-          device=dev,
-          normalize=True,
-          return_original=False,
-          half=use_fp16
-        )
-        if len(results) < 3:
-          prep_inputs, lst_original_shapes = results
-        else:
-          prep_inputs, lst_original_shapes, lst_original_images = results
+      h, w = imgsz[-2:]
+      log.P("  Resizing from {} to {}".format([x.shape for x in images],(h,w)))
+      class_names = config['names']
+      results = th_resize_with_pad(
+        img=images + images,
+        h=h,
+        w=w,
+        device=dev,
+        normalize=True,
+        return_original=False,
+        half=use_fp16
+      )
+      if len(results) < 3:
+        prep_inputs, lst_original_shapes = results
+      else:
+        prep_inputs, lst_original_shapes, lst_original_images = results
 
-        # warmup
-        log.P("  Warming up...")
-        for _ in range(20):
-          print('.', flush=True, end='')
-          pred_nms_cpu = predict(model, prep_inputs, model_name, config, log=log, timing=False)
-        print('')
+      # warmup
+      log.P("  Warming up...")
+      for _ in range(20):
+        print('.', flush=True, end='')
+        pred_nms_cpu = predict(model, prep_inputs, model_name, config, log=log, timing=False)
+      print('')
 
-        # timing
-        log.P("  Predicting...")
-        for _ in range(N_TESTS):
-          print('.', flush=True, end='')
-          pred_nms_cpu = predict(model, prep_inputs, model_name, config, log=log, timing=True)
-        print('')
+      N_TESTS = 100 if 'cuda' in m['device'].lower() else 10
+      # timing
+      log.P("  Predicting...")
+      for _ in range(N_TESTS):
+        print('.', flush=True, end='')
+        pred_nms_cpu = predict(model, prep_inputs, model_name, config, log=log, timing=True)
+      print('')
 
-        log.P("  Last preds:\n{}".format(pred_nms_cpu))
+      log.P("  Last preds:\n{}".format(pred_nms_cpu))
 
-        mkey = 'includes_topk' if includes_topk else 'includes_nms' if includes_nms else 'normal'
+      mkey = 'includes_topk' if includes_topk else 'includes_nms' if includes_nms else 'normal'
 
-        dct_results[model_result_name][mkey] = {
-            'res'  : pred_nms_cpu,
-            'time' : log.get_timer_mean(model_name),
-            'name' : model_name
-        }
+      dct_results[model_result_name][mkey] = {
+          'res'  : pred_nms_cpu,
+          'time' : log.get_timer_mean(model_name),
+          'name' : model_name
+      }
 
-        if SHOW:
-          log.P("  Showing...")
-          for i in range(len(images)):
-            # now we have each individual image and we generate all objects
-            # what we need to do is to match `second_preds` to image id & then
-            # match second clf with each box
-            img_bgr = origs[i].copy()
-            np_pred_nms_cpu = pred_nms_cpu[i]
-            original_shape = lst_original_shapes[i]
-            np_pred_nms_cpu[:, :4] = scale_coords(
-              img1_shape=(h, w),
-              coords=np_pred_nms_cpu[:, :4],
-              img0_shape=original_shape,
-            ).round()
-            lst_inf = []
-            for det in np_pred_nms_cpu:
-              det = [float(x) for x in det]
-              # order is [left, top, right, bottom, proba, class] => [L, T, R, B, P, C, RP1, RC1, RP2, RC2, RP3, RC3]
-              L, T, R, B, P, C = det[:6]  # order is [left, top, right, bottom, proba, class]
-              label = class_names[str(int(C))] if SHOW_LABELS else ''
-              img_bgr = painter.draw_detection_box(image=img_bgr, top=int(T), left=int(L), bottom=int(B), right=int(R), label=label, prc=P)
-            painter.show(fn_path, img_bgr, orig=(0, 0))
-          #endfor plot images
-        #endif show
-      # endfor fp16
+      if SHOW:
+        log.P("  Showing...")
+        for i in range(len(images)):
+          # now we have each individual image and we generate all objects
+          # what we need to do is to match `second_preds` to image id & then
+          # match second clf with each box
+          img_bgr = origs[i].copy()
+          np_pred_nms_cpu = pred_nms_cpu[i]
+          original_shape = lst_original_shapes[i]
+          np_pred_nms_cpu[:, :4] = scale_coords(
+            img1_shape=(h, w),
+            coords=np_pred_nms_cpu[:, :4],
+            img0_shape=original_shape,
+          ).round()
+          lst_inf = []
+          for det in np_pred_nms_cpu:
+            det = [float(x) for x in det]
+            # order is [left, top, right, bottom, proba, class] => [L, T, R, B, P, C, RP1, RC1, RP2, RC2, RP3, RC3]
+            L, T, R, B, P, C = det[:6]  # order is [left, top, right, bottom, proba, class]
+            label = class_names[str(int(C))] if SHOW_LABELS else ''
+            img_bgr = painter.draw_detection_box(image=img_bgr, top=int(T), left=int(L), bottom=int(B), right=int(R), label=label, prc=P)
+          painter.show(fn_path, img_bgr, orig=(0, 0))
+        #endfor plot images
+      #endif show
+
+      del model
+      gc.collect()
+      th.cuda.empty_cache()
     # endfor each model
   # endif test models
   log.show_timers()
@@ -395,5 +668,3 @@ if __name__ == "__main__":
     log.P(f'Model with NMS {mn} {t1} => {t2}[gain {gain1:.5f}s({rel_gain1:.2f}%)], equal: {ok1}', color='r' if not ok1 else 'g')
     # log.P("Model with NMS {} gain {:.5f}s, equal: {}".format(mn, gain1, ok1), color='r' if not ok1 else 'g')
     # log.P("Model with TopK {} gain {:.5f}s, equal: {}".format(mn, gain2, ok2), color='r' if not ok2 else 'g')
-      
-    

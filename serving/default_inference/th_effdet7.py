@@ -2,7 +2,7 @@
   TODO:
     Add GPU SYNC !
 """
-from core.serving.base import BasicTorchServer as BaseServingProcess
+from core.serving.base import UnifiedFirstStage as BaseServingProcess
 
 from plugins.serving.architectures.th_effdet.backbone import EfficientDetBackbone
 from plugins.serving.architectures.th_effdet.utils import BBoxTransform, ClipBoxes

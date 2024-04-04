@@ -1,4 +1,4 @@
-from core.serving.base.basic_th import BasicTorchServer as ParentServingProcess
+from core.serving.base.basic_th import UnifiedFirstStage as ParentServingProcess
 from core.local_libraries.nn.th.utils import th_resize_with_pad
 
 _CONFIG = {
@@ -21,7 +21,6 @@ _CONFIG = {
 
   'MAX_BATCH_FIRST_STAGE': 8,
 
-
   'VALIDATION_RULES': {
     **ParentServingProcess.CONFIG['VALIDATION_RULES'],
   },
@@ -32,7 +31,7 @@ DEBUG_COVERED_SERVERS = False
 __VER__ = '0.2.0.0'
 
 
-class ThYfBase(ParentServingProcess):
+class YfBase(ParentServingProcess):
   CONFIG = _CONFIG
 
   def __init__(self, **kwargs):
@@ -44,7 +43,7 @@ class ThYfBase(ParentServingProcess):
     self._has_second_stage_classifier = False
     self.resized_input_images = None
     self.original_input_images = None
-    super(ThYfBase, self).__init__( **kwargs)
+    super(YfBase, self).__init__( **kwargs)
     return
 
   @property
@@ -63,8 +62,21 @@ class ThYfBase(ParentServingProcess):
   def has_second_stage_classifier(self):
     return self._has_second_stage_classifier and self.server_name == self.predict_server_name
 
-  def _get_model(self, fn):
-    model, self.graph_config[fn] = self._prepare_ts_model(fn_model=fn, post_process_classes=True, return_config=True)
+  def _get_model(self, config):
+    if not isinstance(config, dict):
+      config = {
+        'ths' : (config, None)
+      }
+    #endif check for torchscript file config
+    model, model_loaded_config, fn = self.prepare_model(
+      backend_model_map=config,
+      forced_backend=self.cfg_force_backend,
+      post_process_classes=True,
+      return_config=True,
+      batch_size = self.cfg_max_batch_first_stage
+    )
+    # FIXME: is the model file path appropriate here to use as the config key?
+    self.graph_config[fn] = model_loaded_config
     return model
 
   def _pre_process_images(self, images, return_original=False, normalize_original=False, half_original=False, **kwargs):

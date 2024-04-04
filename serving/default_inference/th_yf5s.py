@@ -1,4 +1,4 @@
-from core.serving.default_inference.th_yf_base import ThYfBase as ParentServingProcess
+from core.serving.default_inference.th_yf_base import YfBase as ParentServingProcess
 
 _CONFIG = {
   **ParentServingProcess.CONFIG,

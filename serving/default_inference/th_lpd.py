@@ -1,5 +1,4 @@
-from core.serving.default_inference.th_yf_base import ThYfBase as ParentServingProcess
-
+from core.serving.default_inference.th_yf_base import YfBase as ParentServingProcess
 
 LPD_CONFIG = {
   # "MODEL_WEIGHTS_FILENAME": "20231004_lpd_no_diff_nms.ths",

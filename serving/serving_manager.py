@@ -1430,5 +1430,4 @@ class ServingManager(Manager):
     full_log = "\n".join(["    " + x for x in lst_log])
     self.P(full_log.lstrip(), color=color)
     return
-   
- 
+

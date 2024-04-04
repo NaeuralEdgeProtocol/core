@@ -2,7 +2,7 @@
 This serving process is an experimental one.
 It is designed for testing several Yolo models with different input sizes.
 """
-from core.serving.default_inference.th_yf_base import ThYfBase as ParentServingProcess
+from core.serving.default_inference.th_yf_base import YfBase as ParentServingProcess
 
 FILENAMES = [
   r"C:\repos\edge-node\core\xperimental\th_y8\20240304_y8l_640x1152_nms.ths",

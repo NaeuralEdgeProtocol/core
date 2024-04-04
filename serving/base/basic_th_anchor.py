@@ -1,4 +1,4 @@
-from core.serving.base import BasicTorchServer as BaseServingProcess
+from core.serving.base import UnifiedFirstStage as BaseServingProcess
 from core.local_libraries.nn.th.utils import th_resize_with_pad
 
 _CONFIG = {
@@ -48,11 +48,11 @@ class BasicThAnchor(BaseServingProcess):
 
     return msg
 
-  def _get_model(self, fn):
+  def _get_model(self, config):
     """
-    This method assumes the usage of torchscript models 
+    This method assumes the usage of torchscript models
     """
-    model = self._prepare_ts_model(fn_model=fn, post_process_classes=False)
+    model = self._prepare_ts_model(fn_model=config, post_process_classes=False)
     return model
 
   def model_call(self, th_inputs, model):
@@ -61,7 +61,7 @@ class BasicThAnchor(BaseServingProcess):
 
   def _get_anchor_embedding(self, th_anchor_image):
     """
-    Wrapper for the model's get_embedding method. 
+    Wrapper for the model's get_embedding method.
     Overwrite this method if you want to change the way the embedding is computed.
     """
     return self.th_model.get_embedding(th_anchor_image)

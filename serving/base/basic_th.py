@@ -1,12 +1,25 @@
+import platform
 import torch as th
 import torchvision as tv
 
+from core.serving.base.backends.model_backend_wrapper import ModelBackendWrapper
 from core.serving.base.base_serving_process import ModelServingProcess as BaseServingProcess
 from core.serving.mixins_base.th_utils import _ThUtilsMixin
+from core.serving.mixins_base.ths_mixin import TorchscriptMixin
+from core.serving.mixins_base.trt_mixin import TensortRTMixin
+from core.serving.mixins_base.onnx_mixin import ONNXMixin
+from core.serving.mixins_base.openvino_mixin import OpenVINOMixin
+
+
+ARM64_CPU_DEFAULT = ['onnx', 'openvino', 'ths']
+ARM64_GPU_DEFAULT = ['trt', 'ths']
+AMD64_CPU_DEFAULT = ['openvino', 'onnx', 'ths']
+AMD64_GPU_DEFAULT = ['trt', 'ths']
+
 
 _CONFIG = {
   **BaseServingProcess.CONFIG,
-  
+
   "IMAGE_HW"                    : None,
   "WARMUP_COUNT"                : 3,
   "USE_AMP"                     : False,
@@ -19,20 +32,32 @@ _CONFIG = {
 
   "MODEL_WEIGHTS_FILENAME"      : None,
   "MODEL_CLASSES_FILENAME"      : None,
-  
+
+  "MODEL_ONNX_FILENAME"         : None,
+  "ONNX_URL"                    : None,
+  "MODEL_TRT_FILENAME"          : None,
+  "TRT_URL"                     : None,
+  "FORCE_BACKEND"               : None,
+
   "SECOND_STAGE_MODEL_WEIGHTS_FILENAME" : None,
   "SECOND_STAGE_MODEL_CLASSES_FILENAME" : None,
-  
+
   "CUDNN_BENCHMARK"             : False,
 
-  
   'VALIDATION_RULES': {
     **BaseServingProcess.CONFIG['VALIDATION_RULES'],
   },
 }
 
 
-class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
+class UnifiedFirstStage(
+  BaseServingProcess,
+  _ThUtilsMixin,
+  TorchscriptMixin,
+  TensortRTMixin,
+  ONNXMixin,
+  OpenVINOMixin,
+):
 
   CONFIG = _CONFIG
 
@@ -40,8 +65,9 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
     self.default_input_shape = None
     self.class_names = None
     self.graph_config = {}
+    self._platform_backend_priority = None
 
-    super(BasicTorchServer, self).__init__(**kwargs)
+    super(UnifiedFirstStage, self).__init__(**kwargs)
     return
 
   @property
@@ -75,6 +101,22 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
     return self.cfg_model_classes_filename
 
   @property
+  def get_model_trt_filename(self):
+    return self.cfg_model_trt_filename
+
+  @property
+  def get_trt_url(self):
+    return self.cfg_trt_url
+
+  @property
+  def get_model_onnx_filename(self):
+    return self.cfg_model_onnx_filename
+
+  @property
+  def get_onnx_url(self):
+    return self.cfg_onnx_url
+
+  @property
   def get_url(self):
     return self.cfg_url
 
@@ -101,9 +143,38 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
       th.cuda.synchronize()
     return super()._stop_timer(tmr, periodic=periodic)
 
+  def _get_platform_backend_order(self):
+    """
+    Produces a list of supported backends, ordered by preference (from
+    most preferable to least), given the current platform and torch device.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    ret - Sequence[str] - a list of backend names to be used
+    """
+    machine = platform.machine().lower()
+    # Check for x86/x86_64/amd64
+    is_x86 = machine.startswith('x86_64') or machine.startswith('amd64')
+    # Check for arm{32|64} or aarch{32|64}
+    is_arm64 = machine.startswith('arm64') or machine.startswith('aarch64')
+    is_cpu = (self.dev.type == 'cpu')
+    if is_cpu:
+      if is_x86:
+        return AMD64_CPU_DEFAULT
+      if is_arm64:
+        return ARM64_CPU_DEFAULT
+
+    if is_x86:
+      return AMD64_GPU_DEFAULT
+    if is_arm64:
+      return ARM64_GPU_DEFAULT
+    raise ValueError('Unexpected platform')
+
   def _setup_model(self):
-    fn_weights = None
-    model_weights = None
     self.P("Model setup initiated for {}".format(self.__class__.__name__))
 
     if self.cfg_use_amp and self.cfg_use_fp16:
@@ -115,58 +186,58 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
       raise ValueError('Current machine does not have compute device {}'.format(dev))
     self.dev = dev
 
+    # Now that we've chosen the device we can determine the default
+    # backend order for this platform.
+    self._platform_backend_priority = self._get_platform_backend_order()
+
     # record gpu info status pre-loading
     lst_gpu_status_pre = None
     if 'cuda' in self.cfg_default_device:
       lst_gpu_status_pre = self.log.gpu_info(mb=True)
 
-    # classes
     self.P("Prepping classes if available...")
     fn_classes = self.get_saved_classes_fn()
     url_classes = self.config_model.get(self.const.URL_CLASS_NAMES)
     if fn_classes is not None:
       self.download(
-        url=url_classes, 
+        url=url_classes,
         fn=fn_classes,
       )
       self.class_names = self.log.load_models_json(fn_classes)
 
     if self.class_names is None:
-      self.P("WARNING: based class names loading failed. This is not necesarely an error as classes can be loaded within models.")
+      self.P("WARNING: based class names loading failed. This is not necessarily an error as classes can be loaded within models.")
 
-    # weights preparation - only for non-dynamic models
-    if self.get_url is not None:
-      self.P("Prepping model weights or graph...")
-      model_weights = self.get_saved_model_fn()
-      self.download(
-        url=self.get_url,
-        fn=model_weights,
-      )
-      # TODO: maybe use fn_weights as the output of self.download from above
-      fn_weights = self.log.get_models_file(model_weights)
+    if self.get_onnx_url is None and self.get_trt_url is None:
+      # weights preparation - only for non-dynamic models
+      # FIXME: this _seems_ to be only needed for torch (not ths) models and doesn't
+      # match the rest of the code. Likely should be refactored to a _prepare_pytorch_model
+      # and code should be pushed to users.
+      if self.get_url is not None:
+        self.P("Prepping model weights or graph...")
+        model_weights = self.get_saved_model_fn()
+        self.download(
+          url=self.get_url,
+          fn=model_weights,
+        )
+        # TODO: maybe use fn_weights as the output of self.download from above
+        self.P("Loading model...")
+        self.th_model = self._get_model(config=model_weights)
+    else:
+      backend_model_map={
+        'ths' : (self.get_saved_model_fn(), self.get_url),
+        'trt' : (self.get_model_trt_filename, self.get_trt_url),
+        'onnx' : (self.get_model_onnx_filename, self.get_onnx_url),
+        'openvino' : (self.get_model_onnx_filename, self.get_onnx_url),
+      }
+      self.th_model = self._get_model(config=backend_model_map)
 
-    # following call should be defined in subclass and it is supposed to define
-    # the model or directly load from jit file
-    self.P("Loading model...")
-    self.th_model = self._get_model(
-      fn=model_weights
-    )
+    # Move the model to the required device if necessary.
+    self._model_to(self.dev)
 
-    model_dev = next(self.th_model.parameters()).device
-    if ( # need complex check as dev1 != dev2 will be true (if one index is None and other is 0 on same CUDA)
-        (model_dev.type != self.dev.type) or  # cpu vs cuda
-        ((model_dev.type == self.dev.type) and (model_dev.index != self.dev.index)) # cuda but on different onex
-        ):
-      self.P("Model '{}' loaded & placed on '{}' -  moving model to device:'{}'".format(
-        self.__class__.__name__, model_dev, self.dev), color='y')
-      self.th_model.to(self.dev)    
-    self.th_model.eval()
-    if self.cfg_use_fp16:
-      self.th_model.half()
-      
     # now load second stage model
     self._second_stage_model_load()
-    
+
     # now warmup all models
     self._model_warmup()
 
@@ -181,22 +252,280 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
         taken = free_pre - free_post
       except:
         self.P("Failed gpu check on {} PRE:{}, POST:{}\n {}\n>>>> END: GPU INFO ERROR".format(
-          dev_nr, lst_gpu_status_pre, lst_gpu_status_post, 
+          dev_nr, lst_gpu_status_pre, lst_gpu_status_post,
           self.trace_info()), color='error'
         )
-      
-      
-    curr_model_dev = next(self.th_model.parameters()).device
-    
+
+    curr_model_dev = self._get_model_device()
+
     msg = "Model {} prepared on device '{}'{}:".format(
       self.server_name, curr_model_dev,
       " using {:.0f} MB GPU GPU {}".format(taken, dev_nr) if taken > 0 else "",
       )
-    msg = msg + '\n  {:<17} {}'.format('File:', fn_weights)
     for k in self.config_model:
       msg = msg + '\n  {:<17} {}'.format(k+':', self.config_model[k])
-    self.P(msg, color='g')    
+    self.P(msg, color='g')
     return msg
+
+  def _th_device_eq(self, device1, device2):
+    """
+    Compares two torch devices for equality.
+
+    Parameters
+    ----------
+
+    device1: th.device, left hand side of the comparison
+    device2: th.device, right hand side of the comparison
+
+    Returns
+    -------
+    True iff the devices are equal, false otherwise
+    """
+    if ((device1.type != device2.type) or  # cpu vs cuda
+        ((device1.type == device2.type) and
+         (device1.index != device2.index)) # cuda but on different index
+        ):
+      return False
+    return True
+
+  def _get_model_device(self, model=None):
+    """
+    Returns the torch device assiciated with the model. If the model is
+      None then the fist stage serving model is used.
+
+    Parameters
+    ----------
+
+    model: torchscript, torch model or a ModelBackendWrapper.
+
+    Returns
+    -------
+
+    ret - th.device - the corresponding torch device where the model is located.
+    """
+    if model is None:
+      model = self.th_model
+    if isinstance(model, ModelBackendWrapper):
+      return model.get_device()
+    return next(model.parameters()).device
+
+  def _get_input_dtype(self, index, model=None):
+    """
+    Returns the torch dype for an input of the given model. If the model is
+      None then the fist stage serving model is used.
+
+    Parameters
+    ----------
+
+    index: int, the index of the paramter being queried.
+    model: torchscript, torch model or a ModelBackendWrapper - The model
+      for which we're querying the input parameter type. If the model is
+      None then the fist stage serving model is used.
+
+    Returns
+    -------
+
+    ret - th.dtype, the associated type of the input
+    """
+    if model is None:
+      model = self.th_model
+    if isinstance(model, ModelBackendWrapper):
+      return model.get_input_dtype(index)
+    return next(model.parameters()).dtype
+
+  def _model_to(self, device, model=None):
+    """
+    Move a model to the specified torch device, converting it to fp16 if
+    required (the serving configuration has USE_FP16 set to True). If the
+    model is None then the fist stage serving model is used.
+
+    Parameters
+    ----------
+
+    device: th.device, the device to move the model to
+
+    model: torchscript, torch model or a ModelBackendWrapper - The model
+      to move or conver. If the model is None then the fist stage serving
+      model is used.
+
+    Returns
+    -------
+    None
+    """
+    if model is None:
+      model = self.th_model
+    model_dev = self._get_model_device(model)
+    if isinstance(model, ModelBackendWrapper):
+      # The should already be on the correct device. If it's not
+      # then something has gone horribly wrong.
+      if not self._th_device_eq(model_dev, device):
+        raise ValueError("Backend model of type {} on {} should already be on device: {}".format(
+            model.__class__.__name__,
+            model_dev,
+            device
+          )
+        )
+      return
+    #endif backend model
+    if not self._th_device_eq(model_dev, device):
+      self.P("Model '{}' loaded & placed on '{}' -  moving model to device:'{}'".format(
+        self.__class__.__name__, model_dev, device), color='y')
+      model.to(device)
+    model.eval()
+    if self.cfg_use_fp16:
+      model.half()
+    return
+
+  def _process_config_classes(self, config):
+    config['names'] = {int(k): v for k, v in config.get('names', {}).items()}
+    class_names = self._class_dict_to_list(config['names'])
+    if len(class_names) > 0:
+      self.P("Loading class names : {} classes ".format(len(class_names)))
+      self.class_names = class_names
+    return config
+
+  def download_model_for_backend(self, url, fn_model, backend):
+    """
+    Downloads a model for a backend from the specifed url to:
+
+       <models-folder>/backend/fn_model{no_suffix}/fn_model
+
+    This will additionally create folders if needed.
+
+    Parameters
+    ----------
+      url - str, The URL used for download
+      fn_model - str, the downloaded model file
+      backend - the name of the backend
+
+    Returns
+    -------
+    ret - str - the path to the the downloaded model folder
+    """
+    from pathlib import Path
+    import os
+
+    fn_model_no_suffix = str(Path(fn_model).with_suffix(''))
+    relative_backend_folders = os.path.join(backend, fn_model_no_suffix)
+    model_dir = os.path.join(self.log.get_models_folder(), relative_backend_folders)
+    # Make sure folders are in fact there.
+    os.makedirs(model_dir, exist_ok=True)
+    fn_path = os.path.join(model_dir, fn_model)
+    download_path = os.path.join(relative_backend_folders, fn_model)
+    self.download(url, download_path)
+    return model_dir
+
+  def prepare_model(
+    self,
+    backend_model_map : dict | None = None,
+    forced_backend : str | None = None,
+    post_process_classes : bool = False,
+    return_config : bool = False,
+    **kwargs
+  ):
+    """
+    Creates the optimal model for this platform according
+    to the backend_model_map parameter. The model will be downloaded
+    (if required), saved to disk (if required) and loaded.
+    Adds the model configuration (dict) to serving graph_config
+    dictionary, with the key being the selected model filename.
+
+    Raises a RuntimeError if no model was selected.
+
+    Examples:
+      model, config, fn_model = self.prepare_model(
+        backend_model_map={
+          'ths' : (self.get_saved_model_fn(), self.get_url),
+          'trt' : (self.get_model_trt_filename, self.get_trt_url),
+          'onnx' : (self.get_model_onnx_filename, self.get_onnx_url),
+          'openvino' : (self.get_model_onnx_filename, self.get_onnx_url),
+        },
+        post_process_classes=True,
+        return_config=True
+      )
+      # Creates a torchscript model.
+      model = self.prepare_model(
+        backend_model_map={
+          'ths' : (self.get_saved_model_fn(), self.get_url),
+          'trt' : (self.get_model_trt_filename, self.get_trt_url),
+        },
+        forced_backend='ths',
+        post_process_classes=True,
+        return_config=False
+      )
+
+    Parameters
+    ----------
+    backend_model_map : dict
+      Keys are backend names and values are tuples of (filename, url)
+
+    forced_backend : str | None
+      If not None the method will use the provided backend instead of
+      selecting one according to the platform configuration.
+
+    post_process_classes : bool
+      Updates the returned configuration, changing keys from strings
+      to integers
+
+    return_config : bool
+      If True, returns a tuple of (model, model configuration, filename)
+      If False, only returns the model.
+
+    Returns
+    -------
+    If return_config is False:
+      res - torchscript model | BackendModelWrapper
+    If return_config is True:
+      res - tuple of (torchscript model | BackendModelWrapper,
+                      model configuration,
+                      selected model filename)
+    """
+
+    backend_order = self._platform_backend_priority
+    if forced_backend is not None:
+      backend_order = [forced_backend]
+
+    for backend in backend_order:
+      if backend == 'trt':
+        load_method = self._prepare_trt_model
+      if backend == 'onnx':
+        load_method = self._prepare_onnx_model
+      if backend == 'openvino':
+        load_method = self._prepare_openvino_model
+      if backend == 'ths':
+        load_method = self._prepare_ts_model
+
+      if backend_model_map is not None:
+        # If the backend model map was passed don't fall back to first stage
+        # defaults. This is to support the case where we want to load a second
+        # stage model, and for this case falling back to the first stage model
+        # would be wrong.
+        fns = backend_model_map.get(backend)
+        if fns is None:
+          self.P("No backend map entry found for backend {}, skipping".format(backend))
+          continue
+        fn_model, fn_url = fns
+        if fn_model is None:
+          self.P("No model found for backend {}, skipping".format(backend))
+          continue
+      #endif check for non-default backend model map
+
+      self.P("Loading for backend {}".format(backend))
+      model, config = load_method(
+        url=fn_url,
+        fn_model=fn_model,
+        post_process_classes=post_process_classes,
+        return_config=True,
+        **kwargs
+      )
+
+      if model is not None:
+        return (model, config, fn_model) if return_config else model
+      #endif check if model loaded
+    #endfor backends in order
+
+    raise RuntimeError("Could not prepare model")
+    return
 
   def get_input_shape(self):
     return (3, *self.cfg_input_size) if self.cfg_input_size is not None else None
@@ -290,9 +619,8 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
 
     if model is not None:
       if model_dtype is None or model_device is None:
-        par0 = next(model.parameters())
-        model_dtype = par0.dtype if model_dtype is None else model_dtype
-        model_device = par0.device if model_device is None else model_device
+        model_dtype = self._get_input_dtype(0, model=model)
+        model_device = self._get_model_device(model=model)
       # endif model_dtype or model_device
       model_dev_type = model_device.type
       if input_shape is not None:
@@ -306,7 +634,7 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
             dtype=model_dtype
           )
           for warmup_pass in range(1, warmup_count + 1):
-            preds = self._forward_pass(
+            _ = self._forward_pass(
               th_warm, model=model, model_call_method=model_call_method,
               autocast='cuda' in model_dev_type and self.cfg_use_amp,
               debug=self._full_debug, debug_str=str(warmup_pass)
@@ -331,43 +659,6 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
 
     self._second_stage_model_warmup()
     return
-    
-  def load_torchscript(self, fn_path, post_process_classes=False, device=None):
-    """
-    Generic method for loading a torchscript and returning both the model generated
-    by it and its config.
-    Parameters
-    ----------
-    fn_path - path of the specified torchscript
-    include_classes - in case this is true we will try to reformat the classes names
-      as a dictionary of {key:value} where the keys will be the classes indexes and
-      the values will be the classes names
-
-    Returns
-    -------
-
-    """
-    extra_files = {'config.txt': ''}
-    dct_config = None
-    model = self.th.jit.load(
-      f=fn_path,
-      map_location=self.dev,
-      _extra_files=extra_files,
-    )
-    model.eval()
-    self.P("Done loading model on device {}".format(
-      self.dev,
-    ))
-    try:
-      dct_config = self.json.loads(extra_files['config.txt'].decode('utf-8'))
-      if post_process_classes:
-        dct_config['names'] = {int(k): v for k, v in dct_config.get('names', {}).items()}
-      self.P("  Model config:\n{}".format(self.log.dict_pretty_format(dct_config)))
-    except Exception as exc:
-      self.P("Could not load in-model config '{}': {}. In future this will stop the model loading: {}".format(
-        fn_path, exc, extra_files
-      ), color='r')
-    return model, dct_config
 
   def _class_dict_to_list(self, dct_classes):
     keys = sorted(list(dct_classes.keys()))
@@ -404,82 +695,62 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
   def valid_version(self, ver_str):
     return '.' in ver_str
 
-  def check_versions(self, model_config, fn_path):
-    err_keys = ['torch']
-    env_versions = {
-      'python': self.python_version(),
-      'torch': self.th.__version__,
-      'torchvision': self.tv.__version__
-    }
-    ts_versions = {key: model_config[key] if key in model_config.keys() else 'Unspecified' for key in env_versions.keys()}
+  def check_versions(self, model_config, fn_path, env_versions, err_keys):
+    versions = {key: model_config[key] if key in model_config.keys() else 'Unspecified' for key in env_versions.keys()}
 
     err_check = not all([
-      self.check_version(min_ver=ts_versions[vkey], curr_ver=env_versions[vkey]) and self.valid_version(ts_versions[vkey])
+      self.check_version(min_ver=versions[vkey], curr_ver=env_versions[vkey]) and self.valid_version(versions[vkey])
       for vkey in err_keys
     ])
     warn_check = not all([
-      self.valid_version(ts_versions[vkey]) and self.check_version(min_ver=ts_versions[vkey], curr_ver=env_versions[vkey])
+      self.valid_version(versions[vkey]) and self.check_version(min_ver=versions[vkey], curr_ver=env_versions[vkey])
       for vkey in env_versions.keys()
     ])
 
     if err_check:
-      err_msg = f'ERROR! Torchscript graph from {fn_path} has versions above current environment versions!' \
-                f'[Graph versions:{ts_versions} > Env versions: {env_versions}]'
+      err_msg = f'ERROR! Model from {fn_path} has versions above current environment versions!' \
+                f'[Model versions:{versions} > Env versions: {env_versions}]'
       self.P(err_msg, color='e')
       raise Exception(err_msg)
     elif warn_check:
-      warn_msg = f'WARNING! Torchscript graph from {fn_path} has versions above current environment versions or has ' \
-                 f'unspecified/invalid versions! [Graph versions:{ts_versions} > Env versions: {env_versions}]'
+      warn_msg = f'WARNING! Model from {fn_path} has versions above current environment versions or has ' \
+                 f'unspecified/invalid versions! [Model versions:{versions} > Env versions: {env_versions}]'
       self.P(warn_msg, color='r')
     else:
-      self.P(f'Graph version check passed! [{ts_versions} <= {env_versions}]')
+      self.P(f'Graph version check passed! [{versions} <= {env_versions}]')
     # endif version_check
     return
 
-  def _prepare_ts_model(self, url=None, fn_model=None, post_process_classes=False, return_config=False, **kwargs):
-    self.P("Preparing {} torchscript graph model {}...".format(self.server_name, self.version))
-    if url is None:
-      url = self.get_url
-    if fn_model is None:
-      fn_model = self.get_saved_model_fn()
-    self.download(url, fn_model)
-    fn_path = self.log.get_models_file(fn_model)
-    model, config = None, None
-    if fn_path is not None:
-      self.P("Loading torchscript model {} ({:.03f} MB) at `{}` using map_location: {} on python v{}...".format(
-          fn_model,
-          self.os_path.getsize(fn_path) / 1024 / 1024,
-          fn_path,
-          self.dev,
-          self.python_version()
-        ),
-        color='y'
-      )
-      model, config = self.load_torchscript(fn_path, post_process_classes=post_process_classes, device=self.dev)
-      if self.cfg_fp16:
-        model.half()
-      self.check_versions(config, fn_path)
-      if post_process_classes:
-        class_names = self._class_dict_to_list(config['names'])
-        if len(class_names) > 0:
-          self.P("Loading class names from torchscript: {} classes ".format(len(class_names)))
-          self.class_names = class_names
-      # endif post_process_classes
-    else:
-      raise ValueError("Model loading failed (fn_path: {})! Please check config data: {}".format(
-        fn_path, self.config_data
-      ))
-    return (model, config) if return_config else model
-    
-  def _get_model(self, fn):
+  def _get_model(self, config):
+    """
+    Get the model associated with configuration config.
+
+    Parameters
+    ----------
+    config : str | dict
+      If config is a dict, keys are backend names and values are tuples
+        of (filename, url).
+      Current valid backend names are:
+        'ths'      - torchscript backend
+        'onnx'     - ONNX backend
+        'openvino' - OpenVINO backend
+        'trt'      - TensorRT backend
+      If config is a string, this is the torchscript file name.
+        Note this is used for backwards compatibility and is deprecated.
+        Please use a dict parameter.
+
+    Returns
+    -------
+    res - torch/torchscript model | ModelBackendWrapper
+    """
     raise NotImplementedError()
-    
+
   def _pre_process_images(self, images):
     raise NotImplementedError()
-    
+
   # second stage methods
   def _second_stage_model_load(self):
-    # this method defines default behavior for second stage model load    
+    # this method defines default behavior for second stage model load
     return
 
   def _second_stage_model_warmup(self):
@@ -497,7 +768,7 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
     return None
 
   # end second stage methods
-  
+
   @staticmethod
   def _th_resize(self, lst_images, target_size):
     return
@@ -505,12 +776,12 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
   ###
   ### BELOW MANDATORY (or just overwritten) FUNCTIONS:
   ###
-  
+
   def _get_inputs_batch_size(self, inputs):
     """
     Extract the batch size of the inputs. This method is can be overwritten when inputs are dictionaries,
     because `len(inputs)` would simply be the number of keys in the dict.
-    
+
     Example of use case: in `th_cqc`, the input is a kwarg dict with images and anchors, so the batch size
     should be the len of those inputs, not the number of inputs (which is constantly 2).
 
@@ -525,17 +796,17 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
         The batch size of the input
     """
     return len(inputs) # not the greatest method but it works
-  
+
   def _startup(self):
     msg = self._setup_model()
     return msg
 
-  def _pre_process(self, inputs):    
+  def _pre_process(self, inputs):
     """
-    This method does only the basic data extraction from upstream payload and 
+    This method does only the basic data extraction from upstream payload and
     has replaced:
       ```
-      def _pre_process(self, inputs):  
+      def _pre_process(self, inputs):
         prep_inputs = th.tensor(inputs, device=self.dev, dtype=self.th_dtype)
         return prep_inputs
       ```
@@ -559,10 +830,10 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
     """
     lst_images = None
     if isinstance(inputs, dict):
-      lst_images = inputs.get('DATA', None)  
+      lst_images = inputs.get('DATA', None)
     elif isinstance(inputs, list):
       lst_images = inputs
-    
+
     if lst_images is None or len(lst_images) == 0:
       msg = "Unknown or None `inputs` received: {}".format(inputs)
       self.P(msg, color='error')
@@ -608,7 +879,8 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
     #endif
 
     self.maybe_log_phase(f'_model_predict[bs={real_batch_size} mbs={batch_size} and bn={self.np.ceil(real_batch_size / batch_size).astype(int)}]', start_time, done=False)
-    for i in range(self.np.ceil(real_batch_size / batch_size).astype(int)):
+    num_batches = self.np.ceil(real_batch_size / batch_size).astype(int)
+    for i in range(num_batches):
       if isinstance(prep_inputs, dict):
         batch = {}
         for key in prep_inputs.keys():
@@ -619,6 +891,7 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
         batch = prep_inputs[i * batch_size:(i+1) * batch_size]
         th_inferences = model(batch, **kwargs)
       # endif
+
       lst_results.append(th_inferences)
     # endfor batches
     self.maybe_log_phase(f'_model_predict[bs={real_batch_size} mbs={batch_size} and bn={self.np.ceil(real_batch_size / batch_size).astype(int)}]', start_time)
@@ -681,16 +954,16 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
     elif isinstance(preds, th.Tensor):
       outputs = preds.cpu().numpy()
     else:
-      raise ValueError("Unknown torch model preds output of type {}".format(type(preds)))
+      raise ValueError("Unknown model preds output of type {}".format(type(preds)))
     return outputs
-  
+
   def _clear_model(self):
     if hasattr(self, 'th_model') and self.th_model is not None:
-      self.P("Deleting current loaded torch model for {} ...".format(self.__class__.__name__))
-      curr_model_dev = next(self.th_model.parameters()).device
+      self.P("Deleting current loaded model for {} ...".format(self.__class__.__name__))
+      curr_model_dev = self._get_model_device(self.th_model)
       if 'cuda' in curr_model_dev.type.lower():
         lst_gpu_status_pre = self.log.gpu_info(mb=True)
-        
+
       del self.th_model
       th.cuda.empty_cache()
 
@@ -700,18 +973,16 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
         lst_gpu_status_post = self.log.gpu_info(mb=True)
         try:
           idx = 0 if curr_model_dev.index is None else curr_model_dev.index
-          freed = lst_gpu_status_post[idx]['FREE_MEM'] - lst_gpu_status_pre[idx]['FREE_MEM']        
+          freed = lst_gpu_status_post[idx]['FREE_MEM'] - lst_gpu_status_pre[idx]['FREE_MEM']
         except:
           self.P("Failed gpu check on {} PRE:{}, POST:{}, {}".format(
-            idx, lst_gpu_status_pre[idx], lst_gpu_status_post[idx], 
+            idx, lst_gpu_status_pre[idx], lst_gpu_status_post[idx],
             self.trace_info()), color='error'
           )
 
-
-
       self.P("Cleanup finished. Freed {:.0f} MB on GPU {}".format(freed, idx))
     return
-  
+
   def _shutdown(self):
     self._clear_model()
     return
@@ -720,5 +991,3 @@ class BasicTorchServer(BaseServingProcess, _ThUtilsMixin):
     prep_inputs = self._pre_process(inputs)
     fwd = self.th_model(prep_inputs)
     return fwd
-  
-  

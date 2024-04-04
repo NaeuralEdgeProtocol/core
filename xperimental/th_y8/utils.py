@@ -1,8 +1,11 @@
+from typing import Tuple
+from enum import Enum
 import torch as th
 import torchvision as tv
 import json
 
 from core.xperimental.th_y8.graph_nms import y5_nms, y8_nms, y5_nms_topk, y8_nms_topk
+from core.xperimental.th_y8.graph_nms import y8_nms_trt_efficient, y8_nms_onnx
 
 from plugins.serving.architectures.y5.general import non_max_suppression as y5_nms_orig
 # try:
@@ -13,6 +16,11 @@ from plugins.serving.architectures.y5.general import non_max_suppression as y5_n
 
 from core.xperimental.th_y8.graph_nms import xywh2xyxy
 
+class BackendType(Enum):
+  TORCH = 1
+  TENSORRT = 2
+  ONNX = 3
+  OpenVINO = 4
 
 def y8_nms_orig(
         prediction,
@@ -147,7 +155,7 @@ def y8_nms_orig(
   return output
 
 
-  
+
 # class ModelWrapper(th.nn.Module):
 #   def __init__(self, path):
 #     super(ModelWrapper, self).__init__()
@@ -158,8 +166,8 @@ def y8_nms_orig(
 
 #   def forward(self, x):
 #     return self.backbone_model(x)
-  
-  
+
+
 class Y5(th.nn.Module):
   def __init__(self, path, dev, topk=False):
     super(Y5, self).__init__()
@@ -170,31 +178,63 @@ class Y5(th.nn.Module):
     self.config = json.loads(extra_files['config.txt' ].decode('utf-8'))
     self.y5_nms = y5_nms_topk if topk else y5_nms
     return
-  
+
   def forward(self, inputs):
     th_x = self.backbone_model(inputs)
     th_x = th_x[0]
     th_x = self.y5_nms(th_x)
     return th_x
-    
-  
+
 class Y8(th.nn.Module):
-  def __init__(self, path, dev, topk=False):
+
+  def __init__(
+    self,
+    model : str | Tuple[th.nn.Module, dict],
+    dev : th.device,
+    topk : bool = False,
+    backend_type : BackendType = BackendType.TORCH
+  ):
+    """
+    Constructs an Y8 module.
+
+    Parameters:
+      model - either a path on disk (string) to the torchscript model or a tuple
+        containing the YOLO model and config dict.
+      dev - the torch device that should be used.
+      topk - True if we should use the topk NMS (top 6)
+      backend_type - The backend type this model is build for
+    """
     super(Y8, self).__init__()
-    # self.backbone_model = ModelWrapper(path=path)
-    # self.config = self.backbone_model.config
     extra_files = {'config.txt' : ''}
-    self.backbone_model = th.jit.load(path, map_location=dev, _extra_files=extra_files)
-    self.config = json.loads(extra_files['config.txt' ].decode('utf-8'))
+    if isinstance(model, str):
+      self.backbone_model = th.jit.load(model, map_location=dev, _extra_files=extra_files)
+      self.config = json.loads(extra_files['config.txt' ].decode('utf-8'))
+      if backend_type != BackendType.TORCH:
+        raise ValueError("Non-torch backends should get the model as tuple of th.nn.Module and config!")
+    elif isinstance(model, tuple):
+      self.backbone_model, self.config = model
+    else:
+      raise ValueError("Unexpected value for model")
+
     self.y8_nms = y8_nms_topk if topk else y8_nms
+    if backend_type == BackendType.TENSORRT:
+      self.y8_nms = y8_nms_trt_efficient
+    elif backend_type in [BackendType.ONNX, BackendType.OpenVINO]:
+      # OpenVINO as ONNX use the same model for distribution
+      # (in onnx format).
+      self.y8_nms = y8_nms_onnx
     return
-  
+
   def forward(self, inputs):
     th_x = self.backbone_model(inputs)
+    if isinstance(th_x, tuple):
+      # The non-exported torch Y8 model will return a tuple here,
+      # but we're only interested in the first value (the detections).
+      th_x = th_x[0]
     th_x = self.y8_nms(th_x)
     return th_x
-    
-  
+
+
 def predict(m, data, m_name, config, log, timing=False):
   if timing:
     log.start_timer(m_name)
@@ -207,7 +247,7 @@ def predict(m, data, m_name, config, log, timing=False):
         log.start_timer(m_name + '_nms')
       pred_nms = y5_nms_orig(
          prediction=preds,
-       )   
+       )
 
       if timing:
         log.start_timer(m_name + '_nms_cpu')
@@ -236,11 +276,11 @@ def predict(m, data, m_name, config, log, timing=False):
 
   else:
     if timing:
-      log.start_timer(m_name + '_cpu')    
+      log.start_timer(m_name + '_cpu')
     th_preds, th_n_det = th_preds
     pred_nms_cpu = [x[:th_n_det[i]].cpu().numpy() for i, x in enumerate(th_preds)]
     if timing:
-      log.stop_timer(m_name  + '_cpu')    
+      log.stop_timer(m_name  + '_cpu')
   #end requires nms
   if timing:
     log.stop_timer(m_name)
