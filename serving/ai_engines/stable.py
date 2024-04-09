@@ -40,7 +40,8 @@ AI_ENGINES['lowres_yf8_detector'] = {
 }
 
 AI_ENGINES['advanced_general_detector'] = {
-  'SERVING_PROCESS': 'th_effdet7'
+  # 'SERVING_PROCESS': 'th_effdet7'
+  'SERVING_PROCESS': 'th_yf8x'
 }
 
 AI_ENGINES['lpdr'] = {

@@ -65,6 +65,7 @@ from plugins.serving.architectures.y5.general import scale_coords
 
 from core.xperimental.th_y8.utils import predict
 from core.xperimental.th_y8.utils import Y5, Y8
+import gc
   
 
 
@@ -217,10 +218,12 @@ if __name__ == "__main__":
 
         log.P("  Scripting...")
         model.to(dev)
-        traced_model = th.jit.trace(model, prep_inputs, strict=False)
+        with th.no_grad():
+          traced_model = th.jit.trace(model, prep_inputs[:1], strict=False)
 
-        log.P("  Forwarding using traced...")
-        output = traced_model(prep_inputs)
+          log.P("  Forwarding using traced...")
+          output = traced_model(prep_inputs)
+        # endwith no_grad
 
         config['includes_nms'] = True
         config['includes_topk'] = topk
@@ -234,7 +237,7 @@ if __name__ == "__main__":
         loaded_model = th.jit.load(fn, _extra_files=extra_files)
         config = json.loads(extra_files['config.txt' ].decode('utf-8'))
         log.P("  Loaded config with {}".format(list(config.keys())))
-        prep_inputs_test = th.cat([prep_inputs,prep_inputs])
+        prep_inputs_test = th.cat([prep_inputs[:1], prep_inputs[:1]])
         log.P("  Running forward...")
         res, n_det = loaded_model(prep_inputs_test)
         log.P("  Done running forward. Ouput:/n{}".format(res.shape))
@@ -242,6 +245,10 @@ if __name__ == "__main__":
           'pts': fn,
           'model': m['model'],
         })
+        del loaded_model
+        del traced_model
+        gc.collect()
+        th.cuda.empty_cache()
       # endfor include topk or not
     # endfor m in models
   # endif GENERATE_FULL
@@ -257,6 +264,10 @@ if __name__ == "__main__":
       } for x in os.listdir(models_folder) if ('.ths' in x or '.torchscript' in x)
     ]
     # now lets test WITH nms from libaries
+    models_for_test = [
+      *models_for_nms_prep,
+      *generated_models
+    ]
    
     painter = DrawUtils(log=log)
 
