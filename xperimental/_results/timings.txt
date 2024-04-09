@@ -1,0 +1,78 @@
+====================================================================================
+
+BMW: 4 STREAMS: 2x1500 + 2x2000
+
+timer_app: 0.0000s (max: 0.0000s, curr: -1632750754.9495s)
+   refresh_plugins: 0.0000s (max: 0.0000s, curr: 0.0493s)
+   set_stream_config: 0.0006s (max: 0.0007s, curr: 0.0007s)
+   send_buffer_payload: 0.0000s (max: 0.0011s, curr: 0.0000s)
+   main_loop: 0.3394s (max: 1.0928s, curr: -0.0000s)
+     refresh_app: 0.0004s (max: 0.0124s, curr: 0.0004s)
+     CaptureThreadManager__get_captures_data: 0.0000s (max: 0.0097s, curr: 0.0000s)
+     InferenceApi__run_inference: 0.3105s (max: 0.4953s, curr: -0.0293s)
+       prepare_payload: 0.0010s (max: 0.0118s, curr: 0.0010s)
+       InferenceApi__timer_infer: 0.3095s (max: 0.4904s, curr: -0.0304s)
+         EffDet2640x1132BS4InferenceGraph__predict_batch: 0.3102s (max: 0.4903s, curr: -0.0305s)
+           EffDet2640x1132BS4InferenceGraph: 0.3096s (max: 0.4900s, curr: -0.0311s)
+             EffDet2640x1132BS4InferenceGraph__preprocess_images: 0.0715s (max: 0.1823s, curr: -0.2765s)
+             EffDet2640x1132BS4InferenceGraph__run_inference: 0.2380s (max: 0.3497s, curr: 0.2454s)
+               EffDet2640x1132BS4InferenceGraph__session_run: 0.2366s (max: 0.3489s, curr: 0.2430s)
+               EffDet2640x1132BS4InferenceGraph__postprocess_boxes: 0.0001s (max: 0.0261s, curr: 0.0001s)
+       InferenceApi__prepare_results: 0.0000s (max: 0.0063s, curr: 0.0000s)
+     run_plugins: 0.0280s (max: 0.7800s, curr: 0.0270s)
+       CAM7: 0.0106s (max: 0.5165s, curr: 0.0141s)
+         PERIMETER_VIOLATION_01_main: 0.0041s (max: 0.3207s, curr: 0.0022s)
+           pre_proc: 0.0031s (max: 0.1169s, curr: 0.0021s)
+       CAM8: 0.0022s (max: 0.2184s, curr: 0.0016s)
+       CAM10: 0.0124s (max: 0.5302s, curr: 0.0077s)
+       CAM11: 0.0039s (max: 0.1993s, curr: 0.0036s)
+           get_witness_image: 0.2199s (max: 0.3140s, curr: 0.2363s)
+             copy_witness: 0.0000s (max: 0.0002s, curr: 0.0000s)
+             bgr_witness: 0.0000s (max: 0.0001s, curr: 0.0000s)
+             ascontiguousarray: 0.0288s (max: 0.0684s, curr: 0.0329s)
+             pre_process_witness: 0.0001s (max: 0.0087s, curr: 0.0001s)
+               draw_crosses: 0.0001s (max: 0.0086s, curr: 0.0001s)
+             witness_base64: 0.1909s (max: 0.2753s, curr: 0.2033s)
+             
+====================================================================================        
+
+BMW: 4 STREAMS: 4x1024 - 4 mediaserver transcoding started
+
+EffDet2640x1132BS4InferenceGraph__session_run = 0.22s
+
+====================================================================================        
+
+BMW: 4 STREAMS: 4x1024 - 14 mediaserver transcoding started
+
+[SB][2021-10-05 09:30:49] Timing results:
+[SB][2021-10-05 09:30:49]  timer_app = 0.0000s, max: 0.0000s, curr: -1633357497.1019s
+[SB][2021-10-05 09:30:49]    refresh_plugins = 0.0000s, max: 0.0000s, curr: 0.0416s
+[SB][2021-10-05 09:30:49]    set_stream_config = 0.0006s, max: 0.0006s, curr: 0.0006s
+[SB][2021-10-05 09:30:49]    send_buffer_payload = 0.0001s, max: 0.0058s, curr: 0.0001s
+[SB][2021-10-05 09:30:49]    main_loop = 0.2821s, max: 0.6274s, curr: -0.0000s
+[SB][2021-10-05 09:30:49]      refresh_app = 0.0008s, max: 0.0213s, curr: 0.0008s
+[SB][2021-10-05 09:30:49]      CaptureThreadManager__get_captures_data = 0.0001s, max: 0.0633s, curr: 0.0001s
+[SB][2021-10-05 09:30:49]      InferenceApi__run_inference = 0.2556s, max: 0.3854s, curr: 0.2995s
+[SB][2021-10-05 09:30:49]        prepare_payload = 0.0011s, max: 0.0182s, curr: 0.0010s
+[SB][2021-10-05 09:30:49]        InferenceApi__timer_infer = 0.2543s, max: 0.3842s, curr: 0.2983s
+[SB][2021-10-05 09:30:49]          EffDet2640x1132BS4InferenceGraph__predict_batch = 0.2615s, max: 0.3841s, curr: 0.2982s
+[SB][2021-10-05 09:30:49]            EffDet2640x1132BS4InferenceGraph = 0.2593s, max: 0.3664s, curr: 0.2929s
+[SB][2021-10-05 09:30:49]              EffDet2640x1132BS4InferenceGraph__preprocess_images = 0.0124s, max: 0.0580s, curr: 0.0209s
+[SB][2021-10-05 09:30:49]              EffDet2640x1132BS4InferenceGraph__run_inference = 0.2468s, max: 0.3466s, curr: 0.2718s
+[SB][2021-10-05 09:30:49]                EffDet2640x1132BS4InferenceGraph__session_run = 0.2454s, max: 0.3459s, curr: 0.2710s
+[SB][2021-10-05 09:30:49]                EffDet2640x1132BS4InferenceGraph__postprocess_boxes = 0.0000s, max: 0.0241s, curr: 0.0000s
+[SB][2021-10-05 09:30:49]        InferenceApi__prepare_results = 0.0000s, max: 0.0082s, curr: 0.0000s
+[SB][2021-10-05 09:30:49]      run_plugins = 0.0251s, max: 0.3472s, curr: 0.0151s
+[SB][2021-10-05 09:30:49]        CAM7 = 0.0094s, max: 0.2378s, curr: 0.0133s
+[SB][2021-10-05 09:30:49]          PERIMETER_VIOLATION_01_main = 0.0046s, max: 0.1606s, curr: 0.0042s
+[SB][2021-10-05 09:30:49]            pre_proc = 0.0039s, max: 0.1030s, curr: 0.0040s
+[SB][2021-10-05 09:30:49]        CAM8 = 0.0053s, max: 0.1540s, curr: 0.0048s
+[SB][2021-10-05 09:30:49]        CAM10 = 0.0103s, max: 0.2121s, curr: 0.0139s
+[SB][2021-10-05 09:30:49]        CAM11 = 0.0079s, max: 0.1402s, curr: 0.0102s
+[SB][2021-10-05 09:30:49]            get_witness_image = 0.0921s, max: 0.1523s, curr: 0.1175s
+[SB][2021-10-05 09:30:49]              copy_witness = 0.0000s, max: 0.0061s, curr: 0.0000s
+[SB][2021-10-05 09:30:49]              bgr_witness = 0.0000s, max: 0.0020s, curr: 0.0000s
+[SB][2021-10-05 09:30:49]              ascontiguousarray = 0.0114s, max: 0.0316s, curr: 0.0181s
+[SB][2021-10-05 09:30:49]              pre_process_witness = 0.0002s, max: 0.0087s, curr: 0.0002s
+[SB][2021-10-05 09:30:49]                draw_crosses = 0.0002s, max: 0.0087s, curr: 0.0002s
+[SB][2021-10-05 09:30:49]              witness_base64 = 0.0803s, max: 0.1286s, curr: 0.0991s

@@ -1,0 +1,21 @@
+{
+
+  "POSTGRESQL": {
+    "HOST"          : "217.148.143.37",
+    "DATABASE"      : "vapor",
+    "PORT"          : 15432,
+    "USER"          : "caviboxuser",
+    "PASSWORD"      : "parolapguser",
+    "SCHEMA"        : "vaporboxbmw",
+    "TABLE_EVENTS"  : "Events"
+  },
+  
+  "SQLSERVER": {
+    "SERVER"    : "172.16.16.7\\sqlexpress",
+    "DATABASE"  : "CAVI_EVENTS",
+    "USER"      : "caviuser",
+    "PASSWORD"  : "3edc$RFV"
+  }
+  
+}
+    

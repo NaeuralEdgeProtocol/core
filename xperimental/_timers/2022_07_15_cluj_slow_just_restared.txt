@@ -1,0 +1,2439 @@
+Timing results:
+Section 'main'
+ timer_app = 0.0000s/q:-1.0000s/nz:-1.0000s, max: 0.0000s, lst: -1.0000s, c: 0/L:-1%
+   main_loop = 2.5192s/q:2.5192s/nz:2.5192s, max: 63.7638s, lst: 1.5812s, c: 81/L:0%
+     delay = 0.0158s/q:0.0158s/nz:0.0498s, max: 0.0503s, lst: 0.0000s, c: 82/L:68%
+     [create_server] = 9.0169s/q:9.0169s/nz:9.0169s, max: 12.6688s, lst: 12.6688s, c: 3/L:33%
+       [CAMERA_QUALITY_CHECK2_startup = 2.3230s/q:2.3230s/nz:2.3230s, max: 2.3230s, lst: 2.3230s, c: 1/L:100%
+       [TH_SCR_YOLO_V5_L6_startup] = 11.9133s/q:11.9133s/nz:11.9133s, max: 11.9133s, lst: 11.9133s, c: 1/L:100%
+       TH_YOLO_V5_L6_MSPN_startup = 12.6196s/q:12.6196s/nz:12.6196s, max: 12.6196s, lst: 12.6196s, c: 1/L:100%
+     CaptureManager__get_captures_d = 0.0029s/q:0.0029s/nz:0.0790s, max: 0.2228s, lst: 0.0002s, c: 82/L:96%
+     parallel_pred = 2.1514s/q:2.1514s/nz:3.2271s, max: 63.7619s, lst: 1.5800s, c: 81/L:33%
+       parallel_pred_filter_inputs = 0.0000s/q:0.0000s/nz:78383088111.8774s, max: 0.0000s, lst: 0.0000s, c: 82/L:100%
+       parallel_pred_restart = 0.0000s/q:0.0000s/nz:96858874894.6786s, max: 0.0000s, lst: 0.0000s, c: 82/L:100%
+       parallel_pred_requests = 2.1514s/q:2.1514s/nz:3.2270s, max: 63.7618s, lst: 1.5800s, c: 81/L:33%
+         inprocess_pred_CAMERA_QUALITY_ = 0.4032s/q:0.4032s/nz:0.4032s, max: 2.7926s, lst: 0.4358s, c: 54/L:0%
+           CAMERA_QUALITY_CHECK2_predict = 0.4031s/q:0.4031s/nz:0.4031s, max: 2.7925s, lst: 0.4358s, c: 54/L:0%
+             CAMERA_QUALITY_CHECK2_pre_proc = 0.1988s/q:0.1988s/nz:0.1988s, max: 1.7541s, lst: 0.1837s, c: 54/L:0%
+               CAMERA_QUALITY_CHECK2_normaliz = 0.0035s/q:0.0035s/nz:0.0135s, max: 0.3207s, lst: 0.0028s, c: 509/L:74%
+             [CAMERA_QUALITY_CHECK2_run_inf = 0.2038s/q:0.2038s/nz:0.2038s, max: 1.9032s, lst: 0.2516s, c: 54/L:0%
+               CAMERA_QUALITY_CHECK2_fwd_b2_1 = 0.2034s/q:0.2034s/nz:0.2034s, max: 1.9024s, lst: 0.2513s, c: 54/L:0%
+               CAMERA_QUALITY_CHECK2_stage2 = 0.0001s/q:0.0001s/nz:320491939783.0963s, max: 0.0001s, lst: 0.0000s, c: 54/L:100%
+             [CAMERA_QUALITY_CHECK2_post_pr = 0.0004s/q:0.0004s/nz:0.0023s, max: 0.0020s, lst: 0.0002s, c: 54/L:83%
+             [CAMERA_QUALITY_CHECK2_pack_re = 0.0001s/q:0.0001s/nz:653667375445.3660s, max: 0.0003s, lst: 0.0001s, c: 54/L:100%
+         [inprocess_pred_TH_SCR_YOLO_V5 = 2.1206s/q:2.1206s/nz:2.1206s, max: 60.2247s, lst: 0.9138s, c: 54/L:0%
+           TH_YOLO_V5_L6_MSPN_predict = 1.7527s/q:1.7527s/nz:1.7527s, max: 60.2247s, lst: 0.2303s, c: 87/L:0%
+             TH_YOLO_V5_L6_MSPN_pre_proc = 0.0128s/q:0.0128s/nz:0.0128s, max: 0.3747s, lst: 0.0045s, c: 87/L:0%
+               TH_YOLO_V5_L6_MSPN_resize_in_g = 0.0127s/q:0.0127s/nz:0.0127s, max: 0.3746s, lst: 0.0045s, c: 87/L:0%
+             TH_YOLO_V5_L6_MSPN_run_inferen = 1.7386s/q:1.7386s/nz:1.7386s, max: 60.1743s, lst: 0.2248s, c: 87/L:0%
+               [TH_YOLO_V5_L6_MSPN_fwd_b1_Non = 0.0164s/q:0.0164s/nz:0.0164s, max: 0.0352s, lst: 0.0352s, c: 21/L:0%
+               TH_YOLO_V5_L6_MSPN_stage2 = 0.9034s/q:0.9034s/nz:0.9034s, max: 29.9913s, lst: 0.2070s, c: 87/L:0%
+                 yolo_nms = 0.1233s/q:0.1233s/nz:0.1233s, max: 0.7188s, lst: 0.0307s, c: 87/L:0%
+                 2nd_stage_clf = 0.7798s/q:0.7798s/nz:0.7798s, max: 29.5279s, lst: 0.1760s, c: 87/L:0%
+                   TH_YOLO_V5_L6_MSPN_crop = 0.0276s/q:0.0276s/nz:0.0300s, max: 1.1020s, lst: 0.0020s, c: 87/L:8%
+                   TH_YOLO_V5_L6_MSPN_resize = 0.0083s/q:0.0083s/nz:0.0107s, max: 0.2999s, lst: 0.0007s, c: 87/L:22%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.0268s/q:0.0268s/nz:0.0268s, max: 0.0381s, lst: 0.0243s, c: 9/L:11%
+                   TH_YOLO_V5_L6_MSPN_movenet_cus = 0.5498s/q:0.5498s/nz:0.5498s, max: 22.8170s, lst: 0.1508s, c: 87/L:0%
+                     TH_YOLO_V5_L6_MSPN_post_proces = 0.0003s/q:0.0003s/nz:0.0110s, max: 0.0133s, lst: 0.0001s, c: 87/L:98%
+                     TH_YOLO_V5_L6_MSPN_post_proces = 0.5493s/q:0.5493s/nz:0.5493s, max: 22.7983s, lst: 0.1507s, c: 87/L:0%
+                       TH_YOLO_V5_L6_MSPN__for_preamb = 0.0003s/q:0.0001s/nz:0.0106s, max: 0.0827s, lst: 0.0001s, c: 1128/L:99%
+                       TH_YOLO_V5_L6_MSPN__for_blur = 0.0171s/q:0.0081s/nz:0.0081s, max: 1.1296s, lst: 0.0048s, c: 1128/L:0%
+                       TH_YOLO_V5_L6_MSPN__for_for_ke = 0.0249s/q:0.0114s/nz:0.0114s, max: 2.3456s, lst: 0.0069s, c: 1128/L:0%
+                         TH_YOLO_V5_L6_MSPN__for_for_sh = 0.0011s/q:0.0005s/nz:0.0049s, max: 0.1577s, lst: 0.0003s, c: 19176/L:90%
+                         TH_YOLO_V5_L6_MSPN__for_for_bu = 0.0004s/q:0.0001s/nz:0.0089s, max: 0.0865s, lst: 0.0001s, c: 19176/L:98%
+                   TH_YOLO_V5_L6_MSPN_aggregate_r = 0.0010s/q:0.0010s/nz:0.0024s, max: 0.0336s, lst: 0.0003s, c: 87/L:61%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.1071s/q:0.1071s/nz:0.1071s, max: 1.1247s, lst: 1.1247s, c: 14/L:0%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 2.9597s/q:2.9597s/nz:2.9597s, max: 5.7660s, lst: 5.7660s, c: 2/L:50%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 4.0511s/q:4.0511s/nz:4.0511s, max: 4.0511s, lst: 4.0511s, c: 1/L:100%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.0555s/q:0.0555s/nz:0.0555s, max: 0.0751s, lst: 0.0387s, c: 3/L:33%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.1724s/q:0.1724s/nz:0.1724s, max: 0.1771s, lst: 0.1678s, c: 2/L:50%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.1164s/q:0.1164s/nz:0.1164s, max: 0.1252s, lst: 0.1075s, c: 2/L:50%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.0469s/q:0.0469s/nz:0.0469s, max: 0.0544s, lst: 0.0514s, c: 8/L:25%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.1195s/q:0.1195s/nz:0.1195s, max: 0.1250s, lst: 0.1229s, c: 4/L:25%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.0413s/q:0.0413s/nz:0.0413s, max: 0.0489s, lst: 0.0402s, c: 11/L:9%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.1101s/q:0.1101s/nz:0.1101s, max: 0.1201s, lst: 0.1001s, c: 6/L:17%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.1327s/q:0.1327s/nz:0.1327s, max: 0.1419s, lst: 0.1255s, c: 3/L:33%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.0415s/q:0.0415s/nz:0.0415s, max: 0.0416s, lst: 0.0415s, c: 2/L:50%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.0970s/q:0.0970s/nz:0.0970s, max: 0.0973s, lst: 0.0964s, c: 3/L:33%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.1418s/q:0.1418s/nz:0.1418s, max: 0.1526s, lst: 0.1311s, c: 2/L:50%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.0459s/q:0.0459s/nz:0.0459s, max: 0.0579s, lst: 0.0546s, c: 6/L:17%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.1552s/q:0.1552s/nz:0.1552s, max: 0.1552s, lst: 0.1552s, c: 1/L:100%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.1386s/q:0.1386s/nz:0.1386s, max: 0.1386s, lst: 0.1386s, c: 1/L:100%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.1410s/q:0.1410s/nz:0.1410s, max: 0.1410s, lst: 0.1410s, c: 1/L:100%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.1119s/q:0.1119s/nz:0.1119s, max: 0.1145s, lst: 0.1145s, c: 2/L:50%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.1024s/q:0.1024s/nz:0.1024s, max: 0.1024s, lst: 0.1024s, c: 1/L:100%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.1135s/q:0.1135s/nz:0.1135s, max: 0.1135s, lst: 0.1135s, c: 1/L:100%
+                   [TH_YOLO_V5_L6_MSPN_movenet_pr = 0.1366s/q:0.1366s/nz:0.1366s, max: 0.1366s, lst: 0.1366s, c: 1/L:100%
+                   TH_YOLO_V5_L6_MSPN_movenet_pre = 0.0222s/q:0.0222s/nz:0.0222s, max: 0.0222s, lst: 0.0222s, c: 1/L:100%
+                 yolo_to_cpu = 0.0002s/q:0.0002s/nz:0.0047s, max: 0.0055s, lst: 0.0002s, c: 87/L:95%
+               [TH_YOLO_V5_L6_MSPN_fwd_b2_Non = 7.2139s/q:7.2139s/nz:7.2139s, max: 14.3944s, lst: 14.3944s, c: 2/L:50%
+               [TH_YOLO_V5_L6_MSPN_fwd_b9_Non = 15.1215s/q:15.1215s/nz:15.1215s, max: 30.1814s, lst: 30.1814s, c: 2/L:50%
+               [TH_YOLO_V5_L6_MSPN_fwd_b15_No = 0.0252s/q:0.0252s/nz:0.0252s, max: 0.0985s, lst: 0.0212s, c: 31/L:0%
+               TH_YOLO_V5_L6_MSPN_fwd_b3_None = 0.8651s/q:0.8651s/nz:0.8651s, max: 13.5304s, lst: 0.0174s, c: 31/L:0%
+             TH_YOLO_V5_L6_MSPN_post_proc = 0.0012s/q:0.0012s/nz:0.0019s, max: 0.0128s, lst: 0.0009s, c: 87/L:36%
+             TH_YOLO_V5_L6_MSPN_pack_res = 0.0001s/q:0.0001s/nz:455032708123.3263s, max: 0.0002s, lst: 0.0000s, c: 87/L:100%
+         [inprocess_pred_TH_YOLO_V5_L6_ = 1.1507s/q:1.1507s/nz:1.1507s, max: 13.8194s, lst: 0.2304s, c: 33/L:0%
+       [parallel_pred_collect] = 0.0000s/q:0.0000s/nz:108784320764.2436s, max: 0.0001s, lst: 0.0000s, c: 81/L:100%
+       [idle_shutdown] = 0.0000s/q:0.0000s/nz:18246215768.1584s, max: 0.0000s, lst: 0.0000s, c: 13/L:100%
+     [execute_all_plugins] = 0.0001s/q:0.0001s/nz:795695488341.1527s, max: 0.0003s, lst: 0.0001s, c: 81/L:100%
+Section 'CAMERA_TAMPERING_02 -> CT_Z0 (CV10_DRUMUL_BANILOR)'
+ CameraTampering02Plugin_exec_c = 0.2190s/q:0.2190s/nz:0.2190s, max: 1.5573s, lst: 0.1083s, c: 33/L:0%
+   pre_proc = 0.1136s/q:0.1136s/nz:0.1136s, max: 0.2945s, lst: 0.0291s, c: 33/L:15%
+     object_tracking = 0.1133s/q:0.1133s/nz:0.1133s, max: 0.2941s, lst: 0.0290s, c: 33/L:15%
+   process = 0.1053s/q:0.1053s/nz:0.1287s, max: 1.3808s, lst: 0.0790s, c: 33/L:18%
+     register_inferences = 0.0000s/q:0.0000s/nz:71175093762.5766s, max: 0.0001s, lst: 0.0000s, c: 27/L:100%
+     run_obstruction_heuristic = 0.1282s/q:0.1282s/nz:0.1282s, max: 1.3803s, lst: 0.0786s, c: 27/L:0%
+       heuristic_resize = 0.0087s/q:0.0087s/nz:0.0087s, max: 0.0396s, lst: 0.0021s, c: 27/L:0%
+       compute_entropy = 0.1195s/q:0.1195s/nz:0.1195s, max: 1.3739s, lst: 0.0765s, c: 27/L:0%
+     get_alerts = 0.0002s/q:0.0002s/nz:0.0027s, max: 0.0015s, lst: 0.0001s, c: 27/L:93%
+     save_anchors = 0.0001s/q:0.0001s/nz:0.0023s, max: 0.0012s, lst: 0.0000s, c: 54/L:96%
+   post_proc = 0.0001s/q:0.0001s/nz:175952864810.8244s, max: 0.0001s, lst: 0.0001s, c: 33/L:100%
+Section 'CAMERA_TAMPERING_02 -> CT_Z0 (CV11_TELLERI_3_4)'
+ CameraTampering02Plugin_exec_c = 0.1256s/q:0.1256s/nz:0.1256s, max: 1.1365s, lst: 0.1159s, c: 33/L:0%
+   pre_proc = 0.0201s/q:0.0201s/nz:0.0201s, max: 0.0436s, lst: 0.0169s, c: 33/L:21%
+     object_tracking = 0.0199s/q:0.0199s/nz:0.0199s, max: 0.0434s, lst: 0.0167s, c: 33/L:21%
+   process = 0.1053s/q:0.1053s/nz:0.1288s, max: 1.1129s, lst: 0.0988s, c: 33/L:18%
+     register_inferences = 0.0000s/q:0.0000s/nz:50541409291.3270s, max: 0.0000s, lst: 0.0000s, c: 27/L:100%
+     run_obstruction_heuristic = 0.1283s/q:0.1283s/nz:0.1283s, max: 1.1123s, lst: 0.0985s, c: 27/L:0%
+       heuristic_resize = 0.0100s/q:0.0100s/nz:0.0100s, max: 0.0334s, lst: 0.0087s, c: 27/L:4%
+       compute_entropy = 0.1183s/q:0.1183s/nz:0.1183s, max: 1.1067s, lst: 0.0897s, c: 27/L:0%
+     get_alerts = 0.0001s/q:0.0001s/nz:384954316541.5526s, max: 0.0003s, lst: 0.0001s, c: 27/L:100%
+     save_anchors = 0.0001s/q:0.0001s/nz:322451372630.8942s, max: 0.0002s, lst: 0.0000s, c: 54/L:100%
+   post_proc = 0.0001s/q:0.0001s/nz:181198073551.0588s, max: 0.0001s, lst: 0.0000s, c: 33/L:100%
+Section 'CAMERA_TAMPERING_02 -> CT_Z0 (CV12_TELLERI_1_2)'
+ CameraTampering02Plugin_exec_c = 0.1653s/q:0.1653s/nz:0.1653s, max: 1.5088s, lst: 0.1750s, c: 33/L:0%
+   pre_proc = 0.0678s/q:0.0678s/nz:0.0678s, max: 0.2051s, lst: 0.0882s, c: 33/L:15%
+     object_tracking = 0.0676s/q:0.0676s/nz:0.0676s, max: 0.2047s, lst: 0.0879s, c: 33/L:15%
+   process = 0.0973s/q:0.0973s/nz:0.1190s, max: 1.4393s, lst: 0.0866s, c: 33/L:18%
+     register_inferences = 0.0000s/q:0.0000s/nz:66798017360.2700s, max: 0.0000s, lst: 0.0000s, c: 27/L:100%
+     run_obstruction_heuristic = 0.1185s/q:0.1185s/nz:0.1185s, max: 1.4389s, lst: 0.0862s, c: 27/L:0%
+       heuristic_resize = 0.0119s/q:0.0119s/nz:0.0119s, max: 0.0342s, lst: 0.0157s, c: 27/L:11%
+       compute_entropy = 0.1066s/q:0.1066s/nz:0.1066s, max: 1.4323s, lst: 0.0705s, c: 27/L:0%
+     get_alerts = 0.0002s/q:0.0002s/nz:0.0023s, max: 0.0007s, lst: 0.0001s, c: 27/L:93%
+     save_anchors = 0.0001s/q:0.0001s/nz:0.0021s, max: 0.0006s, lst: 0.0000s, c: 54/L:96%
+   post_proc = 0.0001s/q:0.0001s/nz:187666993588.2092s, max: 0.0002s, lst: 0.0001s, c: 33/L:100%
+Section 'CAMERA_TAMPERING_02 -> CT_Z0 (CV13_CONSILIERI_2)'
+ CameraTampering02Plugin_exec_c = 0.1261s/q:0.1261s/nz:0.1261s, max: 1.0178s, lst: 0.1064s, c: 33/L:0%
+   pre_proc = 0.0287s/q:0.0287s/nz:0.0287s, max: 0.0632s, lst: 0.0183s, c: 33/L:18%
+     object_tracking = 0.0285s/q:0.0285s/nz:0.0285s, max: 0.0630s, lst: 0.0181s, c: 33/L:18%
+   process = 0.0972s/q:0.0972s/nz:0.1188s, max: 0.9937s, lst: 0.0880s, c: 33/L:18%
+     register_inferences = 0.0000s/q:0.0000s/nz:60951407067.4777s, max: 0.0000s, lst: 0.0000s, c: 27/L:100%
+     run_obstruction_heuristic = 0.1183s/q:0.1183s/nz:0.1183s, max: 0.9933s, lst: 0.0876s, c: 27/L:0%
+       heuristic_resize = 0.0099s/q:0.0099s/nz:0.0099s, max: 0.0276s, lst: 0.0044s, c: 27/L:11%
+       compute_entropy = 0.1084s/q:0.1084s/nz:0.1084s, max: 0.9906s, lst: 0.0832s, c: 27/L:0%
+     get_alerts = 0.0002s/q:0.0002s/nz:0.0052s, max: 0.0013s, lst: 0.0001s, c: 27/L:96%
+     save_anchors = 0.0001s/q:0.0001s/nz:0.0043s, max: 0.0009s, lst: 0.0001s, c: 54/L:98%
+   post_proc = 0.0001s/q:0.0001s/nz:208358932286.5009s, max: 0.0002s, lst: 0.0001s, c: 33/L:100%
+Section 'CAMERA_TAMPERING_02 -> CT_Z0 (CV14_TEZAUR)'
+ CameraTampering02Plugin_exec_c = 0.0757s/q:0.0757s/nz:0.0757s, max: 0.3592s, lst: 0.1072s, c: 35/L:14%
+   pre_proc = 0.0070s/q:0.0070s/nz:0.0079s, max: 0.0231s, lst: 0.0142s, c: 35/L:11%
+     object_tracking = 0.0068s/q:0.0068s/nz:0.0085s, max: 0.0230s, lst: 0.0140s, c: 35/L:20%
+   process = 0.0686s/q:0.0686s/nz:0.0828s, max: 0.3539s, lst: 0.0928s, c: 35/L:17%
+     register_inferences = 0.0000s/q:0.0000s/nz:56941434741.0202s, max: 0.0000s, lst: 0.0000s, c: 29/L:100%
+     run_obstruction_heuristic = 0.0824s/q:0.0824s/nz:0.0824s, max: 0.3533s, lst: 0.0925s, c: 29/L:0%
+       heuristic_resize = 0.0106s/q:0.0106s/nz:0.0106s, max: 0.0341s, lst: 0.0144s, c: 29/L:7%
+       compute_entropy = 0.0719s/q:0.0719s/nz:0.0719s, max: 0.3457s, lst: 0.0780s, c: 29/L:0%
+     get_alerts = 0.0001s/q:0.0001s/nz:348762446083.1285s, max: 0.0002s, lst: 0.0001s, c: 29/L:100%
+     save_anchors = 0.0000s/q:0.0000s/nz:286856316961.3481s, max: 0.0001s, lst: 0.0000s, c: 58/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:174167426303.0291s, max: 0.0001s, lst: 0.0001s, c: 35/L:100%
+Section 'CAMERA_TAMPERING_02 -> CT_Z0 (CV15_CONSILIER_1)'
+ CameraTampering02Plugin_exec_c = 0.1767s/q:0.1767s/nz:0.1767s, max: 1.1555s, lst: 0.1364s, c: 30/L:0%
+   pre_proc = 0.0929s/q:0.0929s/nz:0.0929s, max: 0.2840s, lst: 0.1039s, c: 31/L:6%
+     object_tracking = 0.0925s/q:0.0925s/nz:0.0925s, max: 0.2836s, lst: 0.1037s, c: 31/L:6%
+   process = 0.0840s/q:0.0840s/nz:0.1050s, max: 1.1104s, lst: 0.0440s, c: 30/L:20%
+     register_inferences = 0.0000s/q:0.0000s/nz:86224940605.4616s, max: 0.0002s, lst: 0.0000s, c: 25/L:100%
+     run_obstruction_heuristic = 0.1044s/q:0.1044s/nz:0.1044s, max: 1.1100s, lst: 0.0437s, c: 24/L:0%
+       heuristic_resize = 0.0133s/q:0.0133s/nz:0.0133s, max: 0.1380s, lst: 0.0119s, c: 25/L:0%
+       compute_entropy = 0.0910s/q:0.0910s/nz:0.0910s, max: 1.0997s, lst: 0.0392s, c: 24/L:0%
+     [get_alerts] = 0.0002s/q:0.0002s/nz:374267064034.9388s, max: 0.0004s, lst: 0.0001s, c: 24/L:100%
+     save_anchors = 0.0001s/q:0.0001s/nz:313578336499.6314s, max: 0.0002s, lst: 0.0000s, c: 48/L:100%
+   [post_proc] = 0.0001s/q:0.0001s/nz:160187552683.0554s, max: 0.0001s, lst: 0.0000s, c: 30/L:100%
+Section 'CAMERA_TAMPERING_02 -> CT_Z0 (CV1_ACCES_BANCA)'
+ CameraTampering02Plugin_exec_c = 0.2861s/q:0.2861s/nz:0.2861s, max: 1.9360s, lst: 0.1519s, c: 32/L:0%
+   pre_proc = 0.2443s/q:0.2443s/nz:0.2443s, max: 1.5473s, lst: 0.1341s, c: 32/L:0%
+     object_tracking = 0.2439s/q:0.2439s/nz:0.2439s, max: 1.5463s, lst: 0.1337s, c: 32/L:0%
+   [process] = 0.0417s/q:0.0417s/nz:0.0513s, max: 0.3885s, lst: 0.0177s, c: 32/L:19%
+     register_inferences = 0.0000s/q:0.0000s/nz:76754856854.6772s, max: 0.0001s, lst: 0.0000s, c: 26/L:100%
+     run_obstruction_heuristic = 0.0509s/q:0.0509s/nz:0.0509s, max: 0.3877s, lst: 0.0173s, c: 26/L:0%
+       heuristic_resize = 0.0068s/q:0.0068s/nz:0.0068s, max: 0.0270s, lst: 0.0029s, c: 26/L:0%
+       compute_entropy = 0.0441s/q:0.0441s/nz:0.0441s, max: 0.3607s, lst: 0.0144s, c: 26/L:0%
+     get_alerts = 0.0001s/q:0.0001s/nz:293848756700.7542s, max: 0.0003s, lst: 0.0001s, c: 26/L:100%
+     save_anchors = 0.0001s/q:0.0001s/nz:295458734035.4919s, max: 0.0001s, lst: 0.0000s, c: 52/L:100%
+   [post_proc] = 0.0000s/q:0.0000s/nz:145955616608.2621s, max: 0.0001s, lst: 0.0000s, c: 32/L:100%
+Section 'CAMERA_TAMPERING_02 -> CT_Z0 (CV2_INTRARE_ZONA_24)'
+ CameraTampering02Plugin_exec_c = 0.1388s/q:0.1388s/nz:0.1388s, max: 1.4617s, lst: 0.0723s, c: 31/L:0%
+   pre_proc = 0.0356s/q:0.0356s/nz:0.0356s, max: 0.1947s, lst: 0.0015s, c: 31/L:0%
+     object_tracking = 0.0354s/q:0.0354s/nz:0.0354s, max: 0.1942s, lst: 0.0013s, c: 31/L:0%
+   process = 0.1031s/q:0.1031s/nz:0.1278s, max: 1.4222s, lst: 0.0706s, c: 31/L:19%
+     register_inferences = 0.0000s/q:0.0000s/nz:58783544227.4809s, max: 0.0001s, lst: 0.0000s, c: 25/L:100%
+     run_obstruction_heuristic = 0.1274s/q:0.1274s/nz:0.1274s, max: 1.4216s, lst: 0.0702s, c: 25/L:0%
+       heuristic_resize = 0.0097s/q:0.0097s/nz:0.0097s, max: 0.0258s, lst: 0.0094s, c: 25/L:16%
+       compute_entropy = 0.1177s/q:0.1177s/nz:0.1177s, max: 1.4068s, lst: 0.0608s, c: 25/L:0%
+     get_alerts = 0.0001s/q:0.0001s/nz:303690764121.7112s, max: 0.0002s, lst: 0.0001s, c: 25/L:100%
+     save_anchors = 0.0001s/q:0.0001s/nz:250374432653.1887s, max: 0.0001s, lst: 0.0000s, c: 50/L:100%
+   post_proc = 0.0001s/q:0.0001s/nz:156128569506.1088s, max: 0.0001s, lst: 0.0001s, c: 31/L:100%
+Section 'CAMERA_TAMPERING_02 -> CT_Z0 (CV3_UTILIZARE_APT_ATM)'
+ CameraTampering02Plugin_exec_c = 0.1179s/q:0.1179s/nz:0.1179s, max: 1.4023s, lst: 0.0848s, c: 31/L:0%
+   pre_proc = 0.0133s/q:0.0133s/nz:0.0133s, max: 0.0475s, lst: 0.0011s, c: 31/L:10%
+     object_tracking = 0.0131s/q:0.0131s/nz:0.0135s, max: 0.0473s, lst: 0.0010s, c: 31/L:10%
+   process = 0.1045s/q:0.1045s/nz:0.1296s, max: 1.3798s, lst: 0.0835s, c: 31/L:19%
+     register_inferences = 0.0000s/q:0.0000s/nz:52162469364.7027s, max: 0.0000s, lst: 0.0000s, c: 25/L:100%
+     run_obstruction_heuristic = 0.1292s/q:0.1292s/nz:0.1292s, max: 1.3795s, lst: 0.0832s, c: 25/L:0%
+       heuristic_resize = 0.0096s/q:0.0096s/nz:0.0096s, max: 0.0406s, lst: 0.0113s, c: 25/L:0%
+       compute_entropy = 0.1195s/q:0.1195s/nz:0.1195s, max: 1.3687s, lst: 0.0718s, c: 25/L:0%
+     get_alerts = 0.0002s/q:0.0002s/nz:387125206179.9169s, max: 0.0004s, lst: 0.0001s, c: 25/L:100%
+     save_anchors = 0.0001s/q:0.0001s/nz:334133626893.1627s, max: 0.0003s, lst: 0.0000s, c: 50/L:100%
+   post_proc = 0.0001s/q:0.0001s/nz:160688161849.9756s, max: 0.0001s, lst: 0.0001s, c: 31/L:100%
+Section 'CAMERA_TAMPERING_02 -> CT_Z0 (CV4_CAMERA_ATM_STANGA)'
+ CameraTampering02Plugin_exec_c = 0.1201s/q:0.1201s/nz:0.1329s, max: 1.2631s, lst: 0.1113s, c: 31/L:10%
+   pre_proc = 0.0027s/q:0.0027s/nz:0.0050s, max: 0.0122s, lst: 0.0004s, c: 31/L:45%
+     object_tracking = 0.0026s/q:0.0026s/nz:0.0047s, max: 0.0120s, lst: 0.0002s, c: 31/L:45%
+   process = 0.1172s/q:0.1172s/nz:0.1454s, max: 1.2620s, lst: 0.1109s, c: 31/L:19%
+     register_inferences = 0.0000s/q:0.0000s/nz:57527562603.3545s, max: 0.0001s, lst: 0.0000s, c: 25/L:100%
+     run_obstruction_heuristic = 0.1449s/q:0.1449s/nz:0.1449s, max: 1.2618s, lst: 0.1105s, c: 25/L:0%
+       heuristic_resize = 0.0087s/q:0.0087s/nz:0.0087s, max: 0.0254s, lst: 0.0254s, c: 25/L:12%
+       compute_entropy = 0.1362s/q:0.1362s/nz:0.1362s, max: 1.2513s, lst: 0.0850s, c: 25/L:0%
+     get_alerts = 0.0002s/q:0.0002s/nz:0.0045s, max: 0.0014s, lst: 0.0001s, c: 25/L:96%
+     save_anchors = 0.0001s/q:0.0001s/nz:0.0020s, max: 0.0008s, lst: 0.0000s, c: 50/L:96%
+   post_proc = 0.0001s/q:0.0001s/nz:175938382744.7891s, max: 0.0002s, lst: 0.0001s, c: 31/L:100%
+Section 'CAMERA_TAMPERING_02 -> CT_Z0 (CV5_CAMERA_ATM_MIJLOC)'
+ CameraTampering02Plugin_exec_c = 0.1014s/q:0.1014s/nz:0.1048s, max: 1.4122s, lst: 0.0898s, c: 31/L:3%
+   pre_proc = 0.0031s/q:0.0031s/nz:0.0064s, max: 0.0154s, lst: 0.0001s, c: 31/L:52%
+     object_tracking = 0.0030s/q:0.0030s/nz:0.0066s, max: 0.0152s, lst: 0.0000s, c: 31/L:55%
+   process = 0.0982s/q:0.0982s/nz:0.1218s, max: 1.4101s, lst: 0.0897s, c: 31/L:19%
+     register_inferences = 0.0000s/q:0.0000s/nz:46580471098.4230s, max: 0.0000s, lst: 0.0000s, c: 25/L:100%
+     run_obstruction_heuristic = 0.1214s/q:0.1214s/nz:0.1214s, max: 1.4076s, lst: 0.0894s, c: 25/L:0%
+       heuristic_resize = 0.0096s/q:0.0096s/nz:0.0096s, max: 0.0200s, lst: 0.0022s, c: 25/L:16%
+       compute_entropy = 0.1118s/q:0.1118s/nz:0.1118s, max: 1.4009s, lst: 0.0872s, c: 25/L:0%
+     get_alerts = 0.0002s/q:0.0002s/nz:0.0039s, max: 0.0011s, lst: 0.0001s, c: 25/L:96%
+     save_anchors = 0.0001s/q:0.0001s/nz:0.0031s, max: 0.0007s, lst: 0.0000s, c: 50/L:98%
+   post_proc = 0.0000s/q:0.0000s/nz:145117659121.7518s, max: 0.0001s, lst: 0.0000s, c: 31/L:100%
+Section 'CAMERA_TAMPERING_02 -> CT_Z0 (CV6_RECYCLER)'
+ CameraTampering02Plugin_exec_c = 0.1734s/q:0.1734s/nz:0.1734s, max: 1.6564s, lst: 0.0923s, c: 31/L:0%
+   pre_proc = 0.0568s/q:0.0568s/nz:0.0568s, max: 0.2148s, lst: 0.0177s, c: 31/L:13%
+     object_tracking = 0.0565s/q:0.0565s/nz:0.0565s, max: 0.2145s, lst: 0.0175s, c: 31/L:13%
+   process = 0.1164s/q:0.1164s/nz:0.1443s, max: 1.6126s, lst: 0.0745s, c: 31/L:19%
+     register_inferences = 0.0000s/q:0.0000s/nz:68469415418.8037s, max: 0.0001s, lst: 0.0000s, c: 25/L:100%
+     run_obstruction_heuristic = 0.1439s/q:0.1439s/nz:0.1439s, max: 1.6119s, lst: 0.0741s, c: 25/L:0%
+       heuristic_resize = 0.0113s/q:0.0113s/nz:0.0113s, max: 0.0348s, lst: 0.0051s, c: 25/L:8%
+       compute_entropy = 0.1326s/q:0.1326s/nz:0.1326s, max: 1.5944s, lst: 0.0689s, c: 25/L:0%
+     get_alerts = 0.0001s/q:0.0001s/nz:0.0037s, max: 0.0005s, lst: 0.0001s, c: 25/L:96%
+     save_anchors = 0.0001s/q:0.0001s/nz:304997828789.0554s, max: 0.0004s, lst: 0.0000s, c: 50/L:100%
+   post_proc = 0.0001s/q:0.0001s/nz:166067993268.3706s, max: 0.0001s, lst: 0.0000s, c: 31/L:100%
+Section 'CAMERA_TAMPERING_02 -> CT_Z0 (CV7_CAMERA_ATM)'
+ CameraTampering02Plugin_exec_c = 0.0823s/q:0.0823s/nz:0.1006s, max: 1.0079s, lst: 0.0789s, c: 33/L:18%
+   pre_proc = 0.0005s/q:0.0005s/nz:0.0152s, max: 0.0128s, lst: 0.0001s, c: 33/L:97%
+     object_tracking = 0.0004s/q:0.0004s/nz:0.0134s, max: 0.0126s, lst: 0.0000s, c: 33/L:97%
+   process = 0.0817s/q:0.0817s/nz:0.0998s, max: 1.0073s, lst: 0.0787s, c: 33/L:18%
+     register_inferences = 0.0000s/q:0.0000s/nz:52308803424.2392s, max: 0.0000s, lst: 0.0000s, c: 27/L:100%
+     run_obstruction_heuristic = 0.0994s/q:0.0994s/nz:0.0994s, max: 1.0062s, lst: 0.0784s, c: 27/L:0%
+       heuristic_resize = 0.0080s/q:0.0080s/nz:0.0080s, max: 0.0308s, lst: 0.0056s, c: 27/L:0%
+       compute_entropy = 0.0914s/q:0.0914s/nz:0.0914s, max: 0.9986s, lst: 0.0728s, c: 27/L:0%
+     get_alerts = 0.0002s/q:0.0002s/nz:0.0024s, max: 0.0008s, lst: 0.0001s, c: 27/L:93%
+     save_anchors = 0.0001s/q:0.0001s/nz:0.0021s, max: 0.0006s, lst: 0.0000s, c: 54/L:96%
+   post_proc = 0.0001s/q:0.0001s/nz:209150183945.8943s, max: 0.0003s, lst: 0.0001s, c: 33/L:100%
+Section 'CAMERA_TAMPERING_02 -> CT_Z0 (CV8_INTRARE_INTERIOR)'
+ CameraTampering02Plugin_exec_c = 0.0962s/q:0.0962s/nz:0.0962s, max: 0.3524s, lst: 0.0818s, c: 37/L:14%
+   pre_proc = 0.0171s/q:0.0171s/nz:0.0171s, max: 0.0487s, lst: 0.0022s, c: 37/L:24%
+     object_tracking = 0.0169s/q:0.0169s/nz:0.0169s, max: 0.0485s, lst: 0.0020s, c: 37/L:24%
+   process = 0.0790s/q:0.0790s/nz:0.0943s, max: 0.3367s, lst: 0.0795s, c: 37/L:16%
+     register_inferences = 0.0000s/q:0.0000s/nz:64162909984.5886s, max: 0.0000s, lst: 0.0000s, c: 31/L:100%
+     run_obstruction_heuristic = 0.0938s/q:0.0938s/nz:0.0938s, max: 0.3359s, lst: 0.0793s, c: 31/L:0%
+       heuristic_resize = 0.0121s/q:0.0121s/nz:0.0121s, max: 0.0265s, lst: 0.0137s, c: 31/L:10%
+       compute_entropy = 0.0817s/q:0.0817s/nz:0.0817s, max: 0.3218s, lst: 0.0656s, c: 31/L:0%
+     get_alerts = 0.0002s/q:0.0002s/nz:0.0054s, max: 0.0010s, lst: 0.0001s, c: 31/L:97%
+     save_anchors = 0.0001s/q:0.0001s/nz:0.0025s, max: 0.0007s, lst: 0.0000s, c: 62/L:97%
+   post_proc = 0.0001s/q:0.0001s/nz:219223229214.5491s, max: 0.0003s, lst: 0.0000s, c: 37/L:100%
+Section 'CAMERA_TAMPERING_02 -> CT_Z0 (CV9_SPATIU_PUBLIC_INTRARE)'
+ CameraTampering02Plugin_exec_c = 0.1703s/q:0.1703s/nz:0.1703s, max: 1.5207s, lst: 0.1485s, c: 33/L:0%
+   pre_proc = 0.0525s/q:0.0525s/nz:0.0525s, max: 0.0987s, lst: 0.0567s, c: 33/L:12%
+     object_tracking = 0.0523s/q:0.0523s/nz:0.0523s, max: 0.0985s, lst: 0.0564s, c: 33/L:12%
+   process = 0.1176s/q:0.1176s/nz:0.1437s, max: 1.4935s, lst: 0.0917s, c: 33/L:18%
+     register_inferences = 0.0000s/q:0.0000s/nz:69936714135.1104s, max: 0.0000s, lst: 0.0000s, c: 27/L:100%
+     run_obstruction_heuristic = 0.1433s/q:0.1433s/nz:0.1433s, max: 1.4922s, lst: 0.0912s, c: 27/L:0%
+       heuristic_resize = 0.0108s/q:0.0108s/nz:0.0108s, max: 0.0391s, lst: 0.0096s, c: 27/L:4%
+       compute_entropy = 0.1325s/q:0.1325s/nz:0.1325s, max: 1.4832s, lst: 0.0816s, c: 27/L:0%
+     get_alerts = 0.0001s/q:0.0001s/nz:0.0039s, max: 0.0005s, lst: 0.0001s, c: 27/L:96%
+     save_anchors = 0.0001s/q:0.0001s/nz:332990474998.9510s, max: 0.0003s, lst: 0.0000s, c: 54/L:100%
+   post_proc = 0.0001s/q:0.0001s/nz:172147643752.3961s, max: 0.0002s, lst: 0.0000s, c: 33/L:100%
+Section 'DISTRESS_01 -> DISTRESS (CV13_CONSILIERI_2)'
+ Distress01Plugin_exec_chain = 0.0059s/q:0.0059s/nz:0.0059s, max: 0.0369s, lst: 0.0032s, c: 33/L:0%
+   pre_proc = 0.0035s/q:0.0035s/nz:0.0050s, max: 0.0182s, lst: 0.0026s, c: 33/L:30%
+     object_tracking = 0.0033s/q:0.0033s/nz:0.0051s, max: 0.0180s, lst: 0.0023s, c: 33/L:36%
+   process = 0.0023s/q:0.0023s/nz:0.0064s, max: 0.0253s, lst: 0.0004s, c: 33/L:64%
+     detect_distress = 0.0022s/q:0.0022s/nz:0.0073s, max: 0.0252s, lst: 0.0002s, c: 33/L:70%
+       check_person = 0.0022s/q:0.0022s/nz:0.0072s, max: 0.0252s, lst: 0.0002s, c: 33/L:70%
+   post_proc = 0.0000s/q:0.0000s/nz:123576028272.5096s, max: 0.0001s, lst: 0.0001s, c: 33/L:100%
+Section 'DISTRESS_01 -> DISTRESS (CV15_CONSILIER_1)'
+ Distress01Plugin_exec_chain = 0.0007s/q:0.0007s/nz:0.0105s, max: 0.0076s, lst: 0.0003s, c: 31/L:94%
+   pre_proc = 0.0005s/q:0.0005s/nz:0.0070s, max: 0.0073s, lst: 0.0001s, c: 31/L:94%
+     object_tracking = 0.0001s/q:0.0001s/nz:0.0036s, max: 0.0031s, lst: 0.0000s, c: 31/L:97%
+   process = 0.0001s/q:0.0001s/nz:432263012044.1318s, max: 0.0002s, lst: 0.0001s, c: 31/L:100%
+     detect_distress = 0.0000s/q:0.0000s/nz:31120283529.1624s, max: 0.0000s, lst: 0.0000s, c: 31/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:101799052208.6620s, max: 0.0001s, lst: 0.0000s, c: 31/L:100%
+Section 'DISTRESS_01 -> DISTRESS (CV2_INTRARE_ZONA_24)'
+ Distress01Plugin_exec_chain = 0.0536s/q:0.0536s/nz:0.0536s, max: 0.1936s, lst: 0.0221s, c: 31/L:6%
+   pre_proc = 0.0519s/q:0.0519s/nz:0.0519s, max: 0.1928s, lst: 0.0164s, c: 31/L:10%
+     object_tracking = 0.0112s/q:0.0112s/nz:0.0116s, max: 0.0322s, lst: 0.0059s, c: 31/L:13%
+   process = 0.0016s/q:0.0016s/nz:0.0020s, max: 0.0072s, lst: 0.0056s, c: 31/L:23%
+     detect_distress = 0.0013s/q:0.0013s/nz:0.0026s, max: 0.0070s, lst: 0.0055s, c: 31/L:48%
+       check_person = 0.0009s/q:0.0009s/nz:0.0027s, max: 0.0069s, lst: 0.0052s, c: 44/L:66%
+   post_proc = 0.0001s/q:0.0001s/nz:183452898636.4603s, max: 0.0002s, lst: 0.0000s, c: 31/L:100%
+Section 'DISTRESS_01 -> DISTRESS_DESK (CV15_CONSILIER_1)'
+ Distress01Plugin_exec_chain = 0.0006s/q:0.0006s/nz:0.0045s, max: 0.0071s, lst: 0.0004s, c: 31/L:87%
+   pre_proc = 0.0003s/q:0.0003s/nz:0.0053s, max: 0.0069s, lst: 0.0001s, c: 31/L:94%
+     object_tracking = 0.0000s/q:0.0000s/nz:92759216204.2856s, max: 0.0002s, lst: 0.0000s, c: 31/L:100%
+   process = 0.0001s/q:0.0001s/nz:435611442662.7755s, max: 0.0004s, lst: 0.0002s, c: 31/L:100%
+     detect_distress = 0.0000s/q:0.0000s/nz:31660217791.7957s, max: 0.0000s, lst: 0.0000s, c: 31/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:94493385404.3484s, max: 0.0001s, lst: 0.0000s, c: 31/L:100%
+Section 'FALLEN_PERSON_02 -> FALLEN (CV13_CONSILIERI_2)'
+ FallenPerson02Plugin_exec_chai = 0.0120s/q:0.0120s/nz:0.0120s, max: 0.0488s, lst: 0.0094s, c: 33/L:12%
+   pre_proc = 0.0118s/q:0.0118s/nz:0.0118s, max: 0.0485s, lst: 0.0093s, c: 33/L:12%
+     object_tracking = 0.0045s/q:0.0045s/nz:0.0067s, max: 0.0462s, lst: 0.0002s, c: 33/L:33%
+   process = 0.0002s/q:0.0002s/nz:0.0053s, max: 0.0007s, lst: 0.0001s, c: 33/L:97%
+     detect_fallen = 0.0000s/q:0.0000s/nz:36779372021.5559s, max: 0.0000s, lst: 0.0000s, c: 33/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:135162239894.2709s, max: 0.0002s, lst: 0.0000s, c: 33/L:100%
+Section 'FALLEN_PERSON_02 -> FALLEN (CV15_CONSILIER_1)'
+ FallenPerson02Plugin_exec_chai = 0.0005s/q:0.0005s/nz:0.0072s, max: 0.0043s, lst: 0.0003s, c: 31/L:94%
+   pre_proc = 0.0002s/q:0.0002s/nz:0.0039s, max: 0.0041s, lst: 0.0001s, c: 31/L:94%
+     object_tracking = 0.0001s/q:0.0001s/nz:0.0039s, max: 0.0033s, lst: 0.0000s, c: 31/L:97%
+   process = 0.0001s/q:0.0001s/nz:400816882029.1758s, max: 0.0002s, lst: 0.0001s, c: 31/L:100%
+     detect_fallen = 0.0000s/q:0.0000s/nz:29344484210.0143s, max: 0.0000s, lst: 0.0000s, c: 31/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:98397466354.0721s, max: 0.0001s, lst: 0.0000s, c: 31/L:100%
+Section 'FALLEN_PERSON_02 -> FALLEN (CV2_INTRARE_ZONA_24)'
+ FallenPerson02Plugin_exec_chai = 0.0890s/q:0.0890s/nz:0.0890s, max: 0.2843s, lst: 0.0622s, c: 31/L:6%
+   pre_proc = 0.0800s/q:0.0800s/nz:0.0800s, max: 0.2833s, lst: 0.0386s, c: 31/L:3%
+     object_tracking = 0.0220s/q:0.0220s/nz:0.0220s, max: 0.0498s, lst: 0.0244s, c: 31/L:19%
+   process = 0.0088s/q:0.0088s/nz:0.0105s, max: 0.0537s, lst: 0.0235s, c: 31/L:16%
+     detect_fallen = 0.0086s/q:0.0086s/nz:0.0103s, max: 0.0534s, lst: 0.0231s, c: 31/L:16%
+       check_person = 0.0060s/q:0.0060s/nz:0.0076s, max: 0.0305s, lst: 0.0140s, c: 44/L:20%
+   post_proc = 0.0001s/q:0.0001s/nz:174394180066.8836s, max: 0.0001s, lst: 0.0000s, c: 31/L:100%
+Section 'FALLEN_PERSON_02 -> FALLEN_DESK (CV13_CONSILIERI_2)'
+ FallenPerson02Plugin_exec_chai = 0.0112s/q:0.0112s/nz:0.0112s, max: 0.0579s, lst: 0.0034s, c: 33/L:0%
+   pre_proc = 0.0109s/q:0.0109s/nz:0.0109s, max: 0.0575s, lst: 0.0031s, c: 33/L:0%
+     object_tracking = 0.0042s/q:0.0042s/nz:0.0061s, max: 0.0235s, lst: 0.0008s, c: 33/L:30%
+   process = 0.0002s/q:0.0002s/nz:522132846526.8016s, max: 0.0003s, lst: 0.0002s, c: 33/L:100%
+     detect_fallen = 0.0000s/q:0.0000s/nz:37482567131.5193s, max: 0.0000s, lst: 0.0000s, c: 33/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:127474498003.7212s, max: 0.0001s, lst: 0.0000s, c: 33/L:100%
+Section 'FALLEN_PERSON_02 -> FALLEN_DESK (CV15_CONSILIER_1)'
+ FallenPerson02Plugin_exec_chai = 0.0009s/q:0.0009s/nz:0.0145s, max: 0.0189s, lst: 0.0003s, c: 31/L:94%
+   pre_proc = 0.0007s/q:0.0007s/nz:0.0111s, max: 0.0185s, lst: 0.0001s, c: 31/L:94%
+     object_tracking = 0.0000s/q:0.0000s/nz:70172641426.3248s, max: 0.0002s, lst: 0.0000s, c: 31/L:100%
+   process = 0.0001s/q:0.0001s/nz:399770750664.1746s, max: 0.0002s, lst: 0.0002s, c: 31/L:100%
+     detect_fallen = 0.0000s/q:0.0000s/nz:29207230545.5804s, max: 0.0000s, lst: 0.0000s, c: 31/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:101366732269.5255s, max: 0.0000s, lst: 0.0000s, c: 31/L:100%
+Section 'LOGGER_internal'
+ _logger = 0.0009s/q:0.0017s/nz:0.0042s, max: 0.0582s, lst: 0.0005s, c: 2307/L:59%
+   _logger_add_log = 0.0001s/q:0.0001s/nz:0.0028s, max: 0.0055s, lst: 0.0000s, c: 2307/L:96%
+   _logger_save_log = 0.0009s/q:0.0016s/nz:0.0047s, max: 0.0555s, lst: 0.0005s, c: 2307/L:66%
+Section 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01 -> A_CJ_CV10_Z0 (CV10_DRUMUL_BANILOR)'
+ MultizonePeoplePresenceAggrega = 0.0003s/q:0.0003s/nz:0.0098s, max: 0.0009s, lst: 0.0003s, c: 33/L:97%
+   pre_proc = 0.0001s/q:0.0001s/nz:240498571656.6443s, max: 0.0002s, lst: 0.0001s, c: 33/L:100%
+     object_tracking = 0.0000s/q:0.0000s/nz:58141211047.7686s, max: 0.0001s, lst: 0.0000s, c: 33/L:100%
+   process = 0.0001s/q:0.0001s/nz:413496838882.5655s, max: 0.0004s, lst: 0.0001s, c: 33/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:121712102554.7385s, max: 0.0001s, lst: 0.0000s, c: 33/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01 -> A_CJ_CV10_Z1 (CV10_DRUMUL_BANILOR)'
+ MultizonePeoplePresenceAggrega = 0.0003s/q:0.0003s/nz:881767598912.1199s, max: 0.0005s, lst: 0.0005s, c: 33/L:100%
+   pre_proc = 0.0001s/q:0.0001s/nz:214158510789.2752s, max: 0.0001s, lst: 0.0001s, c: 33/L:100%
+     object_tracking = 0.0000s/q:0.0000s/nz:50607672892.5109s, max: 0.0000s, lst: 0.0000s, c: 33/L:100%
+   process = 0.0001s/q:0.0001s/nz:363879115320.7421s, max: 0.0002s, lst: 0.0002s, c: 33/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:101468944922.0896s, max: 0.0001s, lst: 0.0001s, c: 33/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01 -> A_CJ_CV12_Z0 (CV12_TELLERI_1_2)'
+ MultizonePeoplePresenceAggrega = 0.0039s/q:0.0039s/nz:0.0161s, max: 0.0382s, lst: 0.0115s, c: 33/L:76%
+   pre_proc = 0.0037s/q:0.0037s/nz:0.0153s, max: 0.0380s, lst: 0.0113s, c: 33/L:76%
+     object_tracking = 0.0014s/q:0.0014s/nz:0.0095s, max: 0.0345s, lst: 0.0027s, c: 33/L:85%
+   process = 0.0001s/q:0.0001s/nz:359981553629.0407s, max: 0.0002s, lst: 0.0001s, c: 33/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:103877275250.8521s, max: 0.0001s, lst: 0.0000s, c: 33/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01 -> A_CJ_CV12_Z1 (CV12_TELLERI_1_2)'
+ MultizonePeoplePresenceAggrega = 0.0035s/q:0.0035s/nz:0.0105s, max: 0.0377s, lst: 0.0037s, c: 33/L:67%
+   pre_proc = 0.0033s/q:0.0033s/nz:0.0135s, max: 0.0375s, lst: 0.0035s, c: 33/L:76%
+     object_tracking = 0.0014s/q:0.0014s/nz:0.0074s, max: 0.0172s, lst: 0.0002s, c: 33/L:82%
+   process = 0.0001s/q:0.0001s/nz:0.0024s, max: 0.0006s, lst: 0.0001s, c: 33/L:94%
+   post_proc = 0.0000s/q:0.0000s/nz:101551832631.2304s, max: 0.0001s, lst: 0.0000s, c: 33/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01 -> A_CJ_CV13_Z0 (CV13_CONSILIERI_2)'
+ MultizonePeoplePresenceAggrega = 0.0136s/q:0.0136s/nz:0.0136s, max: 0.0441s, lst: 0.0061s, c: 33/L:6%
+   pre_proc = 0.0133s/q:0.0133s/nz:0.0133s, max: 0.0439s, lst: 0.0059s, c: 33/L:6%
+     object_tracking = 0.0029s/q:0.0029s/nz:0.0054s, max: 0.0186s, lst: 0.0001s, c: 33/L:45%
+   process = 0.0001s/q:0.0001s/nz:419430295005.4407s, max: 0.0004s, lst: 0.0001s, c: 33/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:117431557737.2909s, max: 0.0001s, lst: 0.0000s, c: 33/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01 -> A_CJ_CV14_Z0 (CV14_TEZAUR)'
+ MultizonePeoplePresenceAggrega = 0.0003s/q:0.0003s/nz:0.0095s, max: 0.0005s, lst: 0.0002s, c: 35/L:97%
+   pre_proc = 0.0001s/q:0.0001s/nz:221773469820.6186s, max: 0.0001s, lst: 0.0001s, c: 35/L:100%
+     object_tracking = 0.0000s/q:0.0000s/nz:58972556143.9991s, max: 0.0000s, lst: 0.0000s, c: 35/L:100%
+   process = 0.0001s/q:0.0001s/nz:411177938804.0304s, max: 0.0002s, lst: 0.0001s, c: 35/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:110739539377.3913s, max: 0.0001s, lst: 0.0000s, c: 35/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01 -> A_CJ_CV15_Z0 (CV15_CONSILIER_1)'
+ MultizonePeoplePresenceAggrega = 0.0007s/q:0.0007s/nz:0.0105s, max: 0.0110s, lst: 0.0004s, c: 31/L:94%
+   pre_proc = 0.0005s/q:0.0005s/nz:0.0075s, max: 0.0107s, lst: 0.0001s, c: 31/L:94%
+     object_tracking = 0.0000s/q:0.0000s/nz:66084600985.0502s, max: 0.0001s, lst: 0.0000s, c: 31/L:100%
+   process = 0.0001s/q:0.0001s/nz:326803745701.9091s, max: 0.0002s, lst: 0.0001s, c: 31/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:98684965632.8559s, max: 0.0000s, lst: 0.0000s, c: 31/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01 -> A_CJ_CV7_Z0 (CV7_CAMERA_ATM)'
+ MultizonePeoplePresenceAggrega = 0.0003s/q:0.0003s/nz:0.0107s, max: 0.0016s, lst: 0.0003s, c: 33/L:97%
+   pre_proc = 0.0001s/q:0.0001s/nz:0.0030s, max: 0.0010s, lst: 0.0001s, c: 33/L:97%
+     object_tracking = 0.0000s/q:0.0000s/nz:81975851207.9716s, max: 0.0003s, lst: 0.0000s, c: 33/L:100%
+   process = 0.0001s/q:0.0001s/nz:410016439855.0988s, max: 0.0003s, lst: 0.0001s, c: 33/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:116148497909.3075s, max: 0.0001s, lst: 0.0000s, c: 33/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01 -> C_CJ_CV10_Z0 (CV10_DRUMUL_BANILOR)'
+ MultizonePeoplePresenceAggrega = 0.0003s/q:0.0003s/nz:836555147543.5496s, max: 0.0004s, lst: 0.0002s, c: 33/L:100%
+   pre_proc = 0.0001s/q:0.0001s/nz:211015529930.5916s, max: 0.0001s, lst: 0.0000s, c: 33/L:100%
+     object_tracking = 0.0000s/q:0.0000s/nz:50333840772.5096s, max: 0.0000s, lst: 0.0000s, c: 33/L:100%
+   process = 0.0001s/q:0.0001s/nz:347214471548.7957s, max: 0.0002s, lst: 0.0001s, c: 33/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:98435604013.5026s, max: 0.0000s, lst: 0.0000s, c: 33/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01 -> C_CJ_CV12_Z0 (CV12_TELLERI_1_2)'
+ MultizonePeoplePresenceAggrega = 0.0038s/q:0.0038s/nz:0.0114s, max: 0.0317s, lst: 0.0021s, c: 33/L:67%
+   pre_proc = 0.0035s/q:0.0035s/nz:0.0146s, max: 0.0314s, lst: 0.0019s, c: 33/L:76%
+     object_tracking = 0.0008s/q:0.0008s/nz:0.0051s, max: 0.0099s, lst: 0.0002s, c: 33/L:85%
+   process = 0.0002s/q:0.0002s/nz:0.0026s, max: 0.0007s, lst: 0.0001s, c: 33/L:94%
+   post_proc = 0.0000s/q:0.0000s/nz:114372139796.6147s, max: 0.0001s, lst: 0.0000s, c: 33/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01 -> C_CJ_CV15_Z0 (CV15_CONSILIER_1)'
+ MultizonePeoplePresenceAggrega = 0.0008s/q:0.0008s/nz:0.0080s, max: 0.0095s, lst: 0.0003s, c: 31/L:90%
+   pre_proc = 0.0006s/q:0.0006s/nz:0.0088s, max: 0.0093s, lst: 0.0001s, c: 31/L:94%
+     object_tracking = 0.0001s/q:0.0001s/nz:0.0040s, max: 0.0034s, lst: 0.0000s, c: 31/L:97%
+   process = 0.0001s/q:0.0001s/nz:344366650097.0721s, max: 0.0003s, lst: 0.0001s, c: 31/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:97826984710.9914s, max: 0.0001s, lst: 0.0000s, c: 31/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01 -> C_CJ_CV1_Z0 (CV1_ACCES_BANCA)'
+ MultizonePeoplePresenceAggrega = 0.1416s/q:0.1416s/nz:0.1416s, max: 0.6921s, lst: 0.1848s, c: 33/L:0%
+   pre_proc = 0.1411s/q:0.1411s/nz:0.1411s, max: 0.6911s, lst: 0.1845s, c: 33/L:0%
+     object_tracking = 0.0614s/q:0.0614s/nz:0.0614s, max: 0.2511s, lst: 0.1187s, c: 33/L:3%
+   process = 0.0003s/q:0.0003s/nz:0.0016s, max: 0.0010s, lst: 0.0001s, c: 33/L:82%
+   post_proc = 0.0001s/q:0.0001s/nz:187033973634.2430s, max: 0.0002s, lst: 0.0000s, c: 33/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01 -> C_CJ_CV2_Z0 (CV2_INTRARE_ZONA_24)'
+ MultizonePeoplePresenceAggrega = 0.1484s/q:0.1484s/nz:0.1484s, max: 2.3689s, lst: 0.0419s, c: 30/L:0%
+   pre_proc = 0.0671s/q:0.0671s/nz:0.0671s, max: 0.2636s, lst: 0.0737s, c: 31/L:6%
+     object_tracking = 0.0141s/q:0.0141s/nz:0.0146s, max: 0.0501s, lst: 0.0144s, c: 31/L:16%
+   process = 0.0813s/q:0.0813s/nz:0.0813s, max: 2.3178s, lst: 0.0037s, c: 30/L:0%
+     alpha_text_rectangle = 0.0075s/q:0.0075s/nz:0.0075s, max: 0.0602s, lst: 0.0602s, c: 27/L:0%
+     [alpha_outer_poly_area] = 0.0938s/q:0.0938s/nz:0.0938s, max: 0.1675s, lst: 0.0696s, c: 12/L:0%
+   [post_proc] = 0.0001s/q:0.0001s/nz:200562714599.0729s, max: 0.0002s, lst: 0.0001s, c: 30/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01 -> C_CJ_CV3_Z0 (CV3_UTILIZARE_APT_ATM)'
+ MultizonePeoplePresenceAggrega = 0.0293s/q:0.0293s/nz:0.0293s, max: 0.0629s, lst: 0.0239s, c: 31/L:16%
+   pre_proc = 0.0291s/q:0.0291s/nz:0.0291s, max: 0.0625s, lst: 0.0237s, c: 31/L:16%
+     object_tracking = 0.0072s/q:0.0072s/nz:0.0085s, max: 0.0312s, lst: 0.0009s, c: 31/L:16%
+   process = 0.0001s/q:0.0001s/nz:449764518998.5633s, max: 0.0003s, lst: 0.0001s, c: 31/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:133679574355.4831s, max: 0.0001s, lst: 0.0000s, c: 31/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_CROWDED_01 -> E_CJ_CV1_Z0 (CV1_ACCES_BANCA)'
+ MultizonePeoplePresenceCrowded = 0.1309s/q:0.1309s/nz:0.1309s, max: 0.3198s, lst: 0.1000s, c: 32/L:12%
+   pre_proc = 0.1303s/q:0.1303s/nz:0.1303s, max: 0.3192s, lst: 0.0996s, c: 32/L:12%
+     object_tracking = 0.0437s/q:0.0437s/nz:0.0437s, max: 0.1038s, lst: 0.1038s, c: 33/L:21%
+   [process] = 0.0005s/q:0.0005s/nz:0.0021s, max: 0.0018s, lst: 0.0003s, c: 32/L:78%
+   [post_proc] = 0.0001s/q:0.0001s/nz:230865925550.4608s, max: 0.0003s, lst: 0.0001s, c: 32/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_CROWDED_01 -> MPPZC_CJ_CV12_Z0 (CV12_TELLERI_1_2)'
+ MultizonePeoplePresenceCrowded = 0.0028s/q:0.0028s/nz:0.0076s, max: 0.0213s, lst: 0.0075s, c: 33/L:64%
+   pre_proc = 0.0025s/q:0.0025s/nz:0.0104s, max: 0.0211s, lst: 0.0073s, c: 33/L:76%
+     object_tracking = 0.0003s/q:0.0003s/nz:0.0027s, max: 0.0045s, lst: 0.0045s, c: 33/L:88%
+   process = 0.0002s/q:0.0002s/nz:0.0053s, max: 0.0007s, lst: 0.0001s, c: 33/L:97%
+   post_proc = 0.0000s/q:0.0000s/nz:117309531196.9519s, max: 0.0001s, lst: 0.0000s, c: 33/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_CROWDED_01 -> MZPPC_CJ_CV10_Z0 (CV10_DRUMUL_BANILOR)'
+ MultizonePeoplePresenceCrowded = 0.0003s/q:0.0003s/nz:0.0098s, max: 0.0009s, lst: 0.0003s, c: 33/L:97%
+   pre_proc = 0.0001s/q:0.0001s/nz:0.0028s, max: 0.0007s, lst: 0.0001s, c: 33/L:97%
+     object_tracking = 0.0000s/q:0.0000s/nz:53127738647.1629s, max: 0.0000s, lst: 0.0000s, c: 33/L:100%
+   process = 0.0001s/q:0.0001s/nz:387922185473.1440s, max: 0.0002s, lst: 0.0001s, c: 33/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:109168398194.0150s, max: 0.0001s, lst: 0.0000s, c: 33/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_CROWDED_01 -> MZPPC_CJ_CV15_Z0 (CV15_CONSILIER_1)'
+ MultizonePeoplePresenceCrowded = 0.0016s/q:0.0016s/nz:0.0101s, max: 0.0319s, lst: 0.0003s, c: 31/L:84%
+   pre_proc = 0.0013s/q:0.0013s/nz:0.0208s, max: 0.0316s, lst: 0.0000s, c: 31/L:94%
+     object_tracking = 0.0003s/q:0.0003s/nz:0.0105s, max: 0.0098s, lst: 0.0000s, c: 31/L:97%
+   process = 0.0002s/q:0.0002s/nz:596582423895.5974s, max: 0.0003s, lst: 0.0002s, c: 31/L:100%
+   post_proc = 0.0000s/q:0.0000s/nz:105957919731.7362s, max: 0.0001s, lst: 0.0000s, c: 31/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_CROWDED_01 -> MZPPC_CJ_CV2_Z0 (CV2_INTRARE_ZONA_24)'
+ MultizonePeoplePresenceCrowded = 0.0646s/q:0.0646s/nz:0.0646s, max: 0.2429s, lst: 0.0343s, c: 31/L:3%
+   pre_proc = 0.0641s/q:0.0641s/nz:0.0641s, max: 0.2426s, lst: 0.0340s, c: 31/L:3%
+     object_tracking = 0.0146s/q:0.0146s/nz:0.0146s, max: 0.0440s, lst: 0.0161s, c: 31/L:13%
+   process = 0.0004s/q:0.0004s/nz:0.0055s, max: 0.0026s, lst: 0.0002s, c: 31/L:94%
+   post_proc = 0.0001s/q:0.0001s/nz:200810050591.8264s, max: 0.0003s, lst: 0.0000s, c: 31/L:100%
+Section 'MULTIZONE_PEOPLE_PRESENCE_CROWDED_01 -> MZPPC_CJ_CV3_Z0 (CV3_UTILIZARE_APT_ATM)'
+ MultizonePeoplePresenceCrowded = 0.0289s/q:0.0289s/nz:0.0289s, max: 0.0709s, lst: 0.0203s, c: 31/L:26%
+   pre_proc = 0.0286s/q:0.0286s/nz:0.0286s, max: 0.0704s, lst: 0.0200s, c: 31/L:26%
+     object_tracking = 0.0070s/q:0.0070s/nz:0.0080s, max: 0.0250s, lst: 0.0078s, c: 31/L:13%
+   process = 0.0002s/q:0.0002s/nz:0.0064s, max: 0.0018s, lst: 0.0002s, c: 31/L:97%
+   post_proc = 0.0001s/q:0.0001s/nz:167058780789.3753s, max: 0.0004s, lst: 0.0000s, c: 31/L:100%
+Section 'STREAM_CV10_DRUMUL_BANILOR'
+ thread_loop = 0.0628s/q:0.1004s/nz:0.1004s, max: 0.7139s, lst: 0.2072s, c: 2553/L:0%
+   run_data_acquisition_step = 0.0452s/q:0.0623s/nz:0.0623s, max: 0.7092s, lst: 0.2062s, c: 2553/L:0%
+     [cv2_read] = 0.0157s/q:0.0137s/nz:0.0137s, max: 0.0437s, lst: 0.0083s, c: 2101/L:12%
+       cv2_read_dps35 = 0.0156s/q:0.0137s/nz:0.0137s, max: 0.0436s, lst: 0.0083s, c: 2101/L:12%
+     cv2_grab_retrv_dps6.4 = 0.0958s/q:0.0956s/nz:0.0956s, max: 0.4518s, lst: 0.1987s, c: 451/L:0%
+       cv2_grab_x6 = 0.0150s/q:0.0311s/nz:0.0316s, max: 0.3081s, lst: 0.0263s, c: 2713/L:7%
+       [cv2_retrieve] = 0.0053s/q:0.0053s/nz:0.0053s, max: 0.2117s, lst: 0.0062s, c: 451/L:0%
+   [thread_sleep] = 0.0174s/q:0.0379s/nz:0.0501s, max: 0.2189s, lst: 0.0009s, c: 2553/L:24%
+Section 'STREAM_CV11_TELLERI_3_4'
+ thread_loop = 0.0706s/q:0.1086s/nz:0.1086s, max: 0.6102s, lst: 0.2979s, c: 2417/L:0%
+   run_data_acquisition_step = 0.0411s/q:0.0415s/nz:0.0415s, max: 0.6082s, lst: 0.2968s, c: 2417/L:0%
+     [cv2_read] = 0.0241s/q:0.0229s/nz:0.0229s, max: 0.0732s, lst: 0.0041s, c: 2101/L:11%
+       cv2_read_dps35 = 0.0241s/q:0.0229s/nz:0.0229s, max: 0.0731s, lst: 0.0041s, c: 2101/L:11%
+     cv2_grab_retrv_dps4.1 = 0.0402s/q:0.0401s/nz:0.0401s, max: 0.5915s, lst: 0.2891s, c: 315/L:0%
+       cv2_grab_x9 = 0.0032s/q:0.0067s/nz:0.0190s, max: 0.4073s, lst: 0.0314s, c: 2851/L:65%
+       [cv2_retrieve] = 0.0123s/q:0.0123s/nz:0.0123s, max: 0.3099s, lst: 0.0044s, c: 315/L:0%
+   [thread_sleep] = 0.0292s/q:0.0668s/nz:0.0799s, max: 0.4609s, lst: 0.0010s, c: 2417/L:16%
+Section 'STREAM_CV12_TELLERI_1_2'
+ thread_loop = 0.0651s/q:0.0865s/nz:0.0865s, max: 0.5684s, lst: 0.2174s, c: 2433/L:0%
+   run_data_acquisition_step = 0.0364s/q:0.0214s/nz:0.0214s, max: 0.5497s, lst: 0.0355s, c: 2434/L:0%
+     [cv2_read] = 0.0191s/q:0.0128s/nz:0.0128s, max: 0.1292s, lst: 0.0037s, c: 2101/L:0%
+       cv2_read_dps35 = 0.0190s/q:0.0127s/nz:0.0127s, max: 0.1292s, lst: 0.0036s, c: 2101/L:0%
+     cv2_grab_retrv_dps5.2 = 0.0174s/q:0.0174s/nz:0.0174s, max: 0.5359s, lst: 0.0274s, c: 332/L:0%
+       cv2_grab_x7 = 0.0009s/q:0.0006s/nz:0.0048s, max: 0.2058s, lst: 0.0042s, c: 2330/L:88%
+       cv2_retrieve = 0.0110s/q:0.0110s/nz:0.0110s, max: 0.3091s, lst: 0.0150s, c: 332/L:0%
+   thread_sleep = 0.0285s/q:0.0649s/nz:0.0679s, max: 0.2634s, lst: 0.2007s, c: 2433/L:4%
+Section 'STREAM_CV13_CONSILIERI_2'
+ thread_loop = 0.0634s/q:0.1022s/nz:0.1022s, max: 0.7680s, lst: 0.2367s, c: 2563/L:0%
+   run_data_acquisition_step = 0.0431s/q:0.0567s/nz:0.0567s, max: 0.7639s, lst: 0.2364s, c: 2563/L:0%
+     [cv2_read] = 0.0162s/q:0.0144s/nz:0.0144s, max: 0.0437s, lst: 0.0163s, c: 2101/L:12%
+       cv2_read_dps35 = 0.0161s/q:0.0143s/nz:0.0143s, max: 0.0436s, lst: 0.0163s, c: 2101/L:12%
+     cv2_grab_retrv_dps6.2 = 0.0808s/q:0.0807s/nz:0.0807s, max: 0.5633s, lst: 0.2197s, c: 461/L:0%
+       cv2_grab_x6 = 0.0125s/q:0.0313s/nz:0.0319s, max: 0.4125s, lst: 0.0110s, c: 2773/L:7%
+       [cv2_retrieve] = 0.0057s/q:0.0057s/nz:0.0057s, max: 0.1398s, lst: 0.0096s, c: 461/L:0%
+   [thread_sleep] = 0.0201s/q:0.0453s/nz:0.0572s, max: 0.2382s, lst: 0.0003s, c: 2563/L:21%
+Section 'STREAM_CV14_TEZAUR'
+ thread_loop = 0.0713s/q:0.1110s/nz:0.1110s, max: 0.5884s, lst: 0.3412s, c: 2424/L:0%
+   run_data_acquisition_step = 0.0424s/q:0.0452s/nz:0.0452s, max: 0.5739s, lst: 0.3337s, c: 2424/L:0%
+     [cv2_read] = 0.0243s/q:0.0242s/nz:0.0242s, max: 0.0622s, lst: 0.0136s, c: 2101/L:12%
+       cv2_read_dps35 = 0.0243s/q:0.0242s/nz:0.0242s, max: 0.0621s, lst: 0.0136s, c: 2101/L:12%
+     cv2_grab_retrv_dps4.1 = 0.0467s/q:0.0466s/nz:0.0466s, max: 0.3586s, lst: 0.3205s, c: 322/L:0%
+       cv2_grab_x9 = 0.0038s/q:0.0092s/nz:0.0239s, max: 0.2056s, lst: 0.0342s, c: 2910/L:62%
+       [cv2_retrieve] = 0.0123s/q:0.0123s/nz:0.0123s, max: 0.1316s, lst: 0.0270s, c: 322/L:0%
+   [thread_sleep] = 0.0286s/q:0.0656s/nz:0.0800s, max: 0.3286s, lst: 0.0074s, c: 2424/L:18%
+Section 'STREAM_CV15_CONSILIER_1'
+ thread_loop = 0.0586s/q:0.0898s/nz:0.0898s, max: 0.6444s, lst: 0.1381s, c: 2594/L:0%
+   run_data_acquisition_step = 0.0359s/q:0.0378s/nz:0.0378s, max: 0.6402s, lst: 0.1352s, c: 2594/L:0%
+     [cv2_read] = 0.0137s/q:0.0107s/nz:0.0107s, max: 0.0455s, lst: 0.0024s, c: 2101/L:23%
+       cv2_read_dps35 = 0.0136s/q:0.0107s/nz:0.0107s, max: 0.0454s, lst: 0.0024s, c: 2101/L:23%
+     cv2_grab_retrv_dps7.3 = 0.0514s/q:0.0513s/nz:0.0513s, max: 0.3724s, lst: 0.1281s, c: 492/L:0%
+       cv2_grab_x5 = 0.0094s/q:0.0217s/nz:0.0293s, max: 0.3068s, lst: 0.0333s, c: 2464/L:32%
+       [cv2_retrieve] = 0.0042s/q:0.0042s/nz:0.0042s, max: 0.2328s, lst: 0.0015s, c: 492/L:0%
+   [thread_sleep] = 0.0224s/q:0.0518s/nz:0.0606s, max: 0.3691s, lst: 0.0028s, c: 2594/L:14%
+Section 'STREAM_CV1_ACCES_BANCA'
+ thread_loop = 0.0709s/q:0.1009s/nz:0.1009s, max: 0.7627s, lst: 0.3173s, c: 2379/L:0%
+   run_data_acquisition_step = 0.0573s/q:0.0724s/nz:0.0724s, max: 0.7587s, lst: 0.3107s, c: 2379/L:0%
+     [cv2_read] = 0.0228s/q:0.0179s/nz:0.0179s, max: 0.0545s, lst: 0.0026s, c: 2101/L:24%
+       cv2_read_dps35 = 0.0227s/q:0.0178s/nz:0.0178s, max: 0.0544s, lst: 0.0025s, c: 2101/L:24%
+     cv2_grab_retrv_dps4.4 = 0.1740s/q:0.1734s/nz:0.1734s, max: 0.7445s, lst: 0.2905s, c: 277/L:35%
+       cv2_grab_x7 = 0.0235s/q:0.0351s/nz:0.0374s, max: 0.2579s, lst: 0.0321s, c: 1948/L:11%
+       [cv2_retrieve] = 0.0088s/q:0.0088s/nz:0.0088s, max: 0.3169s, lst: 0.0177s, c: 277/L:0%
+   [thread_sleep] = 0.0134s/q:0.0284s/nz:0.0376s, max: 0.2733s, lst: 0.0063s, c: 2379/L:24%
+Section 'STREAM_CV2_INTRARE_ZONA_24'
+ thread_loop = 0.0615s/q:0.0962s/nz:0.0962s, max: 0.7639s, lst: 0.2311s, c: 2529/L:0%
+   run_data_acquisition_step = 0.0472s/q:0.0664s/nz:0.0664s, max: 0.7615s, lst: 0.2239s, c: 2529/L:0%
+     [cv2_read] = 0.0143s/q:0.0121s/nz:0.0121s, max: 0.0483s, lst: 0.0021s, c: 2101/L:17%
+       cv2_read_dps35 = 0.0142s/q:0.0121s/nz:0.0121s, max: 0.0482s, lst: 0.0021s, c: 2101/L:17%
+     cv2_grab_retrv_dps7.0 = 0.1171s/q:0.1168s/nz:0.1168s, max: 0.5478s, lst: 0.2062s, c: 427/L:38%
+       cv2_grab_x6 = 0.0186s/q:0.0313s/nz:0.0317s, max: 0.2650s, lst: 0.0339s, c: 2571/L:6%
+       [cv2_retrieve] = 0.0055s/q:0.0055s/nz:0.0055s, max: 0.2105s, lst: 0.0169s, c: 427/L:0%
+   [thread_sleep] = 0.0141s/q:0.0295s/nz:0.0395s, max: 0.1546s, lst: 0.0071s, c: 2529/L:25%
+Section 'STREAM_CV3_UTILIZARE_APT_ATM'
+ thread_loop = 0.0581s/q:0.0881s/nz:0.0881s, max: 0.6595s, lst: 0.1887s, c: 2581/L:0%
+   run_data_acquisition_step = 0.0359s/q:0.0376s/nz:0.0376s, max: 0.6587s, lst: 0.1836s, c: 2581/L:0%
+     [cv2_read] = 0.0136s/q:0.0101s/nz:0.0101s, max: 0.0416s, lst: 0.0023s, c: 2101/L:24%
+       cv2_read_dps35 = 0.0136s/q:0.0101s/nz:0.0101s, max: 0.0416s, lst: 0.0023s, c: 2101/L:25%
+     cv2_grab_retrv_dps7.3 = 0.0545s/q:0.0544s/nz:0.0544s, max: 0.4437s, lst: 0.1679s, c: 479/L:0%
+       cv2_grab_x5 = 0.0099s/q:0.0222s/nz:0.0296s, max: 0.3065s, lst: 0.0288s, c: 2403/L:30%
+       [cv2_retrieve] = 0.0051s/q:0.0051s/nz:0.0051s, max: 0.1399s, lst: 0.0132s, c: 479/L:0%
+   [thread_sleep] = 0.0219s/q:0.0504s/nz:0.0578s, max: 0.3718s, lst: 0.0050s, c: 2581/L:13%
+Section 'STREAM_CV4_CAMERA_ATM_STANGA'
+ thread_loop = 0.0703s/q:0.0955s/nz:0.0955s, max: 0.9427s, lst: 0.4688s, c: 2231/L:0%
+   run_data_acquisition_step = 0.0648s/q:0.0884s/nz:0.0884s, max: 0.9385s, lst: 0.4626s, c: 2231/L:0%
+     [cv2_read] = 0.0303s/q:0.0350s/nz:0.0350s, max: 0.1178s, lst: 0.0566s, c: 2101/L:18%
+       cv2_read_dps35 = 0.0303s/q:0.0349s/nz:0.0349s, max: 0.1178s, lst: 0.0566s, c: 2101/L:18%
+     cv2_grab_retrv_dps3.3 = 0.3695s/q:0.3679s/nz:0.3679s, max: 0.6306s, lst: 0.4519s, c: 129/L:11%
+       cv2_grab_x8 = 0.0452s/q:0.0455s/nz:0.0573s, max: 0.3197s, lst: 0.0322s, c: 1041/L:31%
+       [cv2_retrieve] = 0.0062s/q:0.0062s/nz:0.0062s, max: 0.1206s, lst: 0.0167s, c: 129/L:0%
+   [thread_sleep] = 0.0052s/q:0.0070s/nz:0.0156s, max: 0.2944s, lst: 0.0060s, c: 2231/L:55%
+Section 'STREAM_CV5_CAMERA_ATM_MIJLOC'
+ thread_loop = 0.0692s/q:0.0930s/nz:0.0930s, max: 1.0603s, lst: 0.3973s, c: 2224/L:0%
+   run_data_acquisition_step = 0.0629s/q:0.0838s/nz:0.0838s, max: 1.0562s, lst: 0.3971s, c: 2224/L:0%
+     [cv2_read] = 0.0303s/q:0.0350s/nz:0.0350s, max: 0.1538s, lst: 0.0243s, c: 2101/L:19%
+       cv2_read_dps35 = 0.0303s/q:0.0350s/nz:0.0350s, max: 0.1538s, lst: 0.0243s, c: 2101/L:19%
+     cv2_grab_retrv_dps3.3 = 0.3611s/q:0.3592s/nz:0.3592s, max: 0.7413s, lst: 0.3903s, c: 122/L:13%
+       cv2_grab_x8 = 0.0441s/q:0.0441s/nz:0.0570s, max: 0.3115s, lst: 0.0971s, c: 988/L:32%
+       [cv2_retrieve] = 0.0067s/q:0.0067s/nz:0.0067s, max: 0.2482s, lst: 0.0050s, c: 122/L:0%
+   [thread_sleep] = 0.0061s/q:0.0091s/nz:0.0194s, max: 0.2973s, lst: 0.0001s, c: 2224/L:53%
+Section 'STREAM_CV6_RECYCLER'
+ thread_loop = 0.0670s/q:0.0881s/nz:0.0881s, max: 0.9536s, lst: 0.4629s, c: 2210/L:0%
+   run_data_acquisition_step = 0.0609s/q:0.0794s/nz:0.0794s, max: 0.9513s, lst: 0.4580s, c: 2210/L:0%
+     [cv2_read] = 0.0300s/q:0.0344s/nz:0.0344s, max: 0.2131s, lst: 0.0240s, c: 2101/L:24%
+       cv2_read_dps35 = 0.0300s/q:0.0344s/nz:0.0344s, max: 0.2131s, lst: 0.0240s, c: 2101/L:24%
+     cv2_grab_retrv_dps3.3 = 0.3780s/q:0.3755s/nz:0.3755s, max: 0.6327s, lst: 0.4376s, c: 108/L:7%
+       cv2_grab_x8 = 0.0464s/q:0.0463s/nz:0.0529s, max: 0.3364s, lst: 0.0597s, c: 873/L:31%
+       [cv2_retrieve] = 0.0044s/q:0.0044s/nz:0.0044s, max: 0.0224s, lst: 0.0138s, c: 108/L:0%
+   [thread_sleep] = 0.0059s/q:0.0086s/nz:0.0190s, max: 0.3018s, lst: 0.0047s, c: 2210/L:55%
+Section 'STREAM_CV7_CAMERA_ATM'
+ thread_loop = 0.0639s/q:0.1035s/nz:0.1035s, max: 0.6901s, lst: 0.2497s, c: 2573/L:0%
+   run_data_acquisition_step = 0.0396s/q:0.0472s/nz:0.0472s, max: 0.5788s, lst: 0.2465s, c: 2573/L:0%
+     [cv2_read] = 0.0168s/q:0.0144s/nz:0.0144s, max: 0.0463s, lst: 0.0102s, c: 2101/L:12%
+       cv2_read_dps35 = 0.0167s/q:0.0143s/nz:0.0143s, max: 0.0462s, lst: 0.0101s, c: 2101/L:12%
+     cv2_grab_retrv_dps6.0 = 0.0582s/q:0.0581s/nz:0.0581s, max: 0.4729s, lst: 0.2078s, c: 471/L:0%
+       cv2_grab_x6 = 0.0087s/q:0.0228s/nz:0.0302s, max: 0.2293s, lst: 0.0325s, c: 2834/L:29%
+       [cv2_retrieve] = 0.0058s/q:0.0058s/nz:0.0058s, max: 0.4244s, lst: 0.0142s, c: 471/L:0%
+   [thread_sleep] = 0.0241s/q:0.0561s/nz:0.0662s, max: 0.3684s, lst: 0.0031s, c: 2573/L:15%
+Section 'STREAM_CV8_INTRARE_INTERIOR'
+ thread_loop = 0.0719s/q:0.1139s/nz:0.1139s, max: 0.8254s, lst: 0.3276s, c: 2431/L:0%
+   run_data_acquisition_step = 0.0424s/q:0.0463s/nz:0.0463s, max: 0.8183s, lst: 0.3174s, c: 2431/L:0%
+     [cv2_read] = 0.0242s/q:0.0244s/nz:0.0244s, max: 0.0652s, lst: 0.0224s, c: 2101/L:14%
+       cv2_read_dps35 = 0.0241s/q:0.0244s/nz:0.0244s, max: 0.0652s, lst: 0.0223s, c: 2101/L:14%
+     cv2_grab_retrv_dps4.1 = 0.0442s/q:0.0441s/nz:0.0441s, max: 0.6191s, lst: 0.3080s, c: 329/L:0%
+       cv2_grab_x9 = 0.0036s/q:0.0081s/nz:0.0222s, max: 0.3098s, lst: 0.0313s, c: 2973/L:63%
+       [cv2_retrieve] = 0.0122s/q:0.0123s/nz:0.0123s, max: 0.1328s, lst: 0.0228s, c: 329/L:0%
+   [thread_sleep] = 0.0294s/q:0.0674s/nz:0.0805s, max: 0.3198s, lst: 0.0101s, c: 2431/L:16%
+Section 'STREAM_CV9_SPATIU_PUBLIC_INTRARE'
+ thread_loop = 0.0681s/q:0.1077s/nz:0.1077s, max: 0.7816s, lst: 0.2573s, c: 2445/L:0%
+   run_data_acquisition_step = 0.0620s/q:0.0980s/nz:0.0980s, max: 0.7788s, lst: 0.2571s, c: 2445/L:0%
+     [cv2_read] = 0.0197s/q:0.0174s/nz:0.0174s, max: 0.0557s, lst: 0.0268s, c: 2101/L:11%
+       cv2_read_dps35 = 0.0196s/q:0.0174s/nz:0.0174s, max: 0.0556s, lst: 0.0268s, c: 2101/L:11%
+     cv2_grab_retrv_dps5.1 = 0.2098s/q:0.2093s/nz:0.2093s, max: 0.4938s, lst: 0.2359s, c: 343/L:13%
+       cv2_grab_x6 = 0.0341s/q:0.0353s/nz:0.0375s, max: 0.3063s, lst: 0.0364s, c: 2068/L:12%
+       [cv2_retrieve] = 0.0050s/q:0.0050s/nz:0.0050s, max: 0.2577s, lst: 0.0064s, c: 343/L:0%
+   [thread_sleep] = 0.0058s/q:0.0095s/nz:0.0148s, max: 0.2084s, lst: 0.0001s, c: 2445/L:36%
+ 
+
+Active Plug-ins:
+  ['CV8_INTRARE_INTERIOR', 'CAMERA_TAMPERING_02', 'CT_Z0']
+  ['CV6_RECYCLER', 'CAMERA_TAMPERING_02', 'CT_Z0']
+  ['CV3_UTILIZARE_APT_ATM', 'CAMERA_TAMPERING_02', 'CT_Z0']
+  ['CV3_UTILIZARE_APT_ATM', 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01', 'C_CJ_CV3_Z0']
+  ['CV3_UTILIZARE_APT_ATM', 'MULTIZONE_PEOPLE_PRESENCE_CROWDED_01', 'MZPPC_CJ_CV3_Z0']
+  ['CV2_INTRARE_ZONA_24', 'CAMERA_TAMPERING_02', 'CT_Z0']
+  ['CV2_INTRARE_ZONA_24', 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01', 'C_CJ_CV2_Z0']
+  ['CV2_INTRARE_ZONA_24', 'MULTIZONE_PEOPLE_PRESENCE_CROWDED_01', 'MZPPC_CJ_CV2_Z0']
+  ['CV2_INTRARE_ZONA_24', 'FALLEN_PERSON_02', 'FALLEN']
+  ['CV2_INTRARE_ZONA_24', 'DISTRESS_01', 'DISTRESS']
+  ['CV7_CAMERA_ATM', 'CAMERA_TAMPERING_02', 'CT_Z0']
+  ['CV7_CAMERA_ATM', 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01', 'A_CJ_CV7_Z0']
+  ['CV12_TELLERI_1_2', 'CAMERA_TAMPERING_02', 'CT_Z0']
+  ['CV12_TELLERI_1_2', 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01', 'A_CJ_CV12_Z0']
+  ['CV12_TELLERI_1_2', 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01', 'A_CJ_CV12_Z1']
+  ['CV12_TELLERI_1_2', 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01', 'C_CJ_CV12_Z0']
+  ['CV12_TELLERI_1_2', 'MULTIZONE_PEOPLE_PRESENCE_CROWDED_01', 'MPPZC_CJ_CV12_Z0']
+  ['CV9_SPATIU_PUBLIC_INTRARE', 'CAMERA_TAMPERING_02', 'CT_Z0']
+  ['CV1_ACCES_BANCA', 'CAMERA_TAMPERING_02', 'CT_Z0']
+  ['CV1_ACCES_BANCA', 'REPORT_TELEMETRY_01', 'RT_01']
+  ['CV1_ACCES_BANCA', 'MULTIZONE_PEOPLE_PRESENCE_CROWDED_01', 'E_CJ_CV1_Z0']
+  ['CV1_ACCES_BANCA', 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01', 'C_CJ_CV1_Z0']
+  ['CV13_CONSILIERI_2', 'CAMERA_TAMPERING_02', 'CT_Z0']
+  ['CV13_CONSILIERI_2', 'FALLEN_PERSON_02', 'FALLEN_DESK']
+  ['CV13_CONSILIERI_2', 'FALLEN_PERSON_02', 'FALLEN']
+  ['CV13_CONSILIERI_2', 'DISTRESS_01', 'DISTRESS']
+  ['CV13_CONSILIERI_2', 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01', 'A_CJ_CV13_Z0']
+  ['CV15_CONSILIER_1', 'CAMERA_TAMPERING_02', 'CT_Z0']
+  ['CV15_CONSILIER_1', 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01', 'A_CJ_CV15_Z0']
+  ['CV15_CONSILIER_1', 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01', 'C_CJ_CV15_Z0']
+  ['CV15_CONSILIER_1', 'MULTIZONE_PEOPLE_PRESENCE_CROWDED_01', 'MZPPC_CJ_CV15_Z0']
+  ['CV15_CONSILIER_1', 'FALLEN_PERSON_02', 'FALLEN_DESK']
+  ['CV15_CONSILIER_1', 'FALLEN_PERSON_02', 'FALLEN']
+  ['CV15_CONSILIER_1', 'DISTRESS_01', 'DISTRESS_DESK']
+  ['CV15_CONSILIER_1', 'DISTRESS_01', 'DISTRESS']
+  ['CV11_TELLERI_3_4', 'CAMERA_TAMPERING_02', 'CT_Z0']
+  ['CV14_TEZAUR', 'CAMERA_TAMPERING_02', 'CT_Z0']
+  ['CV14_TEZAUR', 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01', 'A_CJ_CV14_Z0']
+  ['CV10_DRUMUL_BANILOR', 'CAMERA_TAMPERING_02', 'CT_Z0']
+  ['CV10_DRUMUL_BANILOR', 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01', 'C_CJ_CV10_Z0']
+  ['CV10_DRUMUL_BANILOR', 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01', 'A_CJ_CV10_Z0']
+  ['CV10_DRUMUL_BANILOR', 'MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01', 'A_CJ_CV10_Z1']
+  ['CV10_DRUMUL_BANILOR', 'MULTIZONE_PEOPLE_PRESENCE_CROWDED_01', 'MZPPC_CJ_CV10_Z0']
+  ['CV4_CAMERA_ATM_STANGA', 'CAMERA_TAMPERING_02', 'CT_Z0']
+  ['CV5_CAMERA_ATM_MIJLOC', 'CAMERA_TAMPERING_02', 'CT_Z0']
+
+
+Streams configuration:
+[
+    {
+        "#STREAM_CONFIG_METADATA": {
+            "TRANSCODER_H": 1080,
+            "TRANSCODER_W": 1920
+        },
+        "#TYPE": "Transcoder",
+        "#URL": "shm_id_107_rgb",
+        "CAP_RESOLUTION": 1,
+        "INITIATOR_ID": null,
+        "LIVE_FEED": true,
+        "NAME": "CV8_INTRARE_INTERIOR",
+        "PLUGINS": [
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "HEURISTIC_CAMERA_OBSTRUCTION_PRESET": "DEFAULT",
+                        "INSTANCE_ID": "CT_Z0",
+                        "PROCESS_DELAY": 1
+                    }
+                ],
+                "SIGNATURE": "CAMERA_TAMPERING_02"
+            }
+        ],
+        "RECONNECTABLE": true,
+        "TYPE": "VideoStream",
+        "URL": "__URL__"
+    },
+    {
+        "#STREAM_CONFIG_METADATA": {
+            "TRANSCODER_H": 720,
+            "TRANSCODER_W": 1280
+        },
+        "#TYPE": "Transcoder",
+        "#URL": "shm_id_105_rgb",
+        "CAP_RESOLUTION": 1,
+        "LIVE_FEED": true,
+        "NAME": "CV6_RECYCLER",
+        "PLUGINS": [
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "HEURISTIC_CAMERA_OBSTRUCTION_PRESET": "HORIZONTAL_CAMERA",
+                        "INSTANCE_ID": "CT_Z0",
+                        "PROCESS_DELAY": 1
+                    }
+                ],
+                "SIGNATURE": "CAMERA_TAMPERING_02"
+            }
+        ],
+        "RECONNECTABLE": true,
+        "STREAM_CONFIG_METADATA": {
+            "RESIZE_H": 720
+        },
+        "TYPE": "VideoStream",
+        "URL": "__URL__"
+    },
+    {
+        "#STREAM_CONFIG_METADATA": {
+            "TRANSCODER_H": 720,
+            "TRANSCODER_W": 1280
+        },
+        "#TYPE": "Transcoder",
+        "#URL": "shm_id_102_rgb",
+        "CAP_RESOLUTION": 1,
+        "INITIATOR_ID": null,
+        "LIVE_FEED": true,
+        "NAME": "CV3_UTILIZARE_APT_ATM",
+        "PLUGINS": [
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "HEURISTIC_CAMERA_OBSTRUCTION_PRESET": "VERTICAL_CAMERA",
+                        "INSTANCE_ID": "CT_Z0",
+                        "PROCESS_DELAY": 1
+                    }
+                ],
+                "SIGNATURE": "CAMERA_TAMPERING_02"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "C_CJ_CV3_Z0",
+                        "POINTS": [
+                            [
+                                827,
+                                175
+                            ],
+                            [
+                                1277,
+                                456
+                            ],
+                            [
+                                1271,
+                                704
+                            ],
+                            [
+                                351,
+                                706
+                            ],
+                            [
+                                272,
+                                614
+                            ],
+                            [
+                                827,
+                                175
+                            ]
+                        ]
+                    }
+                ],
+                "SIGNATURE": "MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "MZPPC_CJ_CV3_Z0",
+                        "POINTS": [
+                            [
+                                827,
+                                175
+                            ],
+                            [
+                                1277,
+                                456
+                            ],
+                            [
+                                1271,
+                                704
+                            ],
+                            [
+                                351,
+                                706
+                            ],
+                            [
+                                272,
+                                614
+                            ],
+                            [
+                                827,
+                                175
+                            ]
+                        ]
+                    }
+                ],
+                "SIGNATURE": "MULTIZONE_PEOPLE_PRESENCE_CROWDED_01"
+            }
+        ],
+        "RECONNECTABLE": true,
+        "STREAM_CONFIG_METADATA": {
+            "RESIZE_H": 720
+        },
+        "TYPE": "VideoStream",
+        "URL": "__URL__"
+    },
+    {
+        "#STREAM_CONFIG_METADATA": {
+            "TRANSCODER_H": 720,
+            "TRANSCODER_W": 1280
+        },
+        "#TYPE": "Transcoder",
+        "#URL": "shm_id_101_rgb",
+        "CAP_RESOLUTION": 1,
+        "LIVE_FEED": true,
+        "NAME": "CV2_INTRARE_ZONA_24",
+        "PLUGINS": [
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "HEURISTIC_CAMERA_OBSTRUCTION_PRESET": "DEFAULT",
+                        "INSTANCE_ID": "CT_Z0",
+                        "PROCESS_DELAY": 1
+                    }
+                ],
+                "SIGNATURE": "CAMERA_TAMPERING_02"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "C_CJ_CV2_Z0",
+                        "LINKED_INSTANCES": [
+                            "MASTER"
+                        ],
+                        "POINTS": [
+                            [
+                                457,
+                                417
+                            ],
+                            [
+                                107,
+                                703
+                            ],
+                            [
+                                1017,
+                                708
+                            ],
+                            [
+                                457,
+                                417
+                            ]
+                        ],
+                        "SAVE_PAYLOAD": true,
+                        "SEND_IMAGES": false
+                    }
+                ],
+                "SIGNATURE": "MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "ALERT_LOWER_CONFIRMATION_TIME": 30,
+                        "ALERT_LOWER_VALUE": 7,
+                        "ALERT_RAISE_CONFIRMATION_TIME": 30,
+                        "ALERT_RAISE_VALUE": 8,
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "MZPPC_CJ_CV2_Z0",
+                        "LINKED_INSTANCES": [
+                            [
+                                "CV3_UTILIZARE_APT_ATM",
+                                "MZPPC_CJ_CV3_Z0"
+                            ]
+                        ],
+                        "POINTS": [
+                            [
+                                457,
+                                417
+                            ],
+                            [
+                                107,
+                                703
+                            ],
+                            [
+                                1017,
+                                708
+                            ],
+                            [
+                                457,
+                                417
+                            ]
+                        ],
+                        "SAVE_PAYLOAD": true,
+                        "SEND_IMAGES": true,
+                        "TAGS": {
+                            "TYPE": "ZONA24"
+                        }
+                    }
+                ],
+                "SIGNATURE": "MULTIZONE_PEOPLE_PRESENCE_CROWDED_01"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "FALLEN",
+                        "POINTS": [
+                            [
+                                1026,
+                                717
+                            ],
+                            [
+                                406,
+                                715
+                            ],
+                            [
+                                154,
+                                302
+                            ],
+                            [
+                                109,
+                                152
+                            ],
+                            [
+                                174,
+                                167
+                            ],
+                            [
+                                280,
+                                298
+                            ],
+                            [
+                                687,
+                                487
+                            ],
+                            [
+                                934,
+                                527
+                            ],
+                            [
+                                1026,
+                                717
+                            ]
+                        ]
+                    }
+                ],
+                "SIGNATURE": "FALLEN_PERSON_02"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "DISTRESS",
+                        "POINTS": [
+                            [
+                                1026,
+                                717
+                            ],
+                            [
+                                406,
+                                715
+                            ],
+                            [
+                                154,
+                                302
+                            ],
+                            [
+                                109,
+                                152
+                            ],
+                            [
+                                174,
+                                167
+                            ],
+                            [
+                                280,
+                                298
+                            ],
+                            [
+                                687,
+                                487
+                            ],
+                            [
+                                934,
+                                527
+                            ],
+                            [
+                                1026,
+                                717
+                            ]
+                        ]
+                    }
+                ],
+                "SIGNATURE": "DISTRESS_01"
+            }
+        ],
+        "RECONNECTABLE": true,
+        "STREAM_CONFIG_METADATA": {
+            "RESIZE_H": 720
+        },
+        "TYPE": "VideoStream",
+        "URL": "__URL__"
+    },
+    {
+        "#STREAM_CONFIG_METADATA": {
+            "TRANSCODER_H": 720,
+            "TRANSCODER_W": 1280
+        },
+        "#TYPE": "Transcoder",
+        "#URL": "shm_id_106_rgb",
+        "CAP_RESOLUTION": 1,
+        "LIVE_FEED": true,
+        "NAME": "CV7_CAMERA_ATM",
+        "PLUGINS": [
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "HEURISTIC_CAMERA_OBSTRUCTION_PRESET": "HORIZONTAL_CAMERA",
+                        "INSTANCE_ID": "CT_Z0",
+                        "PROCESS_DELAY": 1
+                    }
+                ],
+                "SIGNATURE": "CAMERA_TAMPERING_02"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "INSTANCE_ID": "A_CJ_CV7_Z0"
+                    }
+                ],
+                "SIGNATURE": "MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01"
+            }
+        ],
+        "RECONNECTABLE": true,
+        "STREAM_CONFIG_METADATA": {
+            "RESIZE_H": 720
+        },
+        "TYPE": "VideoStream",
+        "URL": "__URL__"
+    },
+    {
+        "#STREAM_CONFIG_METADATA": {
+            "TRANSCODER_H": 1080,
+            "TRANSCODER_W": 1920
+        },
+        "#TYPE": "Transcoder",
+        "#URL": "shm_id_111_rgb",
+        "CAP_RESOLUTION": 1,
+        "INITIATOR_ID": null,
+        "LIVE_FEED": true,
+        "NAME": "CV12_TELLERI_1_2",
+        "PLUGINS": [
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "HEURISTIC_CAMERA_OBSTRUCTION_PRESET": "DEFAULT",
+                        "INSTANCE_ID": "CT_Z0",
+                        "PROCESS_DELAY": 1
+                    }
+                ],
+                "SIGNATURE": "CAMERA_TAMPERING_02"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "A_CJ_CV12_Z0",
+                        "POINTS": [
+                            [
+                                316,
+                                783
+                            ],
+                            [
+                                435,
+                                1058
+                            ],
+                            [
+                                1473,
+                                1026
+                            ],
+                            [
+                                1680,
+                                501
+                            ],
+                            [
+                                1293,
+                                234
+                            ],
+                            [
+                                1263,
+                                32
+                            ],
+                            [
+                                947,
+                                42
+                            ],
+                            [
+                                959,
+                                76
+                            ],
+                            [
+                                1225,
+                                68
+                            ],
+                            [
+                                1260,
+                                235
+                            ],
+                            [
+                                316,
+                                783
+                            ]
+                        ]
+                    },
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "A_CJ_CV12_Z1",
+                        "POINTS": [
+                            [
+                                409,
+                                187
+                            ],
+                            [
+                                507,
+                                161
+                            ],
+                            [
+                                456,
+                                83
+                            ],
+                            [
+                                379,
+                                101
+                            ],
+                            [
+                                409,
+                                187
+                            ]
+                        ]
+                    },
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "C_CJ_CV12_Z0",
+                        "POINTS": [
+                            [
+                                213,
+                                575
+                            ],
+                            [
+                                878,
+                                334
+                            ],
+                            [
+                                934,
+                                171
+                            ],
+                            [
+                                723,
+                                32
+                            ],
+                            [
+                                697,
+                                246
+                            ],
+                            [
+                                385,
+                                390
+                            ],
+                            [
+                                250,
+                                178
+                            ],
+                            [
+                                141,
+                                322
+                            ],
+                            [
+                                75,
+                                353
+                            ],
+                            [
+                                213,
+                                575
+                            ]
+                        ]
+                    }
+                ],
+                "SIGNATURE": "MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "MPPZC_CJ_CV12_Z0",
+                        "POINTS": [
+                            [
+                                213,
+                                575
+                            ],
+                            [
+                                878,
+                                334
+                            ],
+                            [
+                                934,
+                                171
+                            ],
+                            [
+                                723,
+                                32
+                            ],
+                            [
+                                697,
+                                246
+                            ],
+                            [
+                                385,
+                                390
+                            ],
+                            [
+                                250,
+                                178
+                            ],
+                            [
+                                141,
+                                322
+                            ],
+                            [
+                                75,
+                                353
+                            ],
+                            [
+                                213,
+                                575
+                            ]
+                        ]
+                    }
+                ],
+                "SIGNATURE": "MULTIZONE_PEOPLE_PRESENCE_CROWDED_01"
+            }
+        ],
+        "RECONNECTABLE": true,
+        "TYPE": "VideoStream",
+        "URL": "__URL__"
+    },
+    {
+        "#STREAM_CONFIG_METADATA": {
+            "TRANSCODER_H": 720,
+            "TRANSCODER_W": 1280
+        },
+        "#TYPE": "Transcoder",
+        "#URL": "shm_id_108_rgb",
+        "CAP_RESOLUTION": 1,
+        "INITIATOR_ID": null,
+        "LIVE_FEED": true,
+        "NAME": "CV9_SPATIU_PUBLIC_INTRARE",
+        "PLUGINS": [
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "HEURISTIC_CAMERA_OBSTRUCTION_PRESET": "DEFAULT",
+                        "INSTANCE_ID": "CT_Z0",
+                        "PROCESS_DELAY": 1
+                    }
+                ],
+                "SIGNATURE": "CAMERA_TAMPERING_02"
+            }
+        ],
+        "RECONNECTABLE": true,
+        "STREAM_CONFIG_METADATA": {
+            "RESIZE_H": 720
+        },
+        "TYPE": "VideoStream",
+        "URL": "__URL__"
+    },
+    {
+        "#STREAM_CONFIG_METADATA": {
+            "TRANSCODER_H": 1080,
+            "TRANSCODER_W": 1920
+        },
+        "#TYPE": "Transcoder",
+        "#URL": "shm_id_100_rgb",
+        "CAP_RESOLUTION": 1,
+        "LIVE_FEED": true,
+        "NAME": "CV1_ACCES_BANCA",
+        "PLUGINS": [
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "HEURISTIC_CAMERA_OBSTRUCTION_PRESET": "DEFAULT",
+                        "INSTANCE_ID": "CT_Z0",
+                        "PROCESS_DELAY": 1
+                    }
+                ],
+                "SIGNATURE": "CAMERA_TAMPERING_02"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "INSTANCE_ID": "RT_01",
+                        "WORKING_HOURS": [
+                            [
+                                "09:00",
+                                "09:01"
+                            ]
+                        ]
+                    }
+                ],
+                "SIGNATURE": "REPORT_TELEMETRY_01"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "ALERT_LOWER_CONFIRMATION_TIME": 30,
+                        "ALERT_LOWER_VALUE": 4,
+                        "ALERT_RAISE_CONFIRMATION_TIME": 30,
+                        "ALERT_RAISE_VALUE": 5,
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "E_CJ_CV1_Z0",
+                        "POINTS": [
+                            [
+                                807,
+                                698
+                            ],
+                            [
+                                859,
+                                698
+                            ],
+                            [
+                                851,
+                                311
+                            ],
+                            [
+                                959,
+                                304
+                            ],
+                            [
+                                968,
+                                270
+                            ],
+                            [
+                                800,
+                                263
+                            ],
+                            [
+                                807,
+                                698
+                            ]
+                        ],
+                        "SAVE_PAYLOAD": true,
+                        "SEND_IMAGES": true,
+                        "SINGLE_INSTANCE": true,
+                        "TAGS": {
+                            "TYPE": "EXTERIOR"
+                        }
+                    }
+                ],
+                "SIGNATURE": "MULTIZONE_PEOPLE_PRESENCE_CROWDED_01"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "C_CJ_CV1_Z0",
+                        "POINTS": [
+                            [
+                                807,
+                                698
+                            ],
+                            [
+                                859,
+                                698
+                            ],
+                            [
+                                851,
+                                311
+                            ],
+                            [
+                                959,
+                                304
+                            ],
+                            [
+                                968,
+                                270
+                            ],
+                            [
+                                800,
+                                263
+                            ],
+                            [
+                                807,
+                                698
+                            ]
+                        ]
+                    }
+                ],
+                "SIGNATURE": "MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01"
+            }
+        ],
+        "RECONNECTABLE": true,
+        "TYPE": "VideoStream",
+        "URL": "__URL__"
+    },
+    {
+        "#STREAM_CONFIG_METADATA": {
+            "TRANSCODER_H": 720,
+            "TRANSCODER_W": 1280
+        },
+        "#TYPE": "Transcoder",
+        "#URL": "shm_id_112_rgb",
+        "CAP_RESOLUTION": 1,
+        "LIVE_FEED": true,
+        "NAME": "CV13_CONSILIERI_2",
+        "PLUGINS": [
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "HEURISTIC_CAMERA_OBSTRUCTION_PRESET": "DEFAULT",
+                        "INSTANCE_ID": "CT_Z0",
+                        "PROCESS_DELAY": 1
+                    }
+                ],
+                "SIGNATURE": "CAMERA_TAMPERING_02"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "POINTS",
+                        "DESK_ZONE": true,
+                        "INSTANCE_ID": "FALLEN_DESK",
+                        "POINTS": [
+                            [
+                                225,
+                                713
+                            ],
+                            [
+                                692,
+                                336
+                            ],
+                            [
+                                766,
+                                172
+                            ],
+                            [
+                                815,
+                                116
+                            ],
+                            [
+                                942,
+                                90
+                            ],
+                            [
+                                904,
+                                32
+                            ],
+                            [
+                                674,
+                                32
+                            ],
+                            [
+                                461,
+                                60
+                            ],
+                            [
+                                25,
+                                341
+                            ],
+                            [
+                                7,
+                                486
+                            ],
+                            [
+                                37,
+                                675
+                            ],
+                            [
+                                225,
+                                713
+                            ]
+                        ]
+                    },
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "FALLEN",
+                        "POINTS": [
+                            [
+                                943,
+                                105
+                            ],
+                            [
+                                792,
+                                201
+                            ],
+                            [
+                                641,
+                                405
+                            ],
+                            [
+                                257,
+                                718
+                            ],
+                            [
+                                898,
+                                711
+                            ],
+                            [
+                                1031,
+                                199
+                            ],
+                            [
+                                1015,
+                                117
+                            ],
+                            [
+                                943,
+                                105
+                            ]
+                        ]
+                    }
+                ],
+                "SIGNATURE": "FALLEN_PERSON_02"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "INSTANCE_ID": "DISTRESS"
+                    }
+                ],
+                "SIGNATURE": "DISTRESS_01"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "A_CJ_CV13_Z0",
+                        "POINTS": [
+                            [
+                                462,
+                                127
+                            ],
+                            [
+                                412,
+                                161
+                            ],
+                            [
+                                478,
+                                243
+                            ],
+                            [
+                                597,
+                                193
+                            ],
+                            [
+                                515,
+                                98
+                            ],
+                            [
+                                462,
+                                127
+                            ]
+                        ]
+                    }
+                ],
+                "SIGNATURE": "MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01"
+            }
+        ],
+        "RECONNECTABLE": true,
+        "STREAM_CONFIG_METADATA": {
+            "RESIZE_H": 720
+        },
+        "TYPE": "VideoStream",
+        "URL": "__URL__"
+    },
+    {
+        "#STREAM_CONFIG_METADATA": {
+            "TRANSCODER_H": 720,
+            "TRANSCODER_W": 1280
+        },
+        "#TYPE": "Transcoder",
+        "#URL": "shm_id_114_rgb",
+        "CAP_RESOLUTION": 1,
+        "INITIATOR_ID": null,
+        "LIVE_FEED": true,
+        "NAME": "CV15_CONSILIER_1",
+        "PLUGINS": [
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "HEURISTIC_CAMERA_OBSTRUCTION_PRESET": "DEFAULT",
+                        "INSTANCE_ID": "CT_Z0",
+                        "PROCESS_DELAY": 1
+                    }
+                ],
+                "SIGNATURE": "CAMERA_TAMPERING_02"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "A_CJ_CV15_Z0",
+                        "POINTS": [
+                            [
+                                121,
+                                699
+                            ],
+                            [
+                                610,
+                                699
+                            ],
+                            [
+                                378,
+                                633
+                            ],
+                            [
+                                63,
+                                459
+                            ],
+                            [
+                                7,
+                                522
+                            ],
+                            [
+                                121,
+                                699
+                            ]
+                        ]
+                    },
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "C_CJ_CV15_Z0",
+                        "POINTS": [
+                            [
+                                322,
+                                343
+                            ],
+                            [
+                                207,
+                                403
+                            ],
+                            [
+                                293,
+                                475
+                            ],
+                            [
+                                999,
+                                656
+                            ],
+                            [
+                                1060,
+                                466
+                            ],
+                            [
+                                775,
+                                452
+                            ],
+                            [
+                                540,
+                                426
+                            ],
+                            [
+                                351,
+                                402
+                            ],
+                            [
+                                322,
+                                343
+                            ]
+                        ]
+                    }
+                ],
+                "SIGNATURE": "MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "ALERT_LOWER_CONFIRMATION_TIME": 30,
+                        "ALERT_LOWER_VALUE": 9,
+                        "ALERT_RAISE_CONFIRMATION_TIME": 30,
+                        "ALERT_RAISE_VALUE": 10,
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "MZPPC_CJ_CV15_Z0",
+                        "LINKED_INSTANCES": [
+                            [
+                                "CV10_DRUMUL_BANILOR",
+                                "MZPPC_CJ_CV10_Z0"
+                            ],
+                            [
+                                "CV12_TELLERI_1_2",
+                                "MPPZC_CJ_CV12_Z0"
+                            ]
+                        ],
+                        "POINTS": [
+                            [
+                                322,
+                                343
+                            ],
+                            [
+                                207,
+                                403
+                            ],
+                            [
+                                293,
+                                475
+                            ],
+                            [
+                                999,
+                                656
+                            ],
+                            [
+                                1060,
+                                466
+                            ],
+                            [
+                                775,
+                                452
+                            ],
+                            [
+                                540,
+                                426
+                            ],
+                            [
+                                351,
+                                402
+                            ],
+                            [
+                                322,
+                                343
+                            ]
+                        ],
+                        "SAVE_PAYLOAD": true,
+                        "SEND_IMAGES": true,
+                        "TAGS": {
+                            "TYPE": "INTERIOR"
+                        }
+                    }
+                ],
+                "SIGNATURE": "MULTIZONE_PEOPLE_PRESENCE_CROWDED_01"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "POINTS",
+                        "DESK_ZONE": true,
+                        "INSTANCE_ID": "FALLEN_DESK",
+                        "POINTS": [
+                            [
+                                225,
+                                713
+                            ],
+                            [
+                                692,
+                                336
+                            ],
+                            [
+                                766,
+                                172
+                            ],
+                            [
+                                815,
+                                116
+                            ],
+                            [
+                                942,
+                                90
+                            ],
+                            [
+                                904,
+                                32
+                            ],
+                            [
+                                674,
+                                32
+                            ],
+                            [
+                                461,
+                                60
+                            ],
+                            [
+                                25,
+                                341
+                            ],
+                            [
+                                7,
+                                486
+                            ],
+                            [
+                                37,
+                                675
+                            ],
+                            [
+                                225,
+                                713
+                            ]
+                        ]
+                    },
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "FALLEN",
+                        "POINTS": [
+                            [
+                                1084,
+                                654
+                            ],
+                            [
+                                1118,
+                                67
+                            ],
+                            [
+                                617,
+                                65
+                            ],
+                            [
+                                578,
+                                379
+                            ],
+                            [
+                                531,
+                                421
+                            ],
+                            [
+                                324,
+                                374
+                            ],
+                            [
+                                235,
+                                113
+                            ],
+                            [
+                                94,
+                                182
+                            ],
+                            [
+                                186,
+                                398
+                            ],
+                            [
+                                288,
+                                391
+                            ],
+                            [
+                                678,
+                                481
+                            ],
+                            [
+                                794,
+                                520
+                            ],
+                            [
+                                821,
+                                654
+                            ],
+                            [
+                                1084,
+                                654
+                            ]
+                        ]
+                    }
+                ],
+                "SIGNATURE": "FALLEN_PERSON_02"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "POINTS",
+                        "DESK_ZONE": true,
+                        "INSTANCE_ID": "DISTRESS_DESK",
+                        "POINTS": [
+                            [
+                                507,
+                                55
+                            ],
+                            [
+                                233,
+                                197
+                            ],
+                            [
+                                11,
+                                483
+                            ],
+                            [
+                                75,
+                                646
+                            ],
+                            [
+                                392,
+                                698
+                            ],
+                            [
+                                629,
+                                697
+                            ],
+                            [
+                                590,
+                                626
+                            ],
+                            [
+                                183,
+                                458
+                            ],
+                            [
+                                180,
+                                416
+                            ],
+                            [
+                                546,
+                                243
+                            ],
+                            [
+                                507,
+                                55
+                            ]
+                        ]
+                    },
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "DISTRESS",
+                        "POINTS": [
+                            [
+                                223,
+                                139
+                            ],
+                            [
+                                121,
+                                205
+                            ],
+                            [
+                                177,
+                                397
+                            ],
+                            [
+                                722,
+                                664
+                            ],
+                            [
+                                892,
+                                713
+                            ],
+                            [
+                                1212,
+                                635
+                            ],
+                            [
+                                1183,
+                                65
+                            ],
+                            [
+                                609,
+                                58
+                            ],
+                            [
+                                521,
+                                397
+                            ],
+                            [
+                                292,
+                                355
+                            ],
+                            [
+                                223,
+                                139
+                            ]
+                        ]
+                    }
+                ],
+                "SIGNATURE": "DISTRESS_01"
+            }
+        ],
+        "RECONNECTABLE": true,
+        "STREAM_CONFIG_METADATA": {
+            "RESIZE_H": 720
+        },
+        "TYPE": "VideoStream",
+        "URL": "__URL__"
+    },
+    {
+        "#STREAM_CONFIG_METADATA": {
+            "TRANSCODER_H": 1080,
+            "TRANSCODER_W": 1920
+        },
+        "#TYPE": "Transcoder",
+        "#URL": "shm_id_110_rgb",
+        "CAP_RESOLUTION": 1,
+        "INITIATOR_ID": null,
+        "LIVE_FEED": true,
+        "NAME": "CV11_TELLERI_3_4",
+        "PLUGINS": [
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "HEURISTIC_CAMERA_OBSTRUCTION_PRESET": "DEFAULT",
+                        "INSTANCE_ID": "CT_Z0",
+                        "PROCESS_DELAY": 1
+                    }
+                ],
+                "SIGNATURE": "CAMERA_TAMPERING_02"
+            }
+        ],
+        "RECONNECTABLE": true,
+        "TYPE": "VideoStream",
+        "URL": "__URL__"
+    },
+    {
+        "#STREAM_CONFIG_METADATA": {
+            "TRANSCODER_H": 1080,
+            "TRANSCODER_W": 1920
+        },
+        "#TYPE": "Transcoder",
+        "#URL": "shm_id_113_rgb",
+        "CAP_RESOLUTION": 1,
+        "LIVE_FEED": true,
+        "NAME": "CV14_TEZAUR",
+        "PLUGINS": [
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "HEURISTIC_CAMERA_OBSTRUCTION_PRESET": "VERTICAL_CAMERA",
+                        "INSTANCE_ID": "CT_Z0",
+                        "PROCESS_DELAY": 1
+                    }
+                ],
+                "SIGNATURE": "CAMERA_TAMPERING_02"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "INSTANCE_ID": "A_CJ_CV14_Z0"
+                    }
+                ],
+                "SIGNATURE": "MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01"
+            }
+        ],
+        "RECONNECTABLE": true,
+        "TYPE": "VideoStream",
+        "URL": "__URL__"
+    },
+    {
+        "#STREAM_CONFIG_METADATA": {
+            "TRANSCODER_H": 720,
+            "TRANSCODER_W": 1280
+        },
+        "#TYPE": "Transcoder",
+        "#URL": "shm_id_109_rgb",
+        "CAP_RESOLUTION": 1,
+        "INITIATOR_ID": null,
+        "LIVE_FEED": true,
+        "NAME": "CV10_DRUMUL_BANILOR",
+        "PLUGINS": [
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "HEURISTIC_CAMERA_OBSTRUCTION_PRESET": "DEFAULT",
+                        "INSTANCE_ID": "CT_Z0",
+                        "PROCESS_DELAY": 1
+                    }
+                ],
+                "SIGNATURE": "CAMERA_TAMPERING_02"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "C_CJ_CV10_Z0",
+                        "POINTS": [
+                            [
+                                1268,
+                                616
+                            ],
+                            [
+                                1154,
+                                553
+                            ],
+                            [
+                                1183,
+                                507
+                            ],
+                            [
+                                1141,
+                                492
+                            ],
+                            [
+                                1064,
+                                550
+                            ],
+                            [
+                                1032,
+                                556
+                            ],
+                            [
+                                963,
+                                501
+                            ],
+                            [
+                                900,
+                                431
+                            ],
+                            [
+                                787,
+                                358
+                            ],
+                            [
+                                758,
+                                318
+                            ],
+                            [
+                                724,
+                                289
+                            ],
+                            [
+                                795,
+                                30
+                            ],
+                            [
+                                651,
+                                30
+                            ],
+                            [
+                                626,
+                                157
+                            ],
+                            [
+                                638,
+                                240
+                            ],
+                            [
+                                613,
+                                251
+                            ],
+                            [
+                                632,
+                                285
+                            ],
+                            [
+                                709,
+                                331
+                            ],
+                            [
+                                742,
+                                377
+                            ],
+                            [
+                                754,
+                                433
+                            ],
+                            [
+                                831,
+                                455
+                            ],
+                            [
+                                945,
+                                513
+                            ],
+                            [
+                                1037,
+                                579
+                            ],
+                            [
+                                1228,
+                                677
+                            ],
+                            [
+                                1268,
+                                616
+                            ]
+                        ]
+                    },
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "A_CJ_CV10_Z0",
+                        "POINTS": [
+                            [
+                                197,
+                                288
+                            ],
+                            [
+                                88,
+                                302
+                            ],
+                            [
+                                169,
+                                707
+                            ],
+                            [
+                                945,
+                                704
+                            ],
+                            [
+                                856,
+                                559
+                            ],
+                            [
+                                606,
+                                576
+                            ],
+                            [
+                                487,
+                                428
+                            ],
+                            [
+                                497,
+                                319
+                            ],
+                            [
+                                418,
+                                259
+                            ],
+                            [
+                                434,
+                                203
+                            ],
+                            [
+                                385,
+                                205
+                            ],
+                            [
+                                331,
+                                273
+                            ],
+                            [
+                                197,
+                                288
+                            ]
+                        ]
+                    },
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "A_CJ_CV10_Z1",
+                        "POINTS": [
+                            [
+                                1140,
+                                321
+                            ],
+                            [
+                                1105,
+                                341
+                            ],
+                            [
+                                1114,
+                                375
+                            ],
+                            [
+                                1136,
+                                366
+                            ],
+                            [
+                                1140,
+                                321
+                            ]
+                        ]
+                    }
+                ],
+                "SIGNATURE": "MULTIZONE_PEOPLE_PRESENCE_AGGREGATED_01"
+            },
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "POINTS",
+                        "INSTANCE_ID": "MZPPC_CJ_CV10_Z0",
+                        "POINTS": [
+                            [
+                                1268,
+                                616
+                            ],
+                            [
+                                1154,
+                                553
+                            ],
+                            [
+                                1183,
+                                507
+                            ],
+                            [
+                                1141,
+                                492
+                            ],
+                            [
+                                1064,
+                                550
+                            ],
+                            [
+                                1032,
+                                556
+                            ],
+                            [
+                                963,
+                                501
+                            ],
+                            [
+                                900,
+                                431
+                            ],
+                            [
+                                787,
+                                358
+                            ],
+                            [
+                                758,
+                                318
+                            ],
+                            [
+                                724,
+                                289
+                            ],
+                            [
+                                795,
+                                30
+                            ],
+                            [
+                                651,
+                                30
+                            ],
+                            [
+                                626,
+                                157
+                            ],
+                            [
+                                638,
+                                240
+                            ],
+                            [
+                                613,
+                                251
+                            ],
+                            [
+                                632,
+                                285
+                            ],
+                            [
+                                709,
+                                331
+                            ],
+                            [
+                                742,
+                                377
+                            ],
+                            [
+                                754,
+                                433
+                            ],
+                            [
+                                831,
+                                455
+                            ],
+                            [
+                                945,
+                                513
+                            ],
+                            [
+                                1037,
+                                579
+                            ],
+                            [
+                                1228,
+                                677
+                            ],
+                            [
+                                1268,
+                                616
+                            ]
+                        ]
+                    }
+                ],
+                "SIGNATURE": "MULTIZONE_PEOPLE_PRESENCE_CROWDED_01"
+            }
+        ],
+        "RECONNECTABLE": true,
+        "STREAM_CONFIG_METADATA": {
+            "RESIZE_H": 720
+        },
+        "TYPE": "VideoStream",
+        "URL": "__URL__"
+    },
+    {
+        "#STREAM_CONFIG_METADATA": {
+            "TRANSCODER_H": 720,
+            "TRANSCODER_W": 1280
+        },
+        "#TYPE": "Transcoder",
+        "#URL": "shm_id_103_rgb",
+        "CAP_RESOLUTION": 1,
+        "LIVE_FEED": true,
+        "NAME": "CV4_CAMERA_ATM_STANGA",
+        "PLUGINS": [
+            {
+                "INSTANCES": [
+                    {
+                        "BIG_CIRCLE_RADIUS_PERCENT": 0.25,
+                        "COORDS": "NONE",
+                        "ENTROPY_RATIO_BREAKPOINT": 0.82,
+                        "INSTANCE_ID": "CT_Z0",
+                        "MIN_FOREGROUND_MASK_AREA": 0.15,
+                        "PROCESS_DELAY": 1,
+                        "SMALL_CIRCLE_RADIUS_PERCENT": 0.13
+                    }
+                ],
+                "SIGNATURE": "CAMERA_TAMPERING_02"
+            }
+        ],
+        "RECONNECTABLE": true,
+        "STREAM_CONFIG_METADATA": {
+            "RESIZE_H": 720
+        },
+        "TYPE": "VideoStream",
+        "URL": "__URL__"
+    },
+    {
+        "#STREAM_CONFIG_METADATA": {
+            "TRANSCODER_H": 720,
+            "TRANSCODER_W": 1290
+        },
+        "#TYPE": "Transcoder",
+        "#URL": "shm_id_104_rgb",
+        "CAP_RESOLUTION": 1,
+        "LIVE_FEED": true,
+        "NAME": "CV5_CAMERA_ATM_MIJLOC",
+        "PLUGINS": [
+            {
+                "INSTANCES": [
+                    {
+                        "COORDS": "NONE",
+                        "HEURISTIC_CAMERA_OBSTRUCTION_PRESET": "HORIZONTAL_CAMERA",
+                        "INSTANCE_ID": "CT_Z0",
+                        "PROCESS_DELAY": 1
+                    }
+                ],
+                "SIGNATURE": "CAMERA_TAMPERING_02"
+            }
+        ],
+        "RECONNECTABLE": true,
+        "STREAM_CONFIG_METADATA": {
+            "RESIZE_H": 720
+        },
+        "TYPE": "VideoStream",
+        "URL": "__URL__"
+    }
+]

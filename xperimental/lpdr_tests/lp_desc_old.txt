@@ -1,0 +1,261 @@
+{
+    "NAME" : "testV1.1",
+    "TYPE" : "VideoStream",
+    "URL"  : "rtsp://....",
+	"INITIATOR_ID" : "backend075",
+	"SESSION_ID" : "backend075_comanda102",
+    "PLUGINS" : [
+      {
+          "SIGNATURE" : "CAR_ACCESS_CONTROL_02",
+          "INSTANCES" : [
+            {
+				"WORKING_HOURS" : [], // full time working ... DO NOT MODIFY THIS
+				"INSTANCE_ID" : "default",
+				"EXTERNAL_SERVER" :
+                {
+					"CMD_TYPE" : "SET_RELAY",  // tipul comenzii
+					"CMD_PAYLOAD" : {
+							"EQUIPMENT_ID" : "b34",						// string - identificatorul echipamentului moxa
+							"RELAY_INDEX" : 3,							// numarul iesirii digitale ce se doreste a fi actionata - valori posibile 0..n
+							"RELAY_STATE" : 0							// valori posibile 0 sau 1
+					}, 					// structura functie de tipul comenzii (vezi mai jos detalii)
+				
+					"SERVER": "moxa_driver_05", // name of the moxa drivers that will listen to /moxa_driver_05/config as any nice E2
+				}
+					
+              "POINTS" : [[10,10],[200,200],[250,400],[150, 450],[10,10]],
+              "LINE" : [[50,250],[300,240]],
+              "OUT" : [150,150],
+              "IN" : [200,400],
+
+              "VALID_LP_FORMATS": [ // COMMENT: this is used to filter the license plates by their format, null or [] will accept any
+                  '**##***', '*##***', '*###***', .. // CONVENTION: '*' is used to specify letters and '#' to specify digits
+                  // DEFAULT: the current default value is : ['**##***', '*##***', '*###***', '*######', '**######', '***#####'] -> for this value the number 'B012345' will be considered valid while '00BCE2' will be considered invalid and ignored
+              ],
+
+			// COMMENT: if in WORKING_HOURS (plugin works all the time see above commend) then always a event is fired (white or not, known or not) if LINE-is-crossed
+          "LISTS" : {
+          	"ALBA_1" : {
+            	// "allowed" list will generate cmd if in hours and in plates
+              	"ALLOWED" : true,
+                "PLATES" : ["B22AGS","IF01MMT"],
+              	"HOURS" : {
+              		"mon" : [["07:00", "18:00"]],
+              		"tue" : [["07:00", "15:00"], ["16:30", "19:30]],
+              		"wed" : [["07:00", "18:00"]],
+                  	"thu" : [["07:00", "18:00"]],
+              		"fri" : [["07:00", "18:00"]],
+              		"sat" : [["00:00", "24:00"]], or []// open all the time
+              		"sun" : null or omit from config // close all the time
+            	  }
+          	},
+             "ALBA_2" : {
+                  // allow in open hours with simpler schedule
+              	"ALLOWED" : true,
+              	"PLATES" : "http://url-to-csv-file", 	// this will be implemented after 15 march
+          		"HOURS" : [["09:00", "17:00"]] 			// same for any day
+          	},
+          	"NEAGRA_1" : {
+                 // simple "found blacklisted" when detected - obviously no open-cmd
+              	"ALLOWED" : false,
+          		"PLATES" : ["B01TTT", "B04BBB"]
+
+          	},
+          	"GRI_1" : {
+              	// will generate blacklist event but has special behavior in schedule
+              	// instead of sending open-cmd will send custom defined extra fields in payload
+          		"ALLOWED" : false,
+          		"PLATES" : ["B121TKA", "IF05XXX"]
+
+          		// in below case for given hours we "enrich" the payload with "EXTRAS"
+          		"HOURS" : [["09:00", "17:00"]],
+          		"EXTRAS" : {
+              		"IS_ALERT" : true,    // static value
+              		"INTERVAL" : "9-17"   // static value
+          		}
+          	},
+          	....
+          	// if LP NOT in any list just send "unknown number XYZ, nu action taken" - see below examples
+            	}
+
+                      }
+                    ]
+                }
+            ]
+}
+
+////////////
+//////////// Examples based on above config
+////////////
+
+//////////// Case #1: EVENT & COMMAND payloads delivered from E2:
+
+// paylod on /payloads
+{
+...
+"INITIATOR_ID" : "backend075",
+"SESSION_ID" : "backend075_comanda102",
+...
+"SB_ID" : "cristibox",
+...
+"PLATE" : "B22AGS",
+"TIME " ".... 10:31", //not Sun :) 
+"LIST" : "ALBA_1",
+"ALLOWED" : true,
+"OPENED" : true,
+"DIRECTION": {
+  "FROM" : "OUT",
+  "TO" : "IN"
+},
+"IMG": <base64>,
+"STREAM_NAME": "testV1.1",
+"EXTERNAL_SERVER" :
+	{
+		....
+	},
+
+...
+}
+									// IFF command on payloads:
+
+									{
+									...
+									"INITIATOR_ID" : "backend075",
+									"SESSION_ID" : "backend075_comanda102",
+									...
+									"SB_ID" : "cristibox",
+									...
+									"PLATE" : "B22AGS",
+									"TIME " ".... 10:31", //not Sun :) 
+									"LIST" : "ALBA_1",
+									"ALLOWED" : true,
+									"OPENED" : true,
+									"DIRECTION": {
+									  "FROM" : "OUT",
+									  "TO" : "IN"
+									},
+									"IMG": <base64>,
+									"STREAM_NAME": "testV1.1",
+									"EXTERNAL_SERVER" :
+										{
+											....
+										},
+									"PENTRU_CARE_MOXA" : "moxa_driver_05",
+
+									...
+									}
+
+// command on /moxa_driver_05/config
+
+{
+    "SB_ID": "moxa_driver_05", // IMPORTANT: "SB_ID" will be modified to "EE_ID"
+    "ACTION": "UPDATE_CONFIG",
+    "PAYLOAD": {
+        "NAME": "OPEN_BARRIER_COMMAND", // autocomplete
+        "TYPE": "VOID",                 // autocomplete
+
+		"CMD_TYPE" : "SET_RELAY",  // from EXTERNAL_SERVER
+		"CMD_PAYLOAD" : { // from EXTERNAL_SERVER
+			"EQUIPMENT_ID" : "b34",						// string - identificatorul echipamentului moxa
+			"RELAY_INDEX" : 3,							// numarul iesirii digitale ce se doreste a fi actionata - valori posibile 0..n
+			"RELAY_STATE" : 0							// valori posibile 0 sau 1
+		}, 				
+        "SERVER": "moxa_driver_05",     // from EXTERNAL_SERVER
+
+    },
+    "INITIATOR_ID": "cristibox",
+    "SESSION_ID": "20230127_174902",
+    ""
+}
+
+# cmdapi.start_pipeline(dest='moxa_driver_05', config={"NAME": "OPEN_BARRIER_COMMAND","TYPE": "VOID","SERVER": "moxa_driver_05","DEST" : "bariera8","TRUE_KEY" : "OPEN_SESAME",})
+# OR .... just add more data to payload if we do not send cmds as to any other E2 <--- Bleo
+////////////
+//////////// Case #2: EVENT payload delivered from E2 (no command)
+
+{
+...
+"PLATE" : "IF01MMT",
+"TIME " ".... 22:31",
+"LIST" : "ALBA_1",
+"ALLOWED" : true,
+"OPENED" : false,
+"DIRECTION": {
+  "FROM" : "OUT",
+  "TO" : "IN"
+},
+"STREAM_NAME": "testV1.1",
+"IMG": <base64>
+...
+}
+
+//////////// Case #3: EVENT payload delivered from E2 (no command)
+{
+...
+"PLATE" : "B01TTT",
+"TIME " ".... 11:22",
+"LIST" : "NEAGRA_1",
+"ALLOWED" : false,
+"OPENED" : false,
+"DIRECTION": {
+  "FROM" : "OUT",
+  "TO" : "IN"
+},
+"STREAM_NAME": "testV1.1",
+"IMG": <base64>
+...
+}
+
+//////////// Case #4: EVENT payload delivered from E2 (no command)
+{
+...
+"PLATE" : "B123453",
+"TIME " ".... 12:01",
+"LIST" : null,
+"ALLOWED" : false,
+"OPENED" : false,
+"DIRECTION": {
+  "FROM" : "OUT",
+  "TO" : "IN"
+},
+"STREAM_NAME": "testV1.1",
+"IMG": <base64>
+...
+}
+
+//////////// Case #5.1: EVENT payload delivered from E2 (no command)
+{
+...
+"PLATE" : "B121TKA",
+"TIME " ".... 12:01",
+"IS_ALERT" : true,      // field added due to `in HOURS` just copyed from EXTRAS
+"INTERVAL" : "9-17"     // field added due to `in HOURS` just copyed from EXTRAS
+"LIST" : "GRI_1",
+"ALLOWED" : false,
+"OPENED" : false,
+"DIRECTION": {
+  "FROM" : "OUT",
+  "TO" : "IN"
+},
+"STREAM_NAME": "testV1.1",
+"IMG": <base64>
+...
+}
+
+//////////// Case #5.2: EVENT payload delivered from E2 (no command)
+{
+...
+"PLATE" : "B121TKA",  // same as 5.1 but missing fields given by interval
+"TIME " ".... 18:01",
+"LIST" : "GRI_1",
+"ALLOWED" : false,
+"OPENED" : false,
+"DIRECTION": {
+  "FROM" : "OUT",
+  "TO" : "IN"
+},
+"STREAM_NAME": "testV1.1",
+"IMG": <base64>
+...
+}
+

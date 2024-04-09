@@ -1,0 +1,420 @@
+
+Cases:
+
+
+1. car entering from outside of the location seen from *** outside camera *** 
+1.1. car arrives in FAR_FROM_BARRIER
+1.2. car arrives in NEAR_BARRIER
+1.3. LPR event is generated and maybe CMD
+
+
+2. car exits seen from *** outside camera *** 
+2.1. car arrives in NEAR_BARRIER
+2.2. LPR event is generated
+2.3. car enters FAR_FROM_BARRIER (no event generated)
+
+3. car exists location seen from *** inside camera *** 
+3.1. car arrives in FAR_FROM_BARRIER (in this case FAR_FROM_BARRIER means inside the location)
+3.2. car arrives in  NEAR_BARRIER (in this case NEAR_BARRIER means still inside the location but near barrier)
+3.3. LPR event is generated and maybe CMD 
+
+4. car enters location seen from *** inside camera *** 
+4.1. car arrives in NEAR_BARRIER
+4.2. LPR event is generated 
+4.3. car enters FAR_FROM_BARRIER (no event generated)
+
+
+EXT : camera is located outside perimeter and sees approaching objects as they APPROACH the perimeter and sees object departing as they depart from perimeter
+INT : camera is located inside perimeter and sees approaching objects as they APPROACH the barrier in order to exit the perimeter and sees departing objects when they just entered the perimeter
+
+Database should contain:
+	- BARRIER: 1, 	VIDEO: Camera 7, 	LOC: EXT, 	STREAM_NAME: testV1.1, 			MDRV: moxa-drv101, 		RELAY: 1
+	- BARRIER: 1, 	VIDEO: Camera 8, 	LOC: INT, 	STREAM_NAME: pipeline1001		MDRV: moxa-drv101		RELAY: 1
+	- BARRIER: 3, 	VIDEO: Camera 10, 	LOC: EXT, 	STREAM_NAME: gigi75				MDRV: moxa-drv101		RELAY: 2
+	- BARRIER: 4, 	VIDEO: Camera 101, 	LOC: INT, 	STREAM_NAME: K1					MDRV: moxadriver-x1		RELAY: 1
+	- BARRIER: 4, 	VIDEO: Camera 102, 	LOC: INT, 	STREAM_NAME: K2					MDRV: moxadriver-x1		RELAY: 1
+	- BARRIER: 4, 	VIDEO: Camera 103, 	LOC: EXT, 	STREAM_NAME: K3					MDRV: moxadriver-x1		RELAY: 1
+	
+From below payloads based on BD:
+1. Lookup STREAM_NAME=="testV1.1" in BD ==> BARRIER: Bariera 1, VIDEO: Camera 7, LOC: EXT, STREAM_NAME: testV1.1
+CASE 1. IFF LOC == EXT && DIRECTION: FAR -> NEAR ==> we have entry and command
+CASE 2. IFF LOC == EXT && DIRECTION: NEAR -> FAR ==> we have exit event and probably no command
+CASE 3. IFF LOC == INT && DIRECTION: FAR -> NEAR ==> we have exit and command
+CASE 4. IFF LOC == INT && DIRECTION: NEAR -> FAR ==> we have entry and probably no command 
+2. BASED ON CASE ==> we have ENTRY -- also this can be seen from TAKEN_ACTIONS
+	
+	
+				{
+					...
+					"INITIATOR_ID" : "backend075",
+					"SESSION_ID" : "backend075_comanda102",
+					...
+					"SB_ID" : "cristibox",
+					...
+					"PLATE" : "B22AGS",
+					"TIME " ".... 10:31", //not Sun :) 
+					"LIST" : "ALBA_1",
+
+					"ALLOWED" : true,
+					"CASE" : "CASE 1.", // works like a charm for CASE 1 and CASE 3
+					"TAKEN_ACTIONS" : ["DESCHIDE", "DE_TRIMIS_PE_PAYLOADS"],
+
+					"DIRECTION": {
+					  "FROM" : "FAR_FROM_BARRIER",
+					  "TO" : "NEAR_BARRIER"
+					},
+					"IMG": <base64>,
+					"STREAM_NAME": "testV1.1",
+
+
+					...
+				}
+
+	
+
+{
+    "NAME" : "testV1.1",
+    "TYPE" : "VideoStream",
+    "URL"  : "rtsp://....",
+	"DESCRIPTION" : "alaba portacala",
+	"INITIATOR_ID" : "backend075",
+	"SESSION_ID" : "backend075_comanda102",
+    "PLUGINS" : [
+      {
+          "SIGNATURE" : "CAR_ACCESS_CONTROL_02",
+          "INSTANCES" : [
+            {
+				"WORKING_HOURS" : [], // full time working ... DO NOT MODIFY THIS
+				"INSTANCE_ID" : "default",
+	
+					
+              "POINTS"  : [[10,10],[200,200],[250,400],[150, 450],[10,10]],
+              "LINE"    : [[50,250],[300,240]], // probably will be deleted
+              "FAR_FROM_BARRIER"  	: [[150,150], ..... [150,150]],
+              "NEAR_BARRIER" 		: [[200,400],... [200, 400]],
+
+              "VALID_LP_FORMATS": [ // COMMENT: this is used to filter the license plates by their format, null or [] will accept any
+                  '**##***', '*##***', '*###***', .. // CONVENTION: '*' is used to specify letters and '#' to specify digits
+                  // DEFAULT: the current default value is : ['**##***', '*##***', '*###***', '*######', '**######', '***#####'] -> for this value the number 'B012345' will be considered valid while '00BCE2' will be considered invalid and ignored
+              ],
+
+			// COMMENT: if in WORKING_HOURS (plugin works all the time see above commend) then always a event is fired (white or not, known or not) if LINE-is-crossed
+		
+			"LISTS" : {
+				"ALBA_1" : {
+					"ACTIONS" : { // OBS: movement must be from FAR_FROM_BARRIER to NEAR_BARRIER in order to trigger 
+						"DESCHIDE" : {
+							" moxa-drv101 ....
+						}
+					
+						},
+						"DE_TRIMIS_PE_PAYLOADS" : {
+							"IS_CMD" : false,
+							"DATA" : {
+							  "ALLOWED" : true,
+							  "CASE" : "CASE 1."
+							}
+						}
+					},
+					
+					"DEFAULT_ACTION_OUTSIDE_HOURS" : true,
+					
+					"PLATES" : ["B22AGS","IF01MMT"], // MUST NOT BE EMPTY - for empty see DEFAULT_ACTIONS OBS: movement must be from FAR_FROM_BARRIER to NEAR_BARRIER in order to trigger 
+					"HOURS" : {
+						"mon" : [["07:00", "18:00"]],
+						"tue" : [["07:00", "15:00"], ["16:30", "19:30"]],
+						"wed" : [["07:00", "18:00"]],
+						"thu" : [["07:00", "18:00"]],
+						"fri" : [["07:00", "18:00"]],
+						"sat" : [["00:00", "24:00"]], or []// open all the time
+						"sun" : null or omit from config // close all the time
+					  }
+				},
+				 "ALBA_2" : {
+					"ACTION" : {
+						"DESCHIDE" : {
+							"IS_CMD" : true,
+							"DATA" : {
+								"CMD_TYPE" : "SET_RELAY",  
+								"CMD_PAYLOAD" : {
+									"EQUIPMENT_ID" : "b34",						
+									"RELAY_INDEX" : 3,							
+									"RELAY_STATE" : 0,
+									"DELAY1" : 10,
+									"DELAY2" : 30									
+								}, 					
+								"SERVER": "moxa_driver_05", 
+							}
+						},
+						"TRIMIS_PE_PAYLOADS" : {
+							"IS_CMD" : false,
+							"DATA" : {
+							  "ALLOWED" : true
+							}
+						}
+					},
+
+					"DEFAULT_ACTION_OUTSIDE_HOURS" : false,
+
+					"PLATES" : "http://url-to-csv-file", 	// this will be implemented after 15 march // MUST NOT BE EMPTY - for empty see DEFAULT_ACTIONS
+					"HOURS" : [["09:00", "17:00"], ["17:00", "19:00"], ["22:00", "03:00"]] 			// same for any day
+				},
+				"NEAGRA_1" : {
+					 // simple "found blacklisted" when detected - obviously no open-cmd
+					"ACTION" : {
+						"TRIMIS_NASOL_PE_PAYLOAD" : {
+							"IS_CMD" : false,
+							"DATA" : {
+							  "ALLOWED" : false
+							}
+						}
+					},
+					"DEFAULT_ACTION_OUTSIDE_HOURS" : false,
+					"PLATES" : ["B01TTT", "B04BBB"],
+					"HOURS" : [["00:00", "24:00"]] // if HOURS is missing from command assume any hour is a happy hour
+				},
+				"GRI_1" : {
+					// will generate blacklist event but has special behavior in schedule
+					// instead of sending open-cmd will send custom defined extra fields in payload
+					"ACTION" : {
+						"TRIMIS_NASOL_PE_PAYLOAD" : {
+							"IS_CMD" : false,
+							"DATA" : {
+								"ALLOWED" : false,
+								"IS_ALERT" : true,      // field added due to `in HOURS` just copyed from EXTRAS
+								"INTERVAL" : "9-17"     // field added due to `in HOURS` just copyed from EXTRAS
+
+							}
+						}
+					},
+
+					"PLATES" : ["B121TKA", "IF05XXX"] // MUST NOT BE EMPTY - for empty see DEFAULT_ACTION
+					"DEFAULT_ACTION_OUTSIDE_HOURS" : false,
+					// in below case for given hours we "enrich" the payload with "EXTRAS"
+					"HOURS" : [["09:00", "17:00"]],
+				},
+				....
+					}
+				// if LP NOT in any list just fall back to DEFAULT_ACTIONS
+				"DEFAULT_ACTIONS" : {
+					"TRIMIS_PE_PAYLOADS" : {
+							"IS_CMD" : false,
+							"DATA" : {
+							  "ALLOWED" : true
+						},
+					"DESCHIDE_LA_ORICINE" : {
+							"IS_CMD" : true,
+							"DATA" : {
+								"CMD_TYPE" : "SET_RELAY",  
+								"CMD_PAYLOAD" : {
+									"EQUIPMENT_ID" : "b34",						
+									"RELAY_INDEX" : 3,							
+									"RELAY_STATE" : 0							
+								}, 					
+								"SERVER": "moxa_driver_05", 
+							}
+					}
+						
+				}
+				
+
+			}
+			]
+		}
+	]
+}
+
+////////////
+//////////// Examples based on above config
+////////////
+
+//////////// Case #1: EVENT & COMMAND payloads delivered from E2:
+
+// paylod on /payloads
+{
+...
+"INITIATOR_ID" : "backend075",
+"SESSION_ID" : "backend075_comanda102",
+...
+"SB_ID" : "cristibox",
+...
+"PLATE" : "B22AGS",
+"TIME " ".... 10:31", //not Sun :) 
+"LIST" : "ALBA_1",
+
+"ALLOWED" : true,
+"TAKEN_ACTIONS" : ["DESCHIDE", "DE_TRIMIS_PE_PAYLOADS"],
+
+"DIRECTION": {
+  "FROM" : "FAR_FROM_BARRIER",
+  "TO" : "NEAR_BARRIER"
+},
+"IMG": <base64>,
+"STREAM_NAME": "testV1.1",
+
+
+...
+}
+
+
+// IFF command on payloads:
+"ACTION" : {
+	"TRIMIS_OPEN_PE_PAYLOADS" : {
+		"IS_CMD" : false,
+		"DATA" : {
+			"CMD_TYPE" : "SET_RELAY",  
+			"CMD_PAYLOAD" : {
+				"EQUIPMENT_ID" : "b34",						
+				"RELAY_INDEX" : 3,							
+				"RELAY_STATE" : 0							
+			}, 					
+			"SERVER": "moxa_driver_05", 
+			"PENTRU_CARE_MOXA" : "moxa_driver_05", 
+			"ALLOWED" : true
+			// add whatever you need
+		}
+	},
+
+// results in following payload on /payloads
+{
+...
+"INITIATOR_ID" : "backend075",
+"SESSION_ID" : "backend075_comanda102",
+...
+"SB_ID" : "cristibox",
+...
+"PLATE" : "B22AGS",
+"TIME " ".... 10:31", //not Sun :) 
+"LIST" : "ALBA_1",
+"TAKEN_ACTIONS" : ["TRIMIS_OPEN_PE_PAYLOADS"],
+"DIRECTION": {
+  "FROM" : "FAR_FROM_BARRIER",
+  "TO" : "NEAR_BARRIER"
+},
+"IMG": <base64>,
+"STREAM_NAME": "testV1.1",
+"CMD_TYPE" : "SET_RELAY",  
+"CMD_PAYLOAD" : {
+	"EQUIPMENT_ID" : "b34",						
+	"RELAY_INDEX" : 3,							
+	"RELAY_STATE" : 0							
+}, 					
+"SERVER": "moxa_driver_05", 
+"PENTRU_CARE_MOXA" : "moxa_driver_05",
+
+...
+									}
+
+// command on /moxa_driver_05/config
+
+{
+    "SB_ID": "moxa_driver_05", // IMPORTANT: "SB_ID" will be modified to "EE_ID"
+    "ACTION": "UPDATE_CONFIG",
+    "PAYLOAD": {
+        "NAME": "OPEN_BARRIER_COMMAND", // autocomplete
+        "TYPE": "VOID",                 // autocomplete
+
+		"CMD_TYPE" : "SET_RELAY",  // from EXTERNAL_SERVER
+		"CMD_PAYLOAD" : { // from EXTERNAL_SERVER
+			"EQUIPMENT_ID" : "b34",						// string - identificatorul echipamentului moxa
+			"RELAY_INDEX" : 3,							// numarul iesirii digitale ce se doreste a fi actionata - valori posibile 0..n
+			"RELAY_STATE" : 0							// valori posibile 0 sau 1
+		}, 				
+        "SERVER": "moxa_driver_05",     // from EXTERNAL_SERVER
+
+    },
+    "INITIATOR_ID": "cristibox",
+    "SESSION_ID": "20230127_174902",
+    ""
+}
+
+# cmdapi.start_pipeline(dest='moxa_driver_05', config={"NAME": "OPEN_BARRIER_COMMAND","TYPE": "VOID","SERVER": "moxa_driver_05","DEST" : "bariera8","TRUE_KEY" : "OPEN_SESAME",})
+# OR .... just add more data to payload if we do not send cmds as to any other E2 <--- Bleo
+////////////
+//////////// Case #2: EVENT payload delivered from E2 if LP out out HOURS
+
+{
+...
+"PLATE" : "IF01MMT",
+"TIME " ".... 12:31",
+"LIST" : "ALBA_1",
+"ACTIONS" : [], 
+"DIRECTION": {
+  "FROM" : "FAR_FROM_BARRIER",
+  "TO" : "NEAR_BARRIER"
+},
+"STREAM_NAME": "testV1.1",
+"IMG": <base64>
+...
+}
+
+//////////// Case #3: EVENT payload delivered from E2 (no command)
+{
+...
+"PLATE" : "B01TTT",
+"TIME " ".... 11:22",
+"LIST" : "NEAGRA_1",
+"ALLOWED" : false,
+"TAKEN_ACTIONS" : ["TRIMIS_NASOL_PE_PAYLOAD"]
+"DIRECTION": {
+  "FROM" : "ZONE_B",
+  "TO" : "ZONE_A"
+},
+"STREAM_NAME": "testV1.1",
+"IMG": <base64>
+...
+}
+
+//////////// Case #4: EVENT payload delivered from E2 (no command)
+{
+...
+"PLATE" : "B123453",  // totally unknown fallback to DEFAULT_ACTION
+"TIME " ".... 12:01",
+"LIST" : null,
+"TAKEN_ACTIONS" : ["DESCHIDE_LA_ORICINE", "TRIMIS_PE_PAYLOADS"],
+"DIRECTION": {
+  "FROM" : "ZONE_B",
+  "TO" : "ZONE_A"
+},
+"STREAM_NAME": "testV1.1",
+"IMG": <base64>
+...
+}
+
+//////////// Case #5.1: EVENT payload delivered from E2 (no command)
+{
+...
+"PLATE" : "B121TKA",
+"TIME " ".... 12:01",
+
+"IS_ALERT" : true,      // field added due to `in HOURS` just copyed from EXTRAS
+"INTERVAL" : "9-17"     // field added due to `in HOURS` just copyed from EXTRAS
+"ALLOWED" : false,      // from payload action
+
+"LIST" : "GRI_1",
+"TAKEN_ACTIONS" : ["TRIMIS_NASOL_PE_PAYLOAD"]
+"DIRECTION": {
+  "FROM" : "ZONE_B",
+  "TO" : "ZONE_A"
+},
+"STREAM_NAME": "testV1.1",
+"IMG": <base64>
+...
+}
+
+//////////// Case #5.2: EVENT payload delivered from E2 (no command)
+{
+...
+"PLATE" : "B121TKA",  // same as 5.1 but missing fields given by interval
+"TIME " ".... 18:01",
+"LIST" : "GRI_1",
+"TAKEN_ACTIONS" : [],
+"DIRECTION": {
+  "FROM" : "ZONE_B",
+  "TO" : "ZONE_A"
+},
+"STREAM_NAME": "testV1.1",
+"IMG": <base64>
+...
+}
+

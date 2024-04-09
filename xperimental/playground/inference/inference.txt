@@ -1,0 +1,53 @@
+{
+  "ALIMENTARE_NEPERMISA": {
+    "NAME"                      : "ALIMENTARE_NEPERMISA",
+    "GRAPH"                     : "alimentare_nepermisa/92_man_v4_ens_0032_T_0.987.pb",
+    "GRAPH_TENSORS"             : "alimentare_nepermisa/92_man_v4_ens_0032_T_0.987.pb.txt",
+    "IMG_H"                     : 300, 
+    "IMG_W"                     : 300,
+    "BATCH_SIZE"                : 1,
+    "FRAMEWORK"                 : "TENSORFLOW"
+  },
+
+  "EFF_DET0": {
+    "NAME"                      : "EFF_DET0",
+    "GRAPH"                     : "effdet_1020x574/efficientdetd0_b1_1020x574/efficientdet-d0_frozen.pb",
+    "GRAPH_TENSORS"             : "effdet_1020x574/efficientdetd0_b1_1020x574/efficientdet-d0_frozen.pb.txt",
+    "MODEL_THRESHOLD"           : 0.3,
+    "RENAME_CLASS"              : {},
+    "BATCH_SIZE"                : 1,
+    "BATCH_STRATEGY"            : "MOST_COMMON_SHAPE",
+    "FRAMEWORK"                 : "TENSORFLOW"
+  },
+
+  "FACE_DETECTION" : {
+    "NAME"                      : "FACE_DETECTION",
+    "GRAPH"                     : "face_detection/110_face_model.pb",
+    "GRAPH_TENSORS"             : "face_detection/110_face_model.pb.txt",
+    "MODEL_THRESHOLD"           : 0.3,
+    "IMG_H"                     : 608,
+    "IMG_W"                     : 608,
+    "BATCH_SIZE"                : 1,
+    "FRAMEWORK"                 : "TENSORFLOW"
+  },
+  
+  "FIRE_SMOKE": {
+    "NAME"                      : "FIRE_SMOKE",
+    "GRAPH"                     : "fire_smoke/102_mfs_v7_ens_0004.pb",
+    "GRAPH_TENSORS"             : "fire_smoke/102_mfs_v7_ens_0004.pb.txt",
+    "IMG_H"                     : 263, 
+    "IMG_W"                     : 263,
+    "BATCH_SIZE"                : 1,
+    "FRAMEWORK"                 : "TENSORFLOW"
+  },
+  
+  "EMPLOYEE_DETECTION": {
+    "NAME"                      : "EMPLOYEE_DETECTION",    
+    "GRAPH_DEFINION"            : "employee_detection/model.lib",
+    "GRAPH_WEIGHTS"             : "employee_detection/model.pth",
+    "IMG_H"                     : 263, 
+    "IMG_W"                     : 263,
+    "BATCH_SIZE"                : 1,
+    "FRAMEWORK"                 : "PYTORCH"
+  }
+}
