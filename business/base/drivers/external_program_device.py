@@ -70,7 +70,7 @@ class ExternalProgramDevice(Device):
 
     return
 
-  def __prepare_files(self, **args):
+  def __prepare_files(self, **kwargs):
     """
     Prepare the files to be used as arguments for the external program
     Parameters
@@ -84,10 +84,10 @@ class ExternalProgramDevice(Device):
     file_paths = {}
     for arg in self.cfg_external_program_arguments:
       if arg[EPDConstants.ARGUMENT_TYPE] == EPDConstants.ARGUMENT_TYPE_FILE:
-        file_url = args.get(arg[EPDConstants.ARGUMENT_NAME])
+        file_url = kwargs.get(arg[EPDConstants.ARGUMENT_NAME])
         if file_url:
           filename = file_url.split("/")[-1].split(":")[-1]
-          local_path = self.download(url=file_url, fn=filename, **args)
+          local_path = self.download(url=file_url, fn=filename, **kwargs)
           if local_path is None and arg[EPDConstants.ARGUMENT_FORCE] is True:
             raise ValueError(f"Error downloading file from URL: {file_url}")
           file_paths[arg[EPDConstants.ARGUMENT_NAME]] = local_path
@@ -151,7 +151,7 @@ class ExternalProgramDevice(Device):
 
     return
 
-  def device_run_external_program(self, **args):
+  def device_run_external_program(self, **kwargs):
     """
     Run the external program with the given arguments
     Parameters
@@ -169,12 +169,12 @@ class ExternalProgramDevice(Device):
       raise ValueError("Operation is still in cooldown")
 
     try:
-      files = self.__prepare_files(**args)
+      files = self.__prepare_files(**kwargs)
 
       argument_list = []
       # check if the method is implemented in the derived class
       if hasattr(self, "_process_dynamic_params"):
-        argument_list = self._process_dynamic_params(files=files, **args)
+        argument_list = self._process_dynamic_params(files=files, **kwargs)
       self.__device_execute_program(self.cfg_external_program_binary, argument_list)
     except Exception as e:
       message = f"Error running external program: {e}"
@@ -187,7 +187,7 @@ class ExternalProgramDevice(Device):
 
     return
 
-  def device_action_run_external_program(self, **args):
+  def device_action_run_external_program(self, **kwargs):
     """
     Run the external program with the given arguments
     This method is called by the client using and instance command
@@ -201,8 +201,12 @@ class ExternalProgramDevice(Device):
 
     """
     try:
-      self.device_run_external_program(**args)
-      self._create_action_payload(action="RUN_EXTERNAL_PROGRAM", message="command executed", **args)
+      self.device_run_external_program(**kwargs)
+      self._create_action_payload(
+        action="RUN_EXTERNAL_PROGRAM", 
+        message="command executed", 
+        on_command_params=kwargs,
+      )
       return
     except Exception as e:
       message = f"Error running external program: {e}"

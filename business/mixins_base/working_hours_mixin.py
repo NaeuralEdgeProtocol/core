@@ -68,16 +68,20 @@ class _WorkingHoursMixin(object):
       img=None,
     )
     return
+  
+  
+  def __get_outside_working_hours(self):
+    interval_idx = None
+    result = True
+    weekday_name = None
 
-  @property
-  def outside_working_hours(self):
-    # if the plugin is configured to ignore working hours it will always be considered as inside working hours
+ # if the plugin is configured to ignore working hours it will always be considered as inside working hours
     if self.cfg_ignore_working_hours:      
-      return False
+      return False, interval_idx, weekday_name
     
     # if the provided working_hours is None the plugin will always be outside working hours
-    if (self.working_hours is None):
-      return True
+    if self.working_hours is None:
+      return True, interval_idx, weekday_name
 
     ts_now = self.datetime.now()
     # extracting both the weekday and the hour intervals if it's the case
@@ -86,24 +90,28 @@ class _WorkingHoursMixin(object):
       schedule=self.working_hours,
       return_day_name=True
     )
-
+    
     # in case we have schedule based on week days and the current day was not specified
     # it means we are outside the working hours
-    if lst_hour_schedule is None:
-      return True
+    
+    if lst_hour_schedule is not None:
+      # if hour_schedule is an empty list we have 2 cases:
+      # 1. The plugin will work non-stop on the current day (if schedule is using week days)
+      # 2. The plugin will work non-stop regardless of the week day
+      if len(lst_hour_schedule) == 0:
+        result = False
 
-    result = True  # assume outside if interval will not be found
+      interval_idx = self.log.extract_hour_interval_idx(
+        ts=ts_now,
+        lst_schedule=lst_hour_schedule
+      )
+    # endif hour_schedule is not None
+    return result, interval_idx, weekday_name
+  
 
-    # if hour_schedule is an empty list we have 2 cases:
-    # 1. The plugin will work non-stop on the current day (if schedule is using week days)
-    # 2. The plugin will work non-stop regardless of the week day
-    if len(lst_hour_schedule) == 0:
-      result = False
-
-    interval_idx = self.log.extract_hour_interval_idx(
-      ts=ts_now,
-      lst_schedule=lst_hour_schedule
-    )
+  @property
+  def outside_working_hours(self):
+    result, interval_idx, weekday_name = self.__get_outside_working_hours()
 
     # interval found or non-stop functioning
     if interval_idx is not None or not result:
