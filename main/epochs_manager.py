@@ -1,3 +1,4 @@
+
 import uuid
 
 
@@ -7,9 +8,11 @@ from copy import deepcopy
 from threading import Lock
 
 
-from core import constants as ct
-from core.utils import Singleton
+import constants as ct
+from utils import Singleton
 
+
+EPOCH_MANAGER_VERSION = '0.1.0'
 
 
 FN_NAME = 'epochs_status.pkl'
@@ -307,8 +310,11 @@ class EpochsManager(Singleton):
 
 
 if __name__ == '__main__':
-  from core import Logger
-  from core.main.net_mon import NetworkMonitor
+  from core_logging import Logger
+  from main.net_mon import NetworkMonitor
+  
+  FN_NETWORK = 'c:/Dropbox (Personal)/_DATA/netmon_db.pkl'
+  
   l = Logger('EPOCH', base_folder='.', app_folder='_local_cache')
   
   DATES = [
@@ -338,7 +344,7 @@ if __name__ == '__main__':
   
   assert id(eng) == id(netmon.epoch_manager)  
 
-  netmon.network_load_status()
+  netmon.network_load_status(FN_NETWORK)
   
   l.P("Current epoch is: {} ({})".format(eng.get_current_epoch(), eng.epoch_to_date()))
   

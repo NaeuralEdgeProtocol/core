@@ -41,9 +41,12 @@ def exponential_score(left, right, val, right_is_better=False, normed=False):
 
 NETMON_MUTEX = 'NETMON_MUTEX'
 
+NETMON_DB = 'network_monitor/db.pkl'
 class NetworkMonitor(DecentrAIObject):
   
   HB_HISTORY = 30 * 60 // 10 # 30 minutes of history with 10 seconds intervals
+  
+
 
   def __init__(self, log, node_name, node_addr, epoch_manager=None, **kwargs):
     self.node_name = node_name
@@ -820,11 +823,12 @@ class NetworkMonitor(DecentrAIObject):
       return
     
     
-    def network_load_status(self):
+    def network_load_status(self, network_status_db=NETMON_DB):
       """
       Load network map status from previous session.
       """
-      db_file = self.log.get_data_file('network_monitor/db.pkl')
+      db_file = self.log.get_data_file(network_status_db)
+
       if db_file is not None:
         self.P("Previous nodes states found. Loading network map status...")
         __network_heartbeats = self.log.load_pickle_from_data(
