@@ -8,8 +8,8 @@ from copy import deepcopy
 from threading import Lock
 
 
-import constants as ct
-from utils import Singleton
+from core import constants as ct
+from core.utils import Singleton
 
 
 EPOCH_MANAGER_VERSION = '0.1.0'
@@ -310,10 +310,10 @@ class EpochsManager(Singleton):
 
 
 if __name__ == '__main__':
-  from core_logging import Logger
-  from main.net_mon import NetworkMonitor
+  from core.core_logging import Logger
+  from core.main.net_mon import NetworkMonitor
   
-  FN_NETWORK = 'c:/Dropbox (Personal)/_DATA/netmon_db.pkl'
+  FN_NETWORK = None # 'c:/Dropbox (Personal)/_DATA/netmon_db.pkl'
   
   l = Logger('EPOCH', base_folder='.', app_folder='_local_cache')
   
@@ -331,7 +331,7 @@ if __name__ == '__main__':
   assert id(eng) == id(eng2)
     
   
-  if False:
+  if True:
     netmon = NetworkMonitor(
       log=l, node_name='aid_hpc', node_addr='0xai_A_VwF0hrQjqPXGbOVJqSDqvkwmVwWBBVQV3KXscvyXHC',
       epoch_manager=eng
@@ -344,34 +344,35 @@ if __name__ == '__main__':
   
   assert id(eng) == id(netmon.epoch_manager)  
 
-  netmon.network_load_status(FN_NETWORK)
+  has_data = netmon.network_load_status(FN_NETWORK)
   
-  l.P("Current epoch is: {} ({})".format(eng.get_current_epoch(), eng.epoch_to_date()))
-  
-  
-  nodes = {
-    x: netmon.network_node_address(x) for x in netmon.all_nodes
-  }
-  
-  
-  dct_hb = {}
-  
-  # now check the nodes for some usable data
-  current_epoch = eng.get_current_epoch()
-  for node in nodes:
-    hbs = netmon.get_box_heartbeats(node)
-    idx = -1
-    done = False
-    good_hbs = defaultdict(list)
-    for hb in hbs:
-      ep = eng.get_epoch_id(hb[ct.PAYLOAD_DATA.EE_TIMESTAMP])
-      if ep >= current_epoch:
-        good_hbs[ep].append(hb)
-    if len(good_hbs) > 0:
-      dct_hb[node] = good_hbs
-  
-  l.P("Data available for epochs:\n{}".format(
-    "\n".join(["{}: {}".format(x, list(dct_hb[x].keys())) for x in dct_hb]) 
-  ))
-  
-  # and start feeding the epoch manager
+  if has_data:    
+    l.P("Current epoch is: {} ({})".format(eng.get_current_epoch(), eng.epoch_to_date()))
+    
+    
+    nodes = {
+      x: netmon.network_node_address(x) for x in netmon.all_nodes
+    }
+    
+    
+    dct_hb = {}
+    
+    # now check the nodes for some usable data
+    current_epoch = eng.get_current_epoch()
+    for node in nodes:
+      hbs = netmon.get_box_heartbeats(node)
+      idx = -1
+      done = False
+      good_hbs = defaultdict(list)
+      for hb in hbs:
+        ep = eng.get_epoch_id(hb[ct.PAYLOAD_DATA.EE_TIMESTAMP])
+        if ep >= current_epoch:
+          good_hbs[ep].append(hb)
+      if len(good_hbs) > 0:
+        dct_hb[node] = good_hbs
+    
+    l.P("Data available for epochs:\n{}".format(
+      "\n".join(["{}: {}".format(x, list(dct_hb[x].keys())) for x in dct_hb]) 
+    ))
+    
+    # and start feeding the epoch manager

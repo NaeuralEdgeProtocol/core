@@ -41,7 +41,9 @@ def exponential_score(left, right, val, right_is_better=False, normed=False):
 
 NETMON_MUTEX = 'NETMON_MUTEX'
 
-NETMON_DB = 'network_monitor/db.pkl'
+NETMON_DB = 'db.pkl'
+NETMON_DB_SUBFOLDER = 'network_monitor'
+
 class NetworkMonitor(DecentrAIObject):
   
   HB_HISTORY = 30 * 60 // 10 # 30 minutes of history with 10 seconds intervals
@@ -823,18 +825,22 @@ class NetworkMonitor(DecentrAIObject):
       return
     
     
-    def network_load_status(self, network_status_db=NETMON_DB):
+    def network_load_status(self, external_db=None):
       """
       Load network map status from previous session.
       """
-      db_file = self.log.get_data_file(network_status_db)
+      result = False
+      
+      if external_db is None:
+        _fn = os.path.join(NETMON_DB_SUBFOLDER, NETMON_DB)
+        db_file = self.log.get_data_file(_fn)
+      else:
+        db_file = external_db if os.path.isfile(external_db) else None
+      #endif external_db is not None
 
       if db_file is not None:
         self.P("Previous nodes states found. Loading network map status...")
-        __network_heartbeats = self.log.load_pickle_from_data(
-          fn='db.pkl',
-          subfolder_path='network_monitor'
-        )
+        __network_heartbeats = self.log.load_pickle(db_file)
         if __network_heartbeats is not None:
           # update the current network info with the loaded info
           # this means that all heartbeats received until this point
@@ -857,12 +863,17 @@ class NetworkMonitor(DecentrAIObject):
               self.__register_heartbeat(eeid, data)
           # unlock the NETMON_MUTEX
           # end for
+          result = True
         else:
           msg = "Error loading network map status"
           msg += "\n  File: {}".format(db_file)
           msg += "\n  Size: {}".format(os.path.getsize(db_file))
           self.P(msg, color='r')
-      return
+        #endif __network_heartbeats loaded ok
+      else:
+        self.P("No previous network map status found.", color='r')
+      #endif db_file is not None
+      return result
     
       
     def network_node_last_seen(self, eeid, as_sec=True, dt_now=None):
