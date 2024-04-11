@@ -59,12 +59,22 @@ class EpochsManager(Singleton):
     self.owner = owner
     self.__current_epoch = None
     self.__data = {}
+    self._set_dbg_date(debug_date)
+    return
+  
+  
+  def _set_dbg_date(self, debug_date):
     if debug_date is not None:
       if isinstance(debug_date, str):
         debug_date = self.log.str_to_date(debug_date)
     self._debug_date = debug_date
     return
-    
+  
+  
+  def P(self, msg, **kwargs):
+    self.log.P(msg, **kwargs)
+    return
+  
   
   def start_timer(self, name):
     self.log.start_timer(name, section='epoch')
@@ -148,7 +158,7 @@ class EpochsManager(Singleton):
       the epoch id
     """
     if epoch_id is None:
-      epoch_id = self.get_current_epoch()
+      epoch_id = self.get_time_epoch()
     date = self.__genesis_date + timedelta(days=epoch_id)
     str_date = datetime.strftime(date, format="%Y-%m-%d")
     return str_date
@@ -160,7 +170,7 @@ class EpochsManager(Singleton):
     else:
       return datetime.now(datetime.UTC)
         
-  def get_current_epoch(self):
+  def get_time_epoch(self):
     """
     Returns the current epoch id.
     """
@@ -181,7 +191,7 @@ class EpochsManager(Singleton):
     """
     ts = hb[ct.PAYLOAD_DATA.EE_TIMESTAMP]
     tz = hb.get(ct.PAYLOAD_DATA.EE_TIMEZONE, "UTC+0")        
-    remote_datetime = datetime.strptime(ts, fmt=ct.HB.TIMESTAMP_FORMAT)
+    remote_datetime = datetime.strptime(ts, ct.HB.TIMESTAMP_FORMAT)
     offset_hours = int(tz.replace("UTC", ""))
     utc_datetime = remote_datetime - timedelta(hours=offset_hours)
     return utc_datetime
@@ -198,7 +208,7 @@ class EpochsManager(Singleton):
       The node address.
     """
     self.__data[node_addr][EPCT.CURRENT_EPOCH][EPCT.HB_TIMESTAMPS] = set()
-    self.__data[node_addr][EPCT.CURRENT_EPOCH][EPCT.ID] = self.get_current_epoch()
+    self.__data[node_addr][EPCT.CURRENT_EPOCH][EPCT.ID] = self.get_time_epoch()
     return
 
 
@@ -206,6 +216,37 @@ class EpochsManager(Singleton):
     for node_addr in self.__data:
       self.__reset_timestamps(node_addr)
     return
+  
+  
+  def __calculate_avail_seconds(self, timestamps, time_between_heartbeats=10):
+    """
+    This method calculates the availability of a node in the current epoch based on the timestamps.
+
+    Parameters
+    ----------
+    timestamps : set
+      The set of timestamps for the current epoch.
+
+    time_between_heartbeats: int
+      Mandatory time between heartbeats in seconds.
+    
+    Returns
+    -------
+    float
+      The availability percentage.
+    """
+    avail_seconds = 0
+    nr_timestamps = len(timestamps)
+    
+    if nr_timestamps > 1:      
+      for i in range(1, nr_timestamps):
+        delta = timestamps[i] - timestamps[i - 1]
+        if delta <= (time_between_heartbeats + 5):
+          avail_seconds += time_between_heartbeats
+        #endif delta between timestamps is less than the max heartbeat interval
+      #endfor each hb timestamp
+    #endif there are more than 1 timestamps
+    return avail_seconds    
 
 
   def __recalculate_current_epoch_for_node(self, node_addr):
@@ -220,15 +261,12 @@ class EpochsManager(Singleton):
     """
     timestamps = self.__data[node_addr][EPCT.CURRENT_EPOCH][EPCT.HB_TIMESTAMPS]
     current_epoch = self.__data[node_addr][EPCT.CURRENT_EPOCH][EPCT.ID]
-    # TODO: finish and review calculation
     # now the actual calculation
-    total_available = 0
+    avail_seconds = self.__calculate_avail_seconds(timestamps)
+    total_available = avail_seconds / 24 * 3600
     
-    
-    # END the actual calculation
-    # set the value
     self.__data[node_addr][EPCT.EPOCHS][current_epoch] = total_available
-    return
+    return total_available
     
     
     
@@ -251,21 +289,38 @@ class EpochsManager(Singleton):
     starts a new one. Closing the epoch implies recalculating the current epoch node availability 
     for all nodes and then resetting the timestamps.
     """
-    current_epoch = self.get_current_epoch()
+    current_epoch = self.get_time_epoch()
     if self.__current_epoch is None:
       self.__current_epoch = current_epoch
       self.P("Starting epoch: {}".format(self.__current_epoch))
     elif current_epoch != self.__current_epoch:
-      self.P("Closing epoch: {}".format(self.__current_epoch))
-      self.recalculate_current_epoch_for_all()
-      self.P("Starting epoch: {}".format(current_epoch))
-      self.__current_epoch = current_epoch      
-      self.__reset_all_timestamps()
-      self._save_status()
+      if current_epoch != (self.__current_epoch + 1):
+        self.P("Epoch is not valid. Current epoch: {}, Last epoch: {}".format(current_epoch, self.__current_epoch))
+      else:
+        self.P("Closing epoch: {}".format(self.__current_epoch))
+        self.recalculate_current_epoch_for_all()
+        self.P("Starting epoch: {}".format(current_epoch))
+        self.__current_epoch = current_epoch      
+        self.__reset_all_timestamps()
+        self._save_status()
+      #endif epoch is not the same as the current one
+    #endif current epoch is not None
     return
   
 
   def register_data(self, node_addr, hb):
+    """
+    This method registers a heartbeat for a node in the current epoch.
+    
+    Parameters
+    ----------
+    node_addr : str
+      The node address.
+      
+    hb : dict
+      The heartbeat dict.
+      
+    """
     # maybe first epoch for node_addr
     if node_addr not in self.__data:
       node_name = self.get_node_name(node_addr)
@@ -274,17 +329,52 @@ class EpochsManager(Singleton):
     dt_remote_utc = self.get_hb_utc(hb)
     # check if the hb epoch is the same as the current one
     remote_epoch = self.get_epoch_id(dt_remote_utc)
-    local_epoch = self.get_current_epoch()    
+    local_epoch = self.get_time_epoch()
     if remote_epoch == local_epoch:
       # the remote epoch is the same as the local epoch so we can register the heartbeat
       self.log.lock_resource(EPOCHMON_MUTEX)
       # add the heartbeat timestamp for the current epoch
       self.__data[node_addr][EPCT.CURRENT_EPOCH][EPCT.HB_TIMESTAMPS].add(dt_remote_utc)
       self.log.unlock_resource(EPOCHMON_MUTEX)
+    else:
+      self.P("Received epoch {} from node {} on epoch {}".format(
+        remote_epoch, node_addr, local_epoch
+      ))
+    #endif remote epoch is the same as the local epoch
+    self.maybe_close_epoch()
     return
   
   
-  def get_node_epoch_liveness(self, node_addr, epoch_id):
+  def get_node_state(self, node_addr):
+    """
+    Returns the state of a node in the current epoch.
+
+    Parameters
+    ----------
+    node_addr : str
+      The node address.
+    """
+    if node_addr not in self.__data:
+      return None
+    return self.__data[node_addr]
+  
+  
+  def get_node_epochs(self, node_addr):
+    """
+    Returns the epochs availability for a node.
+
+    Parameters
+    ----------
+    node_addr : str
+      The node address.
+    """
+    if node_addr not in self.__data:
+      return None
+    dct_state = self.get_node_state(node_addr)
+    return dct_state[EPCT.EPOCHS]
+  
+  
+  def get_node_epoch(self, node_addr, epoch_id=None):
     """
     This method returns the percentage a node was alive in a given epoch.
     The data is returned from already calculated values.
@@ -294,7 +384,7 @@ class EpochsManager(Singleton):
     node_addr : str
       The node address.
     epoch_id : int
-      The epoch id.
+      The epoch id. Defaults to the last epoch
 
     Returns
     -------
@@ -303,9 +393,15 @@ class EpochsManager(Singleton):
     """
     if node_addr not in self.__data:
       return None
-    if epoch_id >= self.get_current_epoch():
+    if epoch_id is None:
+      epoch_id = self.get_time_epoch() - 1
+    if epoch_id < 1 or epoch_id >= self.get_time_epoch():
       return None
-    return self.__data[node_addr][EPCT.EPOCHS][epoch_id]
+    epochs = self.get_node_epochs(node_addr)
+    if epochs is None:
+      return None
+    return epochs[epoch_id]
+  
   
 
 
@@ -313,7 +409,7 @@ if __name__ == '__main__':
   from core.core_logging import Logger
   from core.main.net_mon import NetworkMonitor
   
-  FN_NETWORK = None # 'c:/Dropbox (Personal)/_DATA/netmon_db.pkl'
+  FN_NETWORK = 'c:/Dropbox (Personal)/_DATA/netmon_db.pkl'
   
   l = Logger('EPOCH', base_folder='.', app_folder='_local_cache')
   
@@ -340,25 +436,25 @@ if __name__ == '__main__':
     netmon = NetworkMonitor(
       log=l, node_name='aid_hpc', node_addr='0xai_A_VwF0hrQjqPXGbOVJqSDqvkwmVwWBBVQV3KXscvyXHC'
     )
-    eng.owner = netmon
+    
+  eng.owner = netmon
   
   assert id(eng) == id(netmon.epoch_manager)  
 
   has_data = netmon.network_load_status(FN_NETWORK)
   
   if has_data:    
-    l.P("Current epoch is: {} ({})".format(eng.get_current_epoch(), eng.epoch_to_date()))
+    l.P("Current time epoch is: {} ({})".format(eng.get_time_epoch(), eng.epoch_to_date()))
     
     
     nodes = {
       x: netmon.network_node_address(x) for x in netmon.all_nodes
     }
-    
-    
+        
     dct_hb = {}
     
     # now check the nodes for some usable data
-    current_epoch = eng.get_current_epoch()
+    current_epoch = eng.get_time_epoch()
     for node in nodes:
       hbs = netmon.get_box_heartbeats(node)
       idx = -1
@@ -375,4 +471,14 @@ if __name__ == '__main__':
       "\n".join(["{}: {}".format(x, list(dct_hb[x].keys())) for x in dct_hb]) 
     ))
     
-    # and start feeding the epoch manager
+    
+    for step in range(2):
+      l.P("Running step {}".format(step))
+      current_date = DATES[step]
+      eng._set_dbg_date(current_date)
+      epoch = eng.get_epoch_id(current_date)
+      for node in dct_hb:
+        for hb in dct_hb[node][epoch]:
+          eng.register_data(node, hb)
+    
+    l.show_timers()
