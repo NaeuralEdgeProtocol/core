@@ -13,6 +13,7 @@ from core import Logger
 from core.local_libraries.nn.th.trainer import ModelTrainer
 from PyE2 import _PluginsManagerMixin
 from core import constants as ct
+from collections import defaultdict
 
 
 class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
@@ -23,7 +24,22 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
   model_factory_loc = None
   training_callbacks_loc = None
 
-  def __init__(self, log : Logger, signature : str, config : dict, path_to_dataset : str, **kwargs):
+  def __init__(
+      self, log: Logger, signature: str, config: dict,
+      path_to_dataset: str, dataset_disk_preprocess_kwargs: dict = None, **kwargs
+  ):
+    """
+    Base class for training pipelines.
+    Parameters
+    ----------
+    log : Logger, logger object
+    signature : str, signature of the pipeline
+    config : dict, configuration dictionary
+    path_to_dataset : str, path to the dataset
+    dataset_disk_preprocess_kwargs : dict, dictionary with disk preprocess
+    This will be used in order to preprocess the dataset before loading it.
+    kwargs : dict, additional keyword arguments
+    """
     self.config = config
     self.signature = signature
 
@@ -32,6 +48,7 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
 
     self._path_to_dataset = path_to_dataset
     self._dataset_name = os.path.split(self._path_to_dataset.rstrip(os.sep))[-1]# .split(os.sep)[-1]
+    self.dataset_disk_preprocess_kwargs = dataset_disk_preprocess_kwargs
 
     self._data_factory_ref = None
     self._model_factory_ref = None
@@ -124,6 +141,90 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
       self.experiment_subfolder
     )
 
+    return
+
+  def disk_preprocessed_name(self):
+    """
+    Method that will be called in order to get the name of the preprocessed dataset.
+    Returns
+    -------
+    res : str, name of the preprocessed dataset
+    """
+    preprocess_params = self.dataset_disk_preprocess_kwargs
+    params_values = [preprocess_params.get(k, '') for k in sorted(preprocess_params.keys())]
+    return f"{self._dataset_name}__{'__'.join([str(val) if val is not None else '' for val in params_values])}"
+
+  def disk_preprocess_datapoint(self, datapoint_files, src_path_prefix, dst_path_prefix):
+    """
+    Method that will be called in order to preprocess a datapoint before loading it.
+    When implementing this in a child class, the user will need to define preprocessing
+    of a datapoint, but will also need to define the saving of the new datapoint in the
+    new dataset location.
+    Parameters
+    ----------
+    datapoint_files : list, list of files that are part of the datapoint
+    src_path_prefix : str, path prefix to the source dataset
+    dst_path_prefix : str, path prefix to the destination dataset
+    """
+    raise NotImplementedError
+
+  def disk_preprocess_dataset(self):
+    """
+    Method that will be called in order to preprocess the dataset before loading it.
+    The preprocessed dataset will be saved on disk with the name provided by the `disk_preprocessed_name` method.
+    Returns
+    -------
+
+    """
+    # The new dataset directory needs to be created
+    new_dataset_name = self.disk_preprocessed_name()
+    ds_path_prefix = os.path.split(self._path_to_dataset.rstrip(os.sep))[0]
+    full_new_ds_path = os.path.join(ds_path_prefix, new_dataset_name)
+    if os.path.exists(full_new_ds_path):
+      # The dataset already exists, so we will not preprocess it again
+      self.P(f"Dataset {new_dataset_name} already exists. Skipping disk preprocessing.")
+      return full_new_ds_path, new_dataset_name
+    # endif dataset already exists
+
+    # The dataset will be preprocessed
+    # Firstly, a partial directory will be created
+    partial_dataset_name = f'{new_dataset_name}_partial'
+    ds_path = os.path.join(ds_path_prefix, partial_dataset_name)
+    os.makedirs(ds_path, exist_ok=True)
+
+    # For each file basename all the extensions will be gathered.
+    # This is done in order to have access to all the information of a certain datapoint,
+    # since the dataset can have multiple files for each datapoint.
+    files_dict = defaultdict(lambda: [])
+    for root, dirs, files in os.walk(self._path_to_dataset):
+      for file in files:
+        basename, ext = os.path.splitext(file)
+        files_dict[basename].append(ext)
+      # endfor files
+    # endfor os.walk
+
+    # All the datapoints will be preprocessed
+    for basename, exts in files_dict.items():
+      datapoint_files = [f'{basename}.{ext}' for ext in exts]
+      self.disk_preprocess_datapoint(datapoint_files, self._path_to_dataset, ds_path)
+    # endfor datapoints
+
+    # The partial dataset will be renamed to the final dataset name
+    os.rename(ds_path, full_new_ds_path)
+    return full_new_ds_path, new_dataset_name
+
+  def maybe_disk_preprocess_dataset(self):
+    """
+    Method that will be called before the training starts.
+    It will check if the dataset needs to be preprocessed before loading it.
+    """
+    if self.dataset_disk_preprocess_kwargs is not None:
+      self.P("Disk preprocessing dataset...")
+      new_ds_path, new_ds_name = self.disk_preprocess_dataset()
+      self._path_to_dataset = new_ds_path
+      self._dataset_name = new_ds_name
+      self.P(f"Dataset preprocessed. New dataset path: {new_ds_path} and new dataset name: {new_ds_name}. Performing startup again...")
+      self.startup()
     return
 
   @abc.abstractmethod
@@ -543,6 +644,7 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
     return pretrained_weights_path
 
   def run(self, start_iter=0, end_iter=None):
+    self.maybe_disk_preprocess_dataset()
     self._time_start_run = time()
     self._grid_loop_exception = False
     dct_grid_search = self.get_grid_search() or self.default_grid_search
