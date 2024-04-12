@@ -168,6 +168,13 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
     """
     raise NotImplementedError
 
+  def disk_preprocess_dataset_init(self, **kwargs):
+    """
+    Utility method that will be called before the preprocessing itself,
+    in order for the user to be able to properly set up the disk preprocessing of the dataset.
+    """
+    pass
+
   def disk_preprocess_dataset(self):
     """
     Method that will be called in order to preprocess the dataset before loading it.
@@ -176,6 +183,10 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
     -------
 
     """
+    # First, the setup of the disk preprocessing will be done
+    self.disk_preprocess_dataset_init(**{
+      k.lower(): v for k, v in self.dataset_disk_preprocess_kwargs.items()
+    })
     # The new dataset directory needs to be created
     new_dataset_name = self.disk_preprocessed_name()
     ds_path_prefix = os.path.split(self._path_to_dataset.rstrip(os.sep))[0]
@@ -208,7 +219,6 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
       datapoint_files = [f'{basename}.{ext}' for ext in exts]
       self.disk_preprocess_datapoint(datapoint_files, self._path_to_dataset, ds_path)
     # endfor datapoints
-
     # The partial dataset will be renamed to the final dataset name
     os.rename(ds_path, full_new_ds_path)
     return full_new_ds_path, new_dataset_name
@@ -312,6 +322,13 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
     Property that tells the pipeline to save only the best K models in a grid search in order to save disk space.
     """
     return self.config.get('KEEP_TOP_K_ITERATIONS', None)
+
+  @property
+  def cfg_pretrained_weights_url(self):
+    """
+    Property that returns the URL from where the pretrained weights can be downloaded or the path to the pretrained weights.
+    """
+    return self.config.get('PRETRAINED_WEIGHTS_URL', None)
 
   @property
   def default_grid_search(self):
@@ -723,6 +740,7 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
         model_loss = self.model_loss(**dct_grid_option)
         skip_iteration = False
         pretrained_weights_url = trainer_kwargs.get('pretrained_weights', None)
+        pretrained_weights_url = self.cfg_pretrained_weights_url if pretrained_weights_url is None else pretrained_weights_url
         if pretrained_weights_url is not None:
           pretrained_weights_path = self.get_pretrained_weights_path(pretrained_weights_url)
           if pretrained_weights_path is not None:

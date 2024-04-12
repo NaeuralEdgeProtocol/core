@@ -37,6 +37,7 @@ class THTraining(BaseServingProcess, _PluginsManagerMixin):
 
   def __init__(self, **kwargs):
     self._pipeline : BaseTrainingPipeline = None
+    self.__done_training = False
     super(THTraining, self).__init__(**kwargs)
     return
 
@@ -90,6 +91,7 @@ class THTraining(BaseServingProcess, _PluginsManagerMixin):
       self.sleep(1)
 
     self._pipeline.run(start_iter=self.get_start_iter(), end_iter=self.get_end_iter())
+    self.__done_training = True
     return
 
   def _pre_process(self, inputs):
@@ -117,7 +119,9 @@ class THTraining(BaseServingProcess, _PluginsManagerMixin):
 
   def _shutdown(self):
     self.P('Shutting down continuous thread...')
-    ctype_async_raise(self._continous_thread.ident, self.ct.ForceStopException)
+    if not self.__done_training:
+      self.P('Training process has not finished yet, forcing stop...')
+      ctype_async_raise(self._continous_thread.ident, self.ct.ForceStopException)
     self._continous_thread.join()
     self.P('Continuous thread has been shut down')
     gc.collect()
