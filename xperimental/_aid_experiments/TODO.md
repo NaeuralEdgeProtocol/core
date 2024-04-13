@@ -1,6 +1,10 @@
 # AID
 
+
 ## Bugs
+
+  - send - "loading model state" in HBs - no MLSTOP !
+
 
   - MOVE to UTC time in all logs and messages and stuff
     - remove time zone from container volume
@@ -16,7 +20,6 @@
 
 ## BC & Admin
 
-  - REDUCE HB size for netmon
 
 
   - TEST COMMS env -> ENCRYPTED_COMMS default False
