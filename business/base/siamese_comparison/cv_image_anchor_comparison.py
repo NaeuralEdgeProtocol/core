@@ -11,7 +11,7 @@ _CONFIG = {
   },
 
   # Developer config
-  "AI_ENGINE": ["general_detector"],
+  "AI_ENGINE": ["lowres_general_detector"],
   "ALLOW_COMPARISON_WITH_NO_ANCHOR": False,
   "MAX_INPUTS_QUEUE_SIZE": 1,  # slow plugin - must process only current state/input
   'WARNING_ANCHOR_SAVE_FAIL_SEND_INTERVAL': 60,  # seconds
