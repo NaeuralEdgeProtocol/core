@@ -61,7 +61,10 @@ class Orchestrator(DecentrAIObject,
                    ):
 
   def __init__(self, log : Logger, **kwargs):
-    self.__version__ = __CORE_VER__
+    if __APP_VER__ is None:
+      self.__version__ = __CORE_VER__
+    else:
+      self.__version__ = f"{__APP_VER__}/{__CORE_VER__}"
 
     self.__loop_stage = -1
     self.__main_loop_stopped = False
