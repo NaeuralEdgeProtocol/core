@@ -504,13 +504,12 @@ class ServingManager(Manager):
       else:
         self.P("Serving process '{}' is running with PID {}".format(server_name, _pid))
         # now we wait for "READY" status
-        wait_time = self._server_wait_time(server_name) * self.max_wait_time_multiplier
-        self.P("  Waiting {:.1f}s for '{}' to respond".format(wait_time, server_name))
+        self.P("  Waiting until '{}' responds".format(server_name))
         self.owner.set_loop_stage('3.serving.start.{}.wait'.format(server_name), is_dangerous=False)
         result = self._wait_for_result(
           server_name=server_name, 
           comm_eng=comm_server, 
-          max_wait_time=wait_time,
+          max_wait_time=float('inf'),
         )
         self.owner.set_loop_stage('3.serving.start.{}.received'.format(server_name))
         msg_type, msg_data = None, None
