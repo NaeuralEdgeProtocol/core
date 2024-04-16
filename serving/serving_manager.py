@@ -53,7 +53,7 @@ class SMConst:
   PID = 'PID'
   COVERED_BY = 'COVERED_BY'
   SHM = 'SHM'
-  DEFAULT_COMM_METHOD = 'default'
+  DEFAULT_COMM_METHOD = 'shm'
   
   CMD_ID = 'CMD_ID'
   TIMESTAMP = 'TIMESTAMP'
