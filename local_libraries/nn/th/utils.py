@@ -1,12 +1,45 @@
 import numpy as np
 import torch as th
 import torchvision as tv
+from core.local_libraries.nn.utils import get_dropout_rate
 
 __VER__ = '0.2.0.0'
 
 
 def Pr(s=''):
   print('\r' + str(s), end='', flush=True)
+
+
+def get_dropout(
+    dropout=0.1,
+    dropout_type='classic',
+    value_type='constant',
+    step=0,
+    max_step=0
+):
+  """
+
+  Parameters
+  ----------
+  dropout : float, The base dropout rate
+  dropout_type : str, The type of dropout to be used
+    if 'classic' the dropout used will be the standard dropout
+    if 'spatial' the dropout used will be the spatial dropout
+  value_type : str, The type of the dropout rate variation
+    if 'constant' the dropout rate will be constant,
+    if 'last' the dropout rate will be 0 until the last step,
+    if 'progressive' the dropout rate will increase linearly from 0 to the specified dropout rate.
+    otherwise the dropout rate will be 0
+  step : int, The current step in the training process
+  max_step : int, The maximum number of steps in the training process
+
+  Returns
+  -------
+
+  """
+  dropout_rate = get_dropout_rate(value_type, dropout, step, max_step)
+  dropout_class = th.nn.Dropout2d if dropout_type == 'spatial' else th.nn.Dropout2d
+  return dropout_class(dropout_rate)
 
 
 def _th_normalize(th_x, sub_val, div_val, half=False):

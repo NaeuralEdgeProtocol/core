@@ -10,20 +10,37 @@ def get_model_size(model):
     n_bytes += size
     n_params += npar
   return n_params, n_bytes
-    
 
 
-def get_dropout(
-    dropout_type='constant',
+def get_dropout_rate(
+    value_type='constant',
     dropout=0.1,
     step=0,
     max_step=0
 ):
-  if dropout_type == 'constant':
+  """
+  Utility method for getting the dropout rate for a multistep training process.
+  Parameters
+  ----------
+  value_type : str,
+    if 'constant' the dropout rate will be constant,
+    if 'last' the dropout rate will be 0 until the last step,
+    if 'progressive' the dropout rate will increase linearly from 0 to the specified dropout rate.
+    otherwise the dropout rate will be 0
+  dropout : float, the base dropout rate
+  step : int, the current step in the training process
+  max_step : int, the maximum number of steps in the training process
+
+  Returns
+  -------
+  float, the computed dropout rate
+  """
+  dropout = max(0.0, min(1.0, dropout))
+  if value_type == 'constant':
     return dropout
-  if dropout_type == 'last':
+  if value_type == 'last':
     return 0 if step < max_step else dropout
-  if dropout_type == 'progressive':
+  if value_type == 'progressive':
     return np.linspace(dropout / 10, dropout, max_step + 1)[step]
   return 0
 

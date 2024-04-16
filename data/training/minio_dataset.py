@@ -22,6 +22,7 @@ class MinioDatasetDataCapture(DataCaptureThread):
     self._file_system_manager = None
     self._heuristic_cap_resolution = None
     self._send_pings = False
+    self.checked_dataset = False
     super(MinioDatasetDataCapture, self).__init__(**kwargs)
     return
 
@@ -85,9 +86,13 @@ class MinioDatasetDataCapture(DataCaptureThread):
     return
 
   def _run_data_aquisition_step(self):
-    if not self._is_dataset_available():
+    if not self.checked_dataset:
+      self.P(f"Checking if dataset {self.cfg_dataset_object_name} is available...")
+    if not self.checked_dataset and not self._is_dataset_available():
+      self.P(f"Dataset {self.cfg_dataset_object_name} not available.")
       self._add_not_data_avail_inputs()
     else:
+      self.checked_dataset = True
       if not self._send_pings:
         self._add_data_was_found_inputs()
         self._send_pings = True
@@ -108,6 +113,7 @@ class MinioDatasetDataCapture(DataCaptureThread):
   def _add_data_was_found_inputs(self):
     target_path = self.os_path.join(self.parent_fld, self.cfg_dataset_object_name)
     if self.os_path.isdir(target_path) and not self.cfg_force_download:
+      self.P(f"Dataset already available at {target_path}")
       self._add_inputs(
         [
           self._new_input(struct_data={'can_start_training': True, 'dataset_path': target_path})
@@ -118,11 +124,14 @@ class MinioDatasetDataCapture(DataCaptureThread):
 
     os.makedirs(self.parent_fld, exist_ok=True)
     dataset_path = self.os_path.join(self.parent_fld, self.cfg_dataset_object_name) + '.zip'
+    self.P(f"Downloading dataset {self.cfg_dataset_object_name} to {dataset_path}")
     self._download_minio_file(
       uri=self.cfg_dataset_object_name + '.zip',
       local_file_path=dataset_path
-    )    
+    )
+    self.P(f"Downloaded dataset {self.cfg_dataset_object_name} to {dataset_path}. Unzipping...")
     target_path = self._unzip(dataset_path)
+    self.P(f"Unzipped dataset {self.cfg_dataset_object_name} to {target_path}.")
     os.remove(dataset_path)
     self._add_inputs(
       [
@@ -140,6 +149,9 @@ class MinioDatasetDataCapture(DataCaptureThread):
     return
 
   def _is_dataset_available(self):
+    target_path = self.os_path.join(self.parent_fld, self.cfg_dataset_object_name)
+    if self.os_path.isdir(target_path) and not self.cfg_force_download:
+      return True
     inventory = self._file_system_manager.file_system.list_objects()
     return self.cfg_dataset_object_name in inventory or self.cfg_dataset_object_name + '.zip' in inventory
 

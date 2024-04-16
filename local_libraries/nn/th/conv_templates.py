@@ -8,20 +8,37 @@ from core.local_libraries.nn.th.layers import (
   IdentityLayer,
   EmbeddingTransform,
 )
-
-from core.local_libraries.nn.th.utils import l2distance, get_optimizer_class, get_activation
+from core.local_libraries.nn.utils import get_dropout_rate
+from core.local_libraries.nn.th.utils import l2distance, get_optimizer_class, get_activation, get_dropout
 
 
 class CNNColumn(th.nn.Module):
+  """
+  Convolutional Neural Network Column class that applies a series of convolutional layers.
+  """
   def __init__(
       self, lst_filters, layer_norm,
       in_channels=None, input_dim=None,
       nconv=1, stride_multiplier=1,
       act='relu', dropout=0, dropout_type='classic',
+      dropout_value_type='constant',
       skipping='residual', resize_conv=False
   ):
     """
-    TODO: Docstrings
+    Parameters
+    ----------
+    lst_filters : list(tuple(int, int)), list of tuples defining the number of filters and kernel size for each layer
+    layer_norm : bool, whether to apply layer normalization
+    in_channels : int or list or tuple, number of input channels
+    input_dim : tuple of int, input dimensions
+    nconv : int, number of times to apply a certain convolutional layer
+    stride_multiplier : int, stride multiplier for the first layer
+    act : str, activation function
+    dropout : float, dropout rate
+    dropout_type : str, type of dropout
+    dropout_value_type : str, type of dropout value
+    skipping : str, type of skipping connection
+    resize_conv : bool, whether to apply a convolutional resizer
     """
     super().__init__()
     if (input_dim is None or not all(input_dim)) and layer_norm is True:
@@ -43,6 +60,12 @@ class CNNColumn(th.nn.Module):
 
     self.column = th.nn.ModuleList()
     for i in range(len(lst_filters)):
+      dropout_rate = get_dropout_rate(
+        dropout=dropout,
+        step=i,
+        max_step=len(lst_filters) - 1,
+        value_type=dropout_value_type
+      )
       self.column.append(
         conv_module(
           input_dim=input_dim,
@@ -51,7 +74,7 @@ class CNNColumn(th.nn.Module):
           kernel_size=lst_filters[i][1],
           stride=lst_filters[i][2] if len(lst_filters[i]) > 2 else (
             lst_filters[i][1] * stride_multiplier if i == 0 else 1),
-          dropout=dropout,
+          dropout=dropout_rate,
           dropout_type=dropout_type,
           activation=act,
           patching=False
@@ -223,10 +246,28 @@ class ImageEncoderWithStem(th.nn.Module):
 
 
 class ReadoutConv(th.nn.Module):
+  """
+  Readout Convolutional Neural Network class that applies a series of depth separable convolutional layers.
+  """
   def __init__(
       self, lst_convs, in_channels, input_dim,
-      act='relu6', dropout=0, embedding_type='flatten'
+      act='relu6', dropout=0, embedding_type='flatten',
+      dropout_type='classic', dropout_value_type=''
   ):
+    """
+
+    Parameters
+    ----------
+    lst_convs : list(int), list of number of filters for each layer
+    in_channels : int, number of input channels
+    input_dim : tuple of int, input dimensions
+    act : str, activation function
+    dropout : float, dropout rate
+    embedding_type : str, type of embedding
+    dropout_type : str, type of dropout
+    dropout_value_type : str, type of dropout value applied after each depthwise separable convolutional layer.
+      This is set to '' by default for backward compatibility.
+    """
     super(ReadoutConv, self).__init__()
 
     self.lst_convs = lst_convs
@@ -234,7 +275,13 @@ class ReadoutConv(th.nn.Module):
     lst_blocks = []
     self.output_dim = input_dim
     self.in_channels = in_channels
-    for out_channels in lst_convs:
+    for step, out_channels in enumerate(lst_convs):
+      dropout_rate = get_dropout_rate(
+        dropout=dropout,
+        step=step,
+        max_step=len(lst_convs) - 1,
+        value_type=dropout_value_type
+      )
       conv = DSepConv2DModule(
         in_channels=in_channels,
         out_channels=out_channels,
@@ -243,7 +290,9 @@ class ReadoutConv(th.nn.Module):
         input_dim=input_dim,
         activation=get_activation(act),
         patching=False,
-        stride=1
+        stride=1,
+        dropout=dropout_rate,
+        dropout_type=dropout_type
       )
       input_dim = conv.output_dim
       self._output_dim = conv.output_dim
@@ -252,14 +301,12 @@ class ReadoutConv(th.nn.Module):
     # endfor
 
     self.blocks = th.nn.Sequential(*lst_blocks)
-    # self.flatten = th.nn.Flatten()
     self.embedding = EmbeddingTransform(
       type=embedding_type,
       input_dim=self._output_dim
     )
     self.dropout_rate = dropout
-    if self.dropout_rate > 0:
-      self.dropout = th.nn.Dropout(p=dropout)
+    self.dropout = get_dropout(dropout=self.dropout_rate, dropout_type=dropout_type)
     return
 
   @property
@@ -279,19 +326,21 @@ class ReadoutConv(th.nn.Module):
   def forward(self, th_x):
     th_x = self.blocks(th_x)
     th_x = self.embedding(th_x)
-    if self.dropout_rate > 0:
-      th_x = self.dropout(th_x)
+    th_x = self.dropout(th_x)
     return th_x
 
 
 class ReadoutFC(th.nn.Module):
-  def __init__(self, lst_fc_sizes, in_features, dropout, act='relu'):
+  def __init__(
+      self, lst_fc_sizes, in_features, dropout, act='relu',
+      dropout_type='classic', dropout_value_type=''
+  ):
     super(ReadoutFC, self).__init__()
     self.in_features = in_features
     self.fc_sizes = lst_fc_sizes
 
     lst_fc = []
-    for fc_size in lst_fc_sizes:
+    for step, fc_size in enumerate(lst_fc_sizes):
       lst_fc.append(
         th.nn.Linear(
           in_features=in_features,
@@ -301,7 +350,13 @@ class ReadoutFC(th.nn.Module):
       in_features = fc_size
 
       lst_fc.append(get_activation(act))
-      lst_fc.append(th.nn.Dropout(p=dropout))
+      lst_fc.append(get_dropout(
+        dropout=dropout,
+        dropout_type=dropout_type,
+        step=step,
+        max_step=len(lst_fc_sizes) - 1,
+        value_type=dropout_value_type
+      ))
     # endfor
     self.fcs = th.nn.Sequential(*lst_fc)
     return
@@ -321,9 +376,9 @@ class Readout(th.nn.Module):
   def __init__(
       self, lst_coords_sizes, input_shape, dropout, act='relu',
       readout_act=None, nr_outputs=1, use_conv_dropout=False,
-      embedding_type='flatten', lst_fc_preredout=None
+      embedding_type='flatten', lst_fc_preredout=None, dropout_type='classic',
+      dropout_value_type=''
   ):
-    # TODO: Add activation
     super(Readout, self).__init__()
 
     transformation = lst_coords_sizes[0]
@@ -337,7 +392,9 @@ class Readout(th.nn.Module):
         lst_fc_sizes=lst_sizes,
         in_features=input_shape[0] if isinstance(input_shape, (list, tuple)) else input_shape,
         dropout=dropout,
-        act=act
+        act=act,
+        dropout_type=dropout_type,
+        dropout_value_type=dropout_value_type
       )
     else:
       transformation, lst_sizes = lst_coords_sizes
@@ -348,6 +405,8 @@ class Readout(th.nn.Module):
         input_dim=input_shape[1:],
         act=act,
         dropout=conv_dropout,
+        dropout_type=dropout_type,
+        dropout_value_type=dropout_value_type,
         embedding_type=embedding_type
       )
 
@@ -386,32 +445,45 @@ class Readout(th.nn.Module):
 
 
 class ClassificationHead(th.nn.Module):
-  def __init__(self, nr_outputs, lst_coords_sizes, input_shape, dropout=0, individual_heads=False, act='relu', readout_act=None):
+  def __init__(
+      self, nr_outputs, lst_coords_sizes, input_shape,
+      dropout=0, individual_heads=False, act='relu',
+      readout_act=None, use_conv_dropout=False, **kwargs
+  ):
+    """
+    TODO: maybe add ordinal regression support
+    Parameters
+    ----------
+    nr_outputs
+    lst_coords_sizes
+    input_shape
+    dropout
+    individual_heads
+    act
+    readout_act
+    use_conv_dropout
+    kwargs
+    """
     super(ClassificationHead, self).__init__()
     self.individual_heads = individual_heads
+    readout_kwargs = {
+      'lst_coords_sizes': lst_coords_sizes,
+      'input_shape': input_shape,
+      'dropout': dropout,
+      'act': act,
+      'readout_act': readout_act,
+      'use_conv_dropout': use_conv_dropout,
+      **kwargs
+    }
     if not individual_heads:
-      self.readout = Readout(
-        lst_coords_sizes=lst_coords_sizes,
-        input_shape=input_shape,
-        nr_outputs=nr_outputs,
-        dropout=dropout,
-        act=act,
-        readout_act=readout_act
-      )
+      readout_kwargs['nr_outputs'] = nr_outputs
+      self.readout = Readout(**readout_kwargs)
       self.apply_readout = self._apply_single_readout
     else:
       readout_heads = []
+      readout_kwargs['nr_outputs'] = 1
       for _ in range(nr_outputs):
-        readout_heads.append(
-          Readout(
-            lst_coords_sizes=lst_coords_sizes,
-            input_shape=input_shape,
-            nr_outputs=1,
-            dropout=dropout,
-            act=act,
-            readout_act=readout_act
-          )
-        )
+        readout_heads.append(Readout(**readout_kwargs))
       # endfor
       self.readout_heads = th.nn.ModuleList(readout_heads)
       self.apply_readout = self._apply_multiple_readouts

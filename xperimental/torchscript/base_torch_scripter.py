@@ -356,7 +356,7 @@ class BaseTorchScripter:
   def generate(
       self, inputs, batch_size=1, device='cpu', to_test=False,
       nr_warmups=20, nr_tests=20, no_grad_tracing=True,
-      test_fp16=False, **kwargs
+      test_batch_size=None, test_fp16=False, **kwargs
   ):
     """
     Method for generating the torchscript on given device, batch size and inputs.
@@ -369,6 +369,10 @@ class BaseTorchScripter:
     nr_warmups - int, how many inferences to make for warm up, relevant only if to_test=True
     nr_test - int, how many inferences to make for timings, relevant only if to_test=True
     no_grad_tracing - bool, whether to apply th.no_grad() when tracing the model
+    test_batch_size - int or None, the batch size on which to test the model
+    - if None it will be 2 x batch_size
+    - relevant only if to_test=True
+    test_fp16 - bool, whether to test the model in fp16
 
     Returns
     -------
@@ -434,12 +438,13 @@ class BaseTorchScripter:
     self.log.P(f"  Done running forward. Ouput:\n{preds}")
 
     if to_test:
+      test_batch_size = 2 * batch_size if test_batch_size is None else test_batch_size
       self.log.P('Starting validation phase...')
       test_kwargs = {
         'ts_path': fn,
         'model': self.model,
         'inputs': prep_inputs_test,
-        'batch_size': batch_size * 2,
+        'batch_size': test_batch_size,
         'device': device,
         'nr_warmups': nr_warmups,
         'nr_tests': nr_tests,

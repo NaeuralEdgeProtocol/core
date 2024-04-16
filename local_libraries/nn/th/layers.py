@@ -1,7 +1,7 @@
 import torch as th
 
 from core.local_libraries.nn.utils import conv_output_shape
-from core.local_libraries.nn.th.utils import get_activation
+from core.local_libraries.nn.th.utils import get_activation, get_dropout
 
 ###############################################################################
 ##################               BASIC LAYERS                ##################        
@@ -787,7 +787,7 @@ else:
   class DSepConv2DModule(th.nn.Module):
     """
     TODO: Replace DSepConv2DModule ddl 25.07.2023
-
+    Depthwise Separable Convolution module with optional batch normalization and activation function.
     """
 
     def __init__(self,
@@ -809,6 +809,28 @@ else:
                  ext_conv=False,
                  residual=True
                  ):
+      """
+
+      Parameters
+      ----------
+      in_channels : int, list, tuple or None, shape of the input channels
+      out_channels : int, shape of the output channels
+      input_dim : list, tuple or None, shape of the input tensor
+      n_convs : int, optional, number of depthwise separable convolutions. The default is 2.
+      kernel_size : int, optional, kernel size. The default is 3.
+      patching : bool, optional, if True then stride is kernel_size. The default is True.
+      depth_multiplier : int, optional, depth multiplier. The default is 1.
+      padding : int, optional, padding. The default is 0.
+      stride : int, optional, stride. The default is 1.
+      dilation : int, optional, dilation. The default is 1.
+      bn : bool, optional, if True then use batch normalization. The default is True.
+      activation : th.nn.Module, optional, activation function. The default is th.nn.ReLU6().
+      bias : bool, optional, if True then use bias. The default is False.
+      dropout : float, optional, dropout rate. The default is 0.
+      dropout_type : str, optional, dropout type. The default is 'classic'.
+      ext_conv : bool, optional, if True then use Conv2dExt. The default is False.
+      residual : bool, optional, if True then use residual connection. The default is True.
+      """
       super().__init__()
 
       if isinstance(in_channels, (list, tuple)):
@@ -876,7 +898,6 @@ else:
         self.reducer_skip = reducer
         self._reduce_method = self._reduce_method_skip
 
-
       self.sep_convs = th.nn.ModuleList()
       for idx_cnv in range(n_convs):
         conv = DSepConv2d(
@@ -896,12 +917,7 @@ else:
         self.sep_convs.append(activation)
 
         if dropout > 0:
-          if dropout_type == 'classic':
-            self.sep_convs.append(th.nn.Dropout(p=dropout))
-          elif dropout_type == 'spatial':
-            self.sep_convs.append(th.nn.Dropout2d(p=dropout))
-          else:
-            raise NotImplementedError("Invalid dropout type '{}'".format(dropout_type))
+          self.sep_convs.append(get_dropout(dropout=dropout, dropout_type=dropout_type))
       # endfor
       return
 

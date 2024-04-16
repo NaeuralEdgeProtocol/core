@@ -16,7 +16,7 @@ class _MultiClassTrackerMixin(object):
     """
     for inference in img_inference:
       for track_id, object_info in img_tracking_results.items():
-        if np.all(np.array(inference[ct.TLBR_POS]).astype(np.int32) == np.array(object_info['rectangle']).astype(np.int32))\
+        if np.all(np.array(self.get_inference_track_tlbr(inference)).astype(np.int32) == np.array(object_info['rectangle']).astype(np.int32))\
                 and self.__get_track_class(inference) == valid_class:
           inference[ct.TRACK_ID] = track_id
           inference[ct.TRACKING_STARTED_AT] = object_info['first_update']
@@ -36,6 +36,21 @@ class _MultiClassTrackerMixin(object):
     if self.const.TYPE in inference:
       return inference[self.const.TYPE]
     return None
+
+  def get_inference_track_tlbr(self, inference):
+    """
+    Returns the TLBR that will be used for tracking an inference
+    This is used in order for the developer to be able to use a different TLBR for tracking
+    than the actually detected one (maybe an enlarged one)
+    Parameters
+    ----------
+    inference - dict, inference dictionary
+
+    Returns
+    -------
+    res - list, list of 4 ints representing the TLBR that will be used for tracking
+    """
+    return inference.get(ct.TLBR_POS_TRACK, inference[ct.TLBR_POS])
 
   def _track_objects(self, dct_inference, img_shape=None):
     """
@@ -86,7 +101,7 @@ class _MultiClassTrackerMixin(object):
             if self.__get_track_class(inference) == valid_class
           ]
           np_inferences = np.array([
-            inference[ct.TLBR_POS] for inference in filtered_img_inferences
+            self.get_inference_track_tlbr(inference) for inference in filtered_img_inferences
           ])
           img_tracking_results = self._object_trackers[valid_class].update_tracker(
             np_inferences
