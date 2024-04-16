@@ -78,6 +78,7 @@ _CONFIG = {
   #     - dict with "label" : dict( containing 'INTERVALS' : list-of-lists, weekday, params...) dictionary {"i1" : {"INTERVAL" : [start, end], "PARAM1": ...}}
   # ==>> must modify only `working_hours_current_interval` and must add `params_current_interval`
   #
+  'WORKING_HOURS_TIMEZONE': None,
   'WORKING_HOURS': [],
   'IGNORE_WORKING_HOURS': False,
 
