@@ -1,6 +1,7 @@
 
 import uuid
 
+import numpy as np
 
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
@@ -12,8 +13,12 @@ from core import constants as ct
 from core.utils import Singleton
 
 
-EPOCH_MANAGER_VERSION = '0.1.0'
+EPOCH_MANAGER_VERSION = '0.2.1'
 
+EPOCH_INTERVALS = 24
+EPOCH_INTERVAL_SECONDS = 3600
+
+EPOCH_MAX_VALUE = 255
 
 FN_NAME = 'epochs_status.pkl'
 FN_SUBFOLDER = 'network_monitor'
@@ -23,7 +28,7 @@ EPOCHMON_MUTEX = 'epochmon_mutex'
 
 GENESYS_EPOCH_DATE = '2024-03-10 00:00:00'
 
-NODE_ALERT_INTERVAL = 3600
+NODE_ALERT_INTERVAL = EPOCH_INTERVAL_SECONDS
 
 class EPCT:
   NAME = 'name'
@@ -81,7 +86,7 @@ class EpochsManager(Singleton):
   
   
   def P(self, msg, **kwargs):
-    self.log.P(msg, **kwargs)
+    self.log.P('[EPM] ' + msg, **kwargs)
     return
   
   
@@ -144,7 +149,8 @@ class EpochsManager(Singleton):
     
   def get_epoch_id(self, date : any):
     """
-    Given a date as string or datetime, returns the epoch id - ie the number of days since the genesis epoch.
+    Given a date as string or datetime, returns the epoch id - ie the number of days since 
+    the genesis epoch.
 
     Parameters
     ----------
@@ -192,6 +198,13 @@ class EpochsManager(Singleton):
     Returns the current epoch id.
     """
     return self.get_epoch_id(self.get_current_date())
+  
+  def get_current_epoch(self):
+    """
+    Returns the current epoch id using `get_time_epoch`.
+    """
+    return self.get_time_epoch()
+  
   
   def get_hb_utc(self, hb):
     """
@@ -287,9 +300,9 @@ class EpochsManager(Singleton):
     avail_seconds = self.__calculate_avail_seconds(
       lst_timestamps, time_between_heartbeats=time_between_heartbeats
     )
-    max_possible = 24 * 3600
+    max_possible = EPOCH_INTERVALS * EPOCH_INTERVAL_SECONDS
     prc_available = round(avail_seconds / max_possible, 4)
-    record_value = int(prc_available * 255)
+    record_value = round(prc_available * EPOCH_MAX_VALUE)
     self.__data[node_addr][EPCT.EPOCHS][current_epoch] = record_value
     
     if self.__debug:
@@ -312,6 +325,10 @@ class EpochsManager(Singleton):
     
     
   def recalculate_current_epoch_for_all(self):
+    """
+    This method recalculates the current epoch availability for all nodes using the recorded 
+    timestamps.
+    """
     self.log.lock_resource(EPOCHMON_MUTEX)
     self.P("Recalculating epoch {} availability for all nodes during epoch {}...".format(
       self.__current_epoch, self.get_time_epoch()
@@ -332,22 +349,23 @@ class EpochsManager(Singleton):
     starts a new one. Closing the epoch implies recalculating the current epoch node availability 
     for all nodes and then resetting the timestamps.
     """
-    result = False # assume no epoch change
+    result = 0 # assume no epoch change
     current_epoch = self.get_time_epoch()
     if self.__current_epoch is None:
       self.__current_epoch = current_epoch
       self.P("Starting epoch: {}".format(self.__current_epoch))
     elif current_epoch != self.__current_epoch:
       if current_epoch != (self.__current_epoch + 1):
-        self.P("Epoch is not valid. Current epoch: {}, Last epoch: {}".format(current_epoch, self.__current_epoch))
-      else:
-        self.P("Closing epoch: {}".format(self.__current_epoch))
-        self.recalculate_current_epoch_for_all()
-        self.P("Starting epoch: {}".format(current_epoch))
-        self.__current_epoch = current_epoch      
-        self.__reset_all_timestamps()
-        self._save_status()
-        result = True
+        self.P("Epoch jump detected. Current epoch {} vs Last epoch {}".format(
+          current_epoch, self.__current_epoch), color='r'
+        )
+      self.P("Closing epoch {} at start of epoch {}".format(self.__current_epoch, current_epoch))
+      result = self.__current_epoch
+      self.recalculate_current_epoch_for_all()
+      self.P("Starting epoch: {}".format(current_epoch))
+      self.__current_epoch = current_epoch      
+      self.__reset_all_timestamps()
+      self._save_status()
       #endif epoch is not the same as the current one
     #endif current epoch is not None
     return result
@@ -366,6 +384,8 @@ class EpochsManager(Singleton):
       The heartbeat dict.
       
     """
+    self.maybe_close_epoch()
+
     local_epoch = self.get_time_epoch()   
     # maybe first epoch for node_addr
     if node_addr not in self.__data:
@@ -387,8 +407,14 @@ class EpochsManager(Singleton):
         remote_epoch, node_addr, local_epoch
       ))
     #endif remote epoch is the same as the local epoch
-    self.maybe_close_epoch()
     return
+  
+  
+  def get_node_list(self):
+    """
+    Returns the list of nodes.
+    """
+    return list(self.data.keys())
   
   
   def get_node_state(self, node_addr):
@@ -405,7 +431,7 @@ class EpochsManager(Singleton):
     return self.__data[node_addr]
   
   
-  def get_node_epochs(self, node_addr, autocomplete=False):
+  def get_node_epochs(self, node_addr, autocomplete=False, as_list=False):
     """
     Returns the epochs availability for a node.
 
@@ -413,16 +439,27 @@ class EpochsManager(Singleton):
     ----------
     node_addr : str
       The node address.
+      
+    autocomplete : bool
+      If True, the epochs are completed with 0 for missing epochs.
+      
+    as_list : bool
+      If True, the epochs are returned as a list.
     """
     if node_addr not in self.__data:
       return None
     dct_state = self.get_node_state(node_addr)
     dct_epochs = dct_state[EPCT.EPOCHS]
-    if autocomplete:
-      for epoch in range(1, self.get_time_epoch()):
+    current_epoch = self.get_time_epoch()
+    if autocomplete or as_list:
+      for epoch in range(1, current_epoch):
         if epoch not in dct_epochs:
-          dct_epochs[epoch] = 0
-    return dct_epochs
+          dct_epochs[epoch] = 0    
+    if as_list:
+      result = [dct_epochs[x] for x in range(1, current_epoch)]
+    else:
+      result = dct_epochs
+    return result
   
   
   def get_node_epoch(self, node_addr, epoch_id=None, as_percentage=False):
@@ -434,6 +471,7 @@ class EpochsManager(Singleton):
     ----------
     node_addr : str
       The node address.
+      
     epoch_id : int
       The epoch id. Defaults to the last epoch
 
@@ -513,6 +551,13 @@ if __name__ == '__main__':
     '2024-03-23 12:00:01',
     '2024-03-24 12:00:01',
     '2024-03-25 12:00:01',
+    
+    '2024-03-26 00:00:01',
+  ]
+  
+  NODES = [
+    'aixp_AyWzxm5uGFWPWGVHrZQt2TgH3xXrJzMw3Go55X4JB86Z',
+    'aixp_Al257avizJeY8f0Xg3UR9fs_11rLNKOhBw9sOVW_sjF2',
   ]
   
   # make sure you have a recent (today) save network status
@@ -571,18 +616,33 @@ if __name__ == '__main__':
       eng._set_dbg_date(current_date)
       epoch = eng.get_epoch_id(current_date)
       l.P("Running step {} - epoch {} / {}".format(
-        step, epoch, current_date
-      ))
-      if eng.maybe_close_epoch():
-        for node_name in dct_hb:
-          node_addr = eng.owner.network_node_address(node_name)
-          l.P("Node {} (first ep: {}) @ epoch {} has avail: {} ({})".format(
-            node_name, eng.get_node_first_epoch(node_addr), epoch - 1, 
-            eng.get_node_previous_epoch(node_addr), eng.get_node_previous_epoch(node_addr, as_percentage=True)
-          ))
+        step, epoch, current_date), color='b'
+      )
+      l.P("Starting registering data for epoch {}...".format(eng.get_current_epoch()), color='b')
+      data_counter = 0
       for node_name in dct_hb:
         node_addr = eng.owner.network_node_address(node_name)
         for hb in dct_hb[node_name][epoch]:
           eng.register_data(node_addr, hb)
+          data_counter += 1
+      if data_counter > 0:
+        l.P("Data loaded ({}) for epoch {}.".format(
+          data_counter, eng.get_current_epoch()), color='g'
+        )
+      else:
+        l.P("No data registered for epoch {}.".format(eng.get_current_epoch()), color='r')
+      #endif had data
+    #endfor each step
+    final_date = DATES[-1]
+    l.P("Done all steps, setting final date: {}".format(final_date), color='b')
+    eng._set_dbg_date(final_date)    
+    eng.maybe_close_epoch()
+    
+    l.P('{}: {}'.format(
+      eng.get_node_name(NODES[-2]), eng.get_node_epochs(NODES[-2], as_list=True))
+    )
+    l.P('{}: {}'.format(
+      eng.get_node_name(NODES[-1]), eng.get_node_epochs(NODES[-1], as_list=True))
+    )    
     
     l.show_timers()
