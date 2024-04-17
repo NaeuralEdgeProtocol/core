@@ -13,7 +13,7 @@ from core import constants as ct
 from core.utils import Singleton
 
 
-EPOCH_MANAGER_VERSION = '0.2.1'
+EPOCH_MANAGER_VERSION = '0.2.2'
 
 EPOCH_INTERVALS = 24
 EPOCH_INTERVAL_SECONDS = 3600

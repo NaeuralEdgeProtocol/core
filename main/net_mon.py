@@ -44,6 +44,8 @@ NETMON_MUTEX = 'NETMON_MUTEX'
 NETMON_DB = 'db.pkl'
 NETMON_DB_SUBFOLDER = 'network_monitor'
 
+ERROR_ADDRESS = '0xai_unknownunknownunknown'
+
 class NetworkMonitor(DecentrAIObject):
   
   HB_HISTORY = 30 * 60 // 10 # 30 minutes of history with 10 seconds intervals
@@ -94,10 +96,7 @@ class NetworkMonitor(DecentrAIObject):
   
   
   def __register_heartbeat(self, eeid, data):
-    if eeid not in self.__network_heartbeats:
-      self.P("Box {} is alive in the network".format(eeid), color='y')
-      self.__network_heartbeats[eeid] = deque(maxlen=self.HB_HISTORY)
-    #endif
+    # first check if data is encoded (as it always should be)
     if ct.HB.ENCODED_DATA in data:
       str_data = data.pop(ct.HB.ENCODED_DATA)
       dct_hb = json.loads(self.log.decompress_text(str_data))
@@ -106,6 +105,17 @@ class NetworkMonitor(DecentrAIObject):
         **dct_hb,
       }
     #endif encoded data
+    if eeid not in self.__network_heartbeats:
+      addr = data.get(ct.HB.EE_ADDR, ERROR_ADDRESS)
+      if addr == ERROR_ADDRESS:
+        extra_msg = 'EE_ADDR not found in heartbeat data'
+      else:
+        extra_msg = ''
+      self.P("Box alive: {}:{}. {}".format(
+        addr[:10] + '...' + addr[-5:], eeid, extra_msg), color='y' if len(extra_msg) == 0 else 'r'
+      )
+      self.__network_heartbeats[eeid] = deque(maxlen=self.HB_HISTORY)
+    #endif
     # begin mutexed section
     self.log.lock_resource(NETMON_MUTEX)
     self.__network_heartbeats[eeid].append(data)

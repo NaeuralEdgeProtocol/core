@@ -39,12 +39,17 @@ class ApplicationMonitor(DecentrAIObject):
     self.alert_process = False
     self.critical_alert = False
     self.owner_mem = -1
+    self.__first_payload_prepared = False
     self.__first_ram_alert_raised = False
     self.__first_ram_alert_raised_time = 0
     self._done_first_smi_error = False
     self.dct_curr_nr = defaultdict(lambda:0)
     super(ApplicationMonitor, self).__init__(log=log, prefix_log='[AMON]', **kwargs)
     return
+  
+  @property
+  def first_payload_prepared(self):
+    return self.__first_payload_prepared
   
   def P(self, s, color=None, **kwargs):
     if color is None or (isinstance(color,str) and color[0] not in ['e', 'r']):
@@ -519,6 +524,10 @@ class ApplicationMonitor(DecentrAIObject):
       }
     else:
       dct_status[ct.HB.HEARTBEAT_VERSION] = ct.HB.V1
+      
+    if not self.first_payload_prepared:
+      self.__first_payload_prepared = True
+      self.P("First hb for {}".format(address), boxed=True)
 
     return dct_status
   
