@@ -1,4 +1,19 @@
+"""
 
+TODO:
+  - add a method for backlog recalculation:
+    - given a database of hbs get all the timestamps for all nodes
+    - for all dates in the timestamps see if the epoch is already registered in EM db
+      - if not, update(FLAG) the epoch with all its and generate warning for missing epoch
+      - if yes, check if the timestamps defined duration matches the expected db recorded duration
+        - if not, generate warning for mismatched duration and update(FLAG)
+  
+  - add a method for overall statistics:
+    - for each node get from db the availability for each epoch
+      - display overall availability prc
+      - display number of epochs with non-zero availability
+  
+"""
 import uuid
 
 import numpy as np
@@ -60,6 +75,9 @@ def _get_node_template(name):
 class EpochsManager(Singleton):
   
   def build(self, owner, debug_date=None, debug=False):
+    self.P("Initializing EpochsManager v{} with debug={}, debug_date={}...".format(
+      EPOCH_MANAGER_VERSION, debug, debug_date
+    ))
     self.__genesis_date = self.log.str_to_date(GENESYS_EPOCH_DATE).replace(tzinfo=timezone.utc)
     self.owner = owner
     self.__current_epoch = None

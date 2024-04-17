@@ -1,5 +1,5 @@
 """
-
+TODO: change from ee_id-based to ee_addr-based
 
 """
 import json
@@ -79,6 +79,7 @@ class NetworkMonitor(DecentrAIObject):
 
 
   def startup(self):
+    self.P(f"Initializing Network Monitor on {self.node_addr}", boxed=True)
     if self.__epoch_manager is None:
       self.__epoch_manager = EpochsManager(log=self.log, owner=self)
     return
