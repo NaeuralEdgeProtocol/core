@@ -1,6 +1,12 @@
 """
 
 TODO:
+
+  - add a method for overall statistics:
+    - for each node get from db the availability for each epoch
+      - display overall availability prc
+      - display number of epochs with non-zero availability
+
   - add a method for backlog recalculation:
     - given a database of hbs get all the timestamps for all nodes
     - for all dates in the timestamps see if the epoch is already registered in EM db
@@ -8,13 +14,10 @@ TODO:
       - if yes, check if the timestamps defined duration matches the expected db recorded duration
         - if not, generate warning for mismatched duration and update(FLAG)
   
-  - add a method for overall statistics:
-    - for each node get from db the availability for each epoch
-      - display overall availability prc
-      - display number of epochs with non-zero availability
   
 """
 import uuid
+import json
 
 import numpy as np
 
@@ -54,12 +57,17 @@ class EPCT:
   CURRENT_EPOCH = 'current_epoch'
   HB_TIMESTAMPS = 'hb_dates'
   HB_COUNT = 'hb_count'
+  FIRST_SEEN = 'first_seen'
+  LAST_SEEN = 'last_seen'
 
 _NODE_TEMPLATE = {
   EPCT.NAME           : None,
   EPCT.EPOCHS         : defaultdict(int),
   EPCT.ALERTS         : 0,
   EPCT.LAST_ALERT_TS  : 0,
+  EPCT.FIRST_SEEN     : None,    
+  EPCT.LAST_SEEN      : None,  
+  
   
   EPCT.CURRENT_EPOCH  : {
     EPCT.ID               : None,
@@ -326,12 +334,13 @@ class EpochsManager(Singleton):
     if self.__debug:
       try:
         node_name = self.__data[node_addr][EPCT.NAME]
+        node_name = node_name[:8]
         start_date, end_date = None, None
         if len(lst_timestamps) >= 1:
           start_date = self.date_to_str(lst_timestamps[0])
           end_date = self.date_to_str(lst_timestamps[-1])
         str_node_addr = node_addr[:8] + '...' + node_addr[-3:]
-        self.P("{}:{} availability in epoch {} was: {} ({:.2f}%) from {} to {}".format(
+        self.P("{:<8}<{}> avail in ep {}: {} ({:.2f}%) from {} to {}".format(
           node_name, str_node_addr, current_epoch, 
           record_value, prc_available * 100, start_date, end_date
         ))
@@ -407,11 +416,17 @@ class EpochsManager(Singleton):
     local_epoch = self.get_time_epoch()   
     # maybe first epoch for node_addr
     if node_addr not in self.__data:
+      name = self.get_node_name(node_addr)
+      name = name[:8]
       node_name = self.get_node_name(node_addr)
       self.__data[node_addr] = _get_node_template(node_name)
       self.__reset_timestamps(node_addr)
+      self.P("New node {:<8} <{}> added to db".format(name, node_addr))
     #endif node not in data
     dt_remote_utc = self.get_hb_utc(hb)
+    str_date = self.date_to_str(dt_remote_utc)
+    if self.__data[node_addr][EPCT.FIRST_SEEN] is None:
+      self.__data[node_addr][EPCT.FIRST_SEEN] = str_date
     # check if the hb epoch is the same as the current one
     remote_epoch = self.get_epoch_id(dt_remote_utc)     
     if remote_epoch == local_epoch:
@@ -419,6 +434,7 @@ class EpochsManager(Singleton):
       self.log.lock_resource(EPOCHMON_MUTEX)
       # add the heartbeat timestamp for the current epoch
       self.__data[node_addr][EPCT.CURRENT_EPOCH][EPCT.HB_TIMESTAMPS].add(dt_remote_utc)
+      self.__data[node_addr][EPCT.LAST_SEEN] = str_date
       self.log.unlock_resource(EPOCHMON_MUTEX)
     else:
       self.P("Received invalid epoch {} from node {} on epoch {}".format(
@@ -548,6 +564,43 @@ class EpochsManager(Singleton):
     epochs = list(self.get_node_epochs(node_addr).keys())
     min_epoch = min(epochs)
     return min_epoch
+  
+  
+  def get_stats(self, display=True):
+    """
+    Returns the overall statistics for all nodes.
+    """
+    stats = {}
+    for node_addr in self.data:
+      node_name = self.get_node_name(node_addr)
+      epochs = self.get_node_epochs(node_addr, as_list=True, autocomplete=True)
+      score = sum(epochs)
+      max_val = EPOCH_MAX_VALUE * len(epochs)
+      avail = round(score / max_val, 4)
+      non_zero = len([x for x in epochs if x > 0])
+      nr_eps = len(epochs)
+      prev_epoch = self.get_time_epoch() - 1
+      first_seen = self.data[node_addr][EPCT.FIRST_SEEN]
+      last_seen = self.data[node_addr][EPCT.LAST_SEEN]
+      if nr_eps != prev_epoch:
+        raise ValueError("Epochs mismatch for node: {} - total {} vs prev {}".format(
+          node_addr, nr_eps, prev_epoch
+        ))
+      stats[node_addr] = {
+        'name' : node_name,
+        'non_zero' : non_zero,
+        'availability' : avail,
+        'score' : score,
+        'first_seen' : first_seen,
+        'last_seen' : last_seen,
+      }
+    if display:
+      str_stats = json.dumps(stats, indent=2)
+      self.P("EpochManager stats (max_score: {}, nr_eps: {}):\n{}".format(
+        max_val, nr_eps,
+        str_stats
+      ))
+    return stats
     
     
     
@@ -663,4 +716,6 @@ if __name__ == '__main__':
       eng.get_node_name(NODES[-1]), eng.get_node_epochs(NODES[-1], as_list=True))
     )    
     
-    l.show_timers()
+    inf = eng.get_stats()
+    
+    # l.show_timers()
