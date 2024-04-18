@@ -199,12 +199,7 @@ class _WorkingHoursMixin(object):
         for key, value in schedule.items()
       }
     # endif dict
-    debug_str = f"#####################################\nWorking hours for {self} are: \n{schedule}\n"
     res_working_hours = self.working_hours_to_local(schedule, timezone=self.get_timezone())
-    debug_str += f"Converted working hours for {self} are: \n{res_working_hours}\n#########################"
-    if self._signature == 'OBJECT_TRACKING_01':
-      if self.datetime.now().second % 10 == 0:
-        self.P(debug_str)
 
     return res_working_hours
 
