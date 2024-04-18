@@ -109,6 +109,17 @@ class ApplicationMonitor(DecentrAIObject):
           result.append(round(self.process_memory_log[-i], 4))    
     return result
   
+  def get_owner_version(self):
+    app_ver = self.owner.__version__
+    core_ver = self.owner.core_version
+
+    _ver = '{}{}{}'.format(
+      'A:{} '.format(app_ver) if core_ver is not None else '',
+      'C:{} '.format(app_ver) if core_ver is None else 'C:{} '.format(core_ver),
+      'P:{}'.format(self.log.version),
+    )
+    return _ver
+  
   def log_status(self, color=None):
     if self.start_process_memory is None or self.start_avail_memory is None:      
       return
@@ -137,8 +148,8 @@ class ApplicationMonitor(DecentrAIObject):
  
       
 
-    str_log  = "Memory status for '{}' v.{}/Lv.{} (aa/ap: {}/{}):".format(      
-      self.owner.cfg_eeid, self.owner.__version__, self.log.version,
+    str_log  = "Memory status for '{}' <{}> (aa/ap: {}/{}):".format(      
+      self.owner.cfg_eeid, self.get_owner_version(),
       self.alert_avail, self.alert_process,
     )
     str_log += "\n\r==========================================================================================="
@@ -431,7 +442,7 @@ class ApplicationMonitor(DecentrAIObject):
 
     s_os = platform.platform()
     s_os = s_os.replace('Windows', 'W').replace('Linux','L')
-    _ver = self.owner.__version__ + ' L:{} '.format(self.log.version) + s_os
+    _ver = '{} {}'.format(self.get_owner_version(), s_os)
     lst_config_streams = []
     if self.owner.config_manager is not None:
       lst_config_streams = list(self.owner.config_manager.dct_config_streams.values())

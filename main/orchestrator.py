@@ -63,8 +63,11 @@ class Orchestrator(DecentrAIObject,
   def __init__(self, log : Logger, **kwargs):
     if __APP_VER__ is None:
       self.__version__ = __CORE_VER__
+      # This is a bit ambiguous, but we want to use __version__ as the default 
+      self.core_version = None
     else:
-      self.__version__ = f"{__APP_VER__}/{__CORE_VER__}"
+      self.__version__ = __APP_VER__
+      self.core_version = __CORE_VER__
 
     self.__loop_stage = -1
     self.__main_loop_stopped = False
@@ -136,7 +139,7 @@ class Orchestrator(DecentrAIObject,
 
   def startup(self):
     super().startup()
-    self.P("Starting Execution Engine '{}' core v.{}".format(self.cfg_eeid, __CORE_VER__))
+    self.P("Starting Execution Engine '{}' core v.{}".format(self.cfg_eeid, self.__version__))
     if self.runs_in_docker:
       self.P("Running in Docker container detected.")
     self._maybe_env_and_docker_setup()
