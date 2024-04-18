@@ -58,7 +58,7 @@ _CONFIG = {
   'RESEND_LAST_STATUS_ON_IDLE': 0,
 
   'FORCED_PAUSE': False,
-
+  
 
   # set this to 1 for real time processing (data will be lost and only latest data be avail)
   # when PROCESS_DELAY is used this should be either bigger than 1 if we want to have previous data
@@ -1200,8 +1200,32 @@ class BasePluginExecutor(
 
     For the particular case when only INSTANCE_COMMAND is modified then the plugin should not reset its state
     """
+    # first cleanup all the non-actionable keys
+    for k in self.ct.NON_ACTIONABLE_INSTANCE_CONFIG_KEYS:
+      upstream_config.pop(k, None)
+      self._upstream_config.pop(k, None)
+    
     if upstream_config == self._upstream_config:
       return
+    
+    # if is just a INSTANCE_COMMAND then bypass the full config update including
+    # `is_instance_command_only` check from the `_update_instance_config`
+    # first set _upstream_config
+    
+    
+    # check if is just a command
+    if upstream_config['INSTANCE_COMMAND'] not in [None, '', [], {}]:
+      # if the command is not empty then we just set the command and return
+      self.P("Command '{}' received for plugin {}".format(upstream_config['INSTANCE_COMMAND'], self))
+      self.config_data['INSTANCE_COMMAND'] = upstream_config['INSTANCE_COMMAND']
+      # reset the command for the upstream config
+      self._upstream_config['INSTANCE_COMMAND'] = {}  
+      upstream_config['INSTANCE_COMMAND'] = {}
+      return
+    # endif is just a command
+
+    self._upstream_config = upstream_config
+
     self.P("Config {} on request {}:{}".format(self, modified_by_id, modified_by_addr), color='b')
     # DEBUG
     # self.log.P("Current:\n{}".format(json.dumps(self._upstream_config, indent=4)), color='d')
@@ -1216,9 +1240,8 @@ class BasePluginExecutor(
       self.P("  Changing modified-by-id from '{}' to '{}'".format(self.__modified_by_id, modified_by_id), color='y')
       self.__modified_by_id = modified_by_id
       self.__modified_by_addr = modified_by_addr
-
-    self._upstream_config = upstream_config
-
+    # endif session_id
+    
     # now while changing config we must stop loop exec
     self.__set_loop_stage(s='maybe_update_instance_config.wait', prefix='2.bm.refresh.{}'.format(self.cfg_instance_id))
     wait_start = self.time()
@@ -1402,6 +1425,7 @@ class BasePluginExecutor(
         defaults = [None] * len(keys)
       assert len(defaults) == len(keys), "Default values must be provided for all keys"
       all_keys = keys.copy()
+      archived_keys = []
       for i, key in enumerate(keys):
         archive_key = key + '_LAST'
         self.config_data[archive_key] = self.config_data[key]

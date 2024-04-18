@@ -382,8 +382,8 @@ class _BasePluginLoopMixin(object):
     while not self.done_loop:
       try:
         # START postpone area
-        while self.__loop_paused: # triggered when updating config
-          sleep(0.001)
+        if self.__loop_paused: # triggered when updating config
+          sleep(0.001)          
           continue
         # INSTANCE_COMMAND: if no imposed parallel updating
         # then we can check for instance commands and trigger callback
