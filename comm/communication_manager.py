@@ -359,7 +359,6 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
       is_encrypted = json_msg.get(ct.COMMS.COMM_RECV_MESSAGE.K_EE_IS_ENCRYPTED, False)
       if is_encrypted:
         encrypted_data = json_msg.pop(ct.COMMS.COMM_RECV_MESSAGE.K_EE_ENCRYPTED_DATA, None)
-        
         str_data = self.blockchain_manager.decrypt(encrypted_data, sender_addr)
         if str_data is None:
           self.P("  Decryption failed. Message dropped.", color='r')
@@ -371,38 +370,41 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
           except Exception as e:
             self.P("Error while decrypting message: {}\n{}".format(str_data, e), color='r')
       # endif is_encrypted
-          
-      if action is not None:
-        action = action.upper()
-        if payload is None:
-          self.P("  Message with action '{}' does not contain payload".format(
-            action), color='y'
-          )
-          payload = {}  # initialize payload
-        # endif no payload
 
-        if isinstance(payload, dict):
-          # we add the sender address to the payload
-          payload[ct.COMMS.COMM_RECV_MESSAGE.K_SENDER_ADDR] = sender_addr
-          # we add or modify payload session & initiator for downstream tasks
-          if payload.get(ct.COMMS.COMM_RECV_MESSAGE.K_INITIATOR_ID) is None or initiator_id is not None:
-            payload[ct.COMMS.COMM_RECV_MESSAGE.K_INITIATOR_ID] = initiator_id
-          if payload.get(ct.COMMS.COMM_RECV_MESSAGE.K_SESSION_ID) is None or session_id is not None:
-            payload[ct.COMMS.COMM_RECV_MESSAGE.K_SESSION_ID] = session_id
-          # we send the message that this command was validated or not
-          payload[ct.COMMS.COMM_RECV_MESSAGE.K_VALIDATED] = validated_command
-        # endif
-
-        if action not in self._command_queues.keys():
-          self.P("  '{}' - command unknown".format(action), color='y')
-        else:
-          # each command is a tuple as below
-          self._command_queues[action].append((payload, sender_addr, initiator_id, session_id))
-          # self._save_input_command(payload)
-        # endif
+      if not is_encrypted and not self._environment_variables.get("ACCEPT_UNENCRYPTED_COMMANDS", True):
+        self.P("  Message is not encrypted. Message dropped because `ACCEPT_UNENCRYPTED_COMMANDS=False`.", color='r')
       else:
-        self.P('  Message does not contain action. Nothing to process...', color='y')
-        self.P('  Message received: \n{}'.format(json_msg), color='y')
+        if action is not None:
+          action = action.upper()
+          if payload is None:
+            self.P("  Message with action '{}' does not contain payload".format(
+              action), color='y'
+            )
+            payload = {}  # initialize payload
+          # endif no payload
+
+          if isinstance(payload, dict):
+            # we add the sender address to the payload
+            payload[ct.COMMS.COMM_RECV_MESSAGE.K_SENDER_ADDR] = sender_addr
+            # we add or modify payload session & initiator for downstream tasks
+            if payload.get(ct.COMMS.COMM_RECV_MESSAGE.K_INITIATOR_ID) is None or initiator_id is not None:
+              payload[ct.COMMS.COMM_RECV_MESSAGE.K_INITIATOR_ID] = initiator_id
+            if payload.get(ct.COMMS.COMM_RECV_MESSAGE.K_SESSION_ID) is None or session_id is not None:
+              payload[ct.COMMS.COMM_RECV_MESSAGE.K_SESSION_ID] = session_id
+            # we send the message that this command was validated or not
+            payload[ct.COMMS.COMM_RECV_MESSAGE.K_VALIDATED] = validated_command
+          # endif
+
+          if action not in self._command_queues.keys():
+            self.P("  '{}' - command unknown".format(action), color='y')
+          else:
+            # each command is a tuple as below
+            self._command_queues[action].append((payload, sender_addr, initiator_id, session_id))
+            # self._save_input_command(payload)
+          # endif
+        else:
+          self.P('  Message does not contain action. Nothing to process...', color='y')
+          self.P('  Message received: \n{}'.format(json_msg), color='y')
     return
 
   def validate_macro(self):
