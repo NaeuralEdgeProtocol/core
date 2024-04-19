@@ -1214,7 +1214,7 @@ class BasePluginExecutor(
     
     
     # check if is just a command
-    if upstream_config['INSTANCE_COMMAND'] not in [None, '', [], {}]:
+    if upstream_config.get('INSTANCE_COMMAND') not in [None, '', [], {}]:
       # if the command is not empty then we just set the command and return
       self.P("Command '{}' received for plugin {}".format(upstream_config['INSTANCE_COMMAND'], self))
       self.config_data['INSTANCE_COMMAND'] = upstream_config['INSTANCE_COMMAND']
