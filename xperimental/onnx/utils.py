@@ -146,6 +146,19 @@ def create_from_torch(
 
     if metadata is None:
       metadata = {}
+
+    # Set various metadata required at runtime.
+    if metadata.get('precision') is None:
+      if half:
+        metadata['precision'] = 'fp16'
+      else:
+        metadata['precision'] = 'fp32'
+    #endif precision metadata
+    if metadata.get('input_names') is None:
+      metadata['input_names'] = input_names
+    if metadata.get('output_names') is None:
+      metadata['output_names'] = output_names
+
     m1 = model_onnx.metadata_props.add()
     m1.key = 'onnx_metadata'
     m1.value = json.dumps(metadata)

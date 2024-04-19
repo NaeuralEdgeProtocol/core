@@ -6,6 +6,7 @@ import json
 import os
 import gc
 import numpy as np
+import abc
 
 from core.local_libraries.nn.th.utils import th_resize_with_pad
 from PyE2 import load_dotenv
@@ -91,9 +92,10 @@ def load_model_full(
   return (model, hyperparams) if return_config else model
 
 
-class BaseTorchScripter:
+class BaseScripter(metaclass=abc.ABCMeta):
   """
-  This class will be used in order to convert already existent neural models to torchscripts.
+  This class will be used in order to convert already existent pytorch models to
+  various formats via torch tracing.
   """
 
   def __init__(
@@ -101,7 +103,8 @@ class BaseTorchScripter:
     model_config=None, preprocess_method=None,
     matching_method=None,
     predict_method=None, use_fp16=False,
-    use_amp=False
+    use_amp=False,
+    gold_model=None
   ):
     """
     Parameters
@@ -113,12 +116,14 @@ class BaseTorchScripter:
     model_config - dict, configuration of the converted model
     preprocess_method - method, method of preprocessing the input in case it is needed
     - for the default value of this see self.preprocess_callback
-    matching_method - method, method for checking if the output of the model matches the output of the torchscript
+    matching_method - method, method for checking if the output of the model matches the
+      output of the traced model
     - for the default value of this see self.matching_callback
     predict_method - method, method of running inferences given model and inputs
     - for the default value of this see self.default_predict
     use_fp16 - bool, whether to use fp16 when tracing a model
     use_amp - bool, whether to use amp when tracing a model
+    gold_model - Torchscript model, if not None we will use this for validation
     """
     self.model = model
     self.model_name = model_name
@@ -130,8 +135,13 @@ class BaseTorchScripter:
     self.predict_method = predict_method if predict_method is not None else self.default_predict
     self.use_amp = use_amp
     self.use_fp16 = use_fp16
+    self.gold_model = gold_model
+    self.model.is_gold = False
     if self.use_fp16:
       self.model.half()
+      if self.gold_model is not None:
+        self.gold_model.half()
+        self.gold_model.is_gold = True
     return
 
   def clear_cache(self):
@@ -227,7 +237,7 @@ class BaseTorchScripter:
     print('')
     return self.log.get_timer_mean(model_name)
 
-  def matching_callback(self, output1, output2, atol=0.00001, **kwargs):
+  def matching_callback(self, output1, output2, atol=0.0001, **kwargs):
     """
     Method for validating that 2 outputs are matching
     Parameters
@@ -240,22 +250,74 @@ class BaseTorchScripter:
     -------
     True if outputs are matching, False otherwise
     """
+    if isinstance(output1, tuple) and len(output1) == 1:
+      output1 = output1[0]
+    if isinstance(output2, tuple) and len(output2) == 1:
+      output2 = output2[0]
+
     if type(output1) != type(output2):
+      self.log.P('TYPE IS DIFFERENT! {} {} '.format(type(output1), type(output2)))
       return False
     if isinstance(output1, list):
-      return len(output1) == len(output2) and all([np.allclose(output1[i], output2[i]) for i in range(len(output1))])
+      return len(output1) == len(output2) and all([np.allclose(output1[i], output2[i], atol=atol) for i in range(len(output1))])
     if isinstance(output1, th.Tensor):
       output1 = output1.detach().cpu().numpy()
       output2 = output2.detach().cpu().numpy()
 
     if (isinstance(output1, np.ndarray) and np.any(output1 != output2)) or (not isinstance(output1, np.ndarray) and output1 != output2):
       try:
+        self.log.P('Absolute error is {}'.format(np.max(np.abs(output1 - output2))))
+        self.log.P('Mean error is {}'.format(np.average(np.abs(output1 - output2))))
+        self.log.P('Std error is {}'.format(np.std(np.abs(output1 - output2))))
         return np.allclose(output1, output2, atol=atol)
       except Exception as e:
-        print(f'Error! {e}')
+        self.log.P(f'Error! {e}')
         return False
     # endif outputs are different
     return True
+
+  @abc.abstractmethod
+  def load(self, fn_path, device, batch_size, use_fp16):
+    """
+    Loads the traced model from disk to memory, possibly converting it to float16.
+
+    Parameters
+    ----------
+    fn_path: str, path on disk to the traced model
+
+    device: th.device, the torch device to load the model to
+
+    batch_size: maximum supported batch size for inference
+
+    use_fp16: if True, converts the loaded model to f16
+
+    Returns
+    -------
+    Tuple[model, dict] - a tuple containing the model and the model
+      configuration
+    """
+    pass
+
+  @abc.abstractmethod
+  def convert(self, inputs, config, model_fn):
+    """
+    Traces the pytorch model of the scripter, saving it to disk.
+
+    Parameters
+    ----------
+
+    inputs - data for tracing (FIXME: what's the exact type??)
+
+    config : dict, model config
+
+    model_fn : str, path where the model should be saved on disk
+
+    Returns
+    -------
+    Union[ModelBackendWrapper, torch.jit.ScriptModule] - the converted model,
+    loaded from disk
+    """
+    pass
 
   def test(
       self, ts_path, model, inputs, batch_size=2, device='cpu',
@@ -263,11 +325,11 @@ class BaseTorchScripter:
       use_fp16=False, **kwargs
   ):
     """
-    Method for testing the torchscript at the same time with the model in order to
+    Method for testing the traced model at the same time with the model in order to
     validate that the outputs are the same and to check the speed difference between the 2.
     Parameters
     ----------
-    ts_path - str, path to the torchscript
+    ts_path - str, path to the traced model
     model - torch.nn.Module, the model to be checked
     inputs - any, input data on which the model will be traced
     batch_size - int, Warning: the batch_size for testing and the batch
@@ -284,17 +346,11 @@ class BaseTorchScripter:
     -------
     res - (ok, timings), where:
     ok - bool, True if the outputs coincide, False otherwise
-    timings - dict, the timers of both the model and the torchscript version
+    timings - dict, the timers of both the model and the traced version
     """
     str_prefix = f'[bs={batch_size}]'
-    self.log.P(f"{str_prefix}Testing the graph from {ts_path} for {self.model_name} with bs={batch_size} on device {device}")
-    extra_files = {'config.txt': ''}
-    ts_model = th.jit.load(
-      f=ts_path,
-      map_location=device,
-      _extra_files=extra_files,
-    )
-    config = json.loads(extra_files['config.txt'].decode('utf-8'))
+    self.log.P(f"{str_prefix}Testing the graph from {ts_path} for {self.model_name} with bs={batch_size} on device {device} with use_fp16={use_fp16}")
+    ts_model, config = self.load(ts_path, device, batch_size=batch_size, use_fp16=use_fp16)
     ts_input_shape = config.get('input_shape')
     assert list(ts_input_shape) == list(self.input_shape), \
         f'Error! The input shape of the model and the .ths do not coincide! ' \
@@ -309,9 +365,13 @@ class BaseTorchScripter:
       self.log.P(f'{str_prefix}Skipping preprocessing')
     # endif skip_preprocess
 
+    if model.is_gold:
+      self.log.P("Running with gold model")
+    else:
+      self.log.P("Running without gold model")
+
     suffix_str = ""
     if use_fp16:
-      ts_model.half()
       model.half()
       inputs = inputs.half()
       suffix_str = "[FP16]"
@@ -359,13 +419,13 @@ class BaseTorchScripter:
       test_batch_size=None, test_fp16=False, **kwargs
   ):
     """
-    Method for generating the torchscript on given device, batch size and inputs.
+    Method for generating the traced model on a given device, batch size and inputs.
     Parameters
     ----------
     inputs - any, input data on which the model will be traced
     batch_size - int
     device - str or torch.device
-    to_test - bool, whether to test the model after torchscripting
+    to_test - bool, whether to test the model after tracing
     nr_warmups - int, how many inferences to make for warm up, relevant only if to_test=True
     nr_test - int, how many inferences to make for timings, relevant only if to_test=True
     no_grad_tracing - bool, whether to apply th.no_grad() when tracing the model
@@ -376,9 +436,9 @@ class BaseTorchScripter:
 
     Returns
     -------
-    res - path of the saved torchscript
+    res - path of the saved traced model
     """
-    self.log.P(f"Generating torchscript for {self.model_name} on {device} with batch_size={batch_size} "
+    self.log.P(f"Generating traced model for {self.model_name} on {device} with batch_size={batch_size} "
                f"and the following config:")
     self.log.P(f"{self.model_config}")
     config = {
@@ -398,36 +458,19 @@ class BaseTorchScripter:
 
     self.log.P("  Scripting...")
     self.model.to(device)
-    if no_grad_tracing:
-      with th.no_grad():
-        if isinstance(inputs, dict):
-          traced_model = th.jit.trace_module(self.model, inputs, strict=False)
-        else:
-          traced_model = th.jit.trace(self.model, inputs, strict=False)
-        # endif inputs dict
-      # endwith th.no_grad()
-    else:
-      if isinstance(inputs, dict):
-        traced_model = th.jit.trace_module(self.model, inputs, strict=False)
-      else:
-        traced_model = th.jit.trace(self.model, inputs, strict=False)
-      # endif inputs dict
-    # endif no_grad_tracing
+
+    save_dir = os.path.join(self.log.get_models_folder(), 'traces')
+    os.makedirs(save_dir, exist_ok=True)
+    model_fn = self.model_name + f'{"_fp16" if self.use_fp16 else ""}_bs{batch_size}'
+    model_fn = model_fn + self.extension
+    fn = os.path.join(save_dir, model_fn)
+
+    traced_model = self.convert(inputs, config, fn)
 
     self.log.P("  Forwarding using traced...")
     output = self.__predict(traced_model, inputs)
 
-    extra_files = {'config.txt': json.dumps(config)}
-    save_dir = os.path.join(self.log.get_models_folder(), 'traces')
-    os.makedirs(save_dir, exist_ok=True)
-    model_fn = self.model_name + f'{"_fp16" if self.use_fp16 else ""}_bs{batch_size}.ths'
-    fn = os.path.join(save_dir, model_fn)
-    self.log.P(f"  Saving '{fn}'...")
-    traced_model.save(fn, _extra_files=extra_files)
-
-    extra_files['config.txt'] = ''
-    loaded_model = th.jit.load(fn, _extra_files=extra_files)
-    config = json.loads(extra_files['config.txt'].decode('utf-8'))
+    loaded_model, config = self.load(fn, device=device, batch_size=batch_size, use_fp16=test_fp16)
     self.log.P("  Loaded config with {}".format(list(config.keys())))
 
     prep_inputs_test = self.convert_to_batch_size(inputs=original_inputs, batch_size=2 * batch_size)
@@ -439,10 +482,18 @@ class BaseTorchScripter:
 
     if to_test:
       test_batch_size = 2 * batch_size if test_batch_size is None else test_batch_size
+      if gold_model is not None:
+        gold_model.to(device)
+
       self.log.P('Starting validation phase...')
+      if self.gold_model is None:
+        self.log.P("Starting test without gold model")
+      else:
+        self.log.P("Starting test WITH gold model")
+
       test_kwargs = {
         'ts_path': fn,
-        'model': self.model,
+        'model': self.model if self.gold_model is None else self.gold_model,
         'inputs': prep_inputs_test,
         'batch_size': test_batch_size,
         'device': device,
@@ -457,3 +508,98 @@ class BaseTorchScripter:
     # endif to_test
 
     return fn
+
+
+class BaseTorchScripter(BaseScripter):
+  def __init__(
+    self, log, model, model_name, input_shape,
+    model_config=None, preprocess_method=None,
+    matching_method=None,
+    predict_method=None, use_fp16=False,
+    use_amp=False,
+    gold_model=None
+  ):
+    self.extension = '.ths'
+    super(BaseTorchScripter, self).__init__(
+      log, model, model_name, input_shape,
+      model_config, preprocess_method,
+      matching_method,
+      predict_method, use_fp16,
+      use_amp, gold_model)
+    return
+
+  def load(self, fn_path, device, batch_size, use_fp16):
+    extra_files = {'config.txt': ''}
+    ts_model = th.jit.load(
+      f=fn_path,
+      map_location=device,
+      _extra_files=extra_files,
+    )
+    config = json.loads(extra_files['config.txt'].decode('utf-8'))
+    if use_fp16:
+      ts_model.half()
+    return ts_model, config
+
+  def convert(self, inputs, config, fn):
+    if isinstance(inputs, dict):
+      traced_model = th.jit.trace_module(self.model, inputs, strict=False)
+    else:
+      traced_model = th.jit.trace(self.model, inputs, strict=False)
+
+    extra_files = {'config.txt': json.dumps(config)}
+    self.log.P(f"  Saving '{fn}'...")
+    traced_model.save(fn, _extra_files=extra_files)
+    return traced_model
+
+class BaseTensorRTScripter(BaseScripter):
+  def __init__(
+    self, log, model, model_name, input_shape,
+    input_names, output_names,
+    model_config=None, preprocess_method=None,
+    matching_method=None,
+    predict_method=None, use_fp16=False,
+    use_amp=False,
+    batch_axes=None,
+    gold_model=None
+  ):
+    self.extension = '_trt.onnx'
+    self.input_names = input_names
+    self.output_names = output_names
+    self.batch_axes = batch_axes
+    super(BaseTensorRTScripter, self).__init__(
+      log, model, model_name, input_shape,
+      model_config, preprocess_method,
+      matching_method,
+      predict_method, use_fp16,
+      use_amp, gold_model
+    )
+    return
+
+  def load(self, fn_path, device, batch_size, use_fp16):
+    from core.serving.base.backends.trt import TensorRTModel
+    trt_model = TensorRTModel(self.log)
+    trt_model.load_or_rebuild_model(fn_path, use_fp16, batch_size, device)
+    config = trt_model._metadata[TensorRTModel.ONNX_METADATA_KEY]
+
+    return trt_model, config
+
+  def convert(self, inputs, config, fn):
+    from core.serving.base.backends.trt import TensorRTModel
+    from core.xperimental.onnx.utils import create_from_torch
+    import copy
+    print('saving to {}'.format(fn))
+    device = th.device('cuda')
+    export_model = copy.deepcopy(self.model)
+    create_from_torch(
+      export_model, device, fn, half=self.use_fp16,
+      input_names=self.input_names,
+      output_names=self.output_names,
+      args=inputs,
+      batch_axes=self.batch_axes,
+      aggressive_shape_inference=True,
+      metadata=config
+    )
+    trt_model = TensorRTModel(self.log)
+    trt_model.load_or_rebuild_model(fn, self.use_fp16, 1, device)
+
+    return trt_model
