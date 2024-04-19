@@ -1286,7 +1286,11 @@ class BasePluginExecutor(
       info = traceback.format_exc()
       self.P(msg + '\n' + info, color='r')
 
-      self.__save_full_config()
+      # self.__save_full_config()
+      # Instead of saving the full config, we only need to rollback the keys that were changed
+      # which are in the upstream_config
+      # We also need to exclude all the keys that are not in config data, as they are not used by anyone
+      self.__save_config(keys=[k for k in upstream_config.keys() if k in self.config_data])
 
       self._create_error_notification(
         msg=msg,
