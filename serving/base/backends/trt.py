@@ -544,6 +544,8 @@ class TensorRTModel(ModelBackendWrapper):
       raise Exception("Failed to run TensorRT kernel")
 
     # Return pre-computed output tensors in original ordering.
+    if len(current_output_tensors) == 1:
+      return current_output_tensors[0]
     return current_output_tensors
 
 

@@ -39,7 +39,9 @@ class ModelBackendWrapper(metaclass=abc.ABCMeta):
     - All inputs are unnamed torch tensor arguments specific to the model.
 
     Returns
-    - Tuple of tensors (specific to the model). The model itself does not
-      capture these.
+    - Tuple of tensors (specific to the model) if the model has more than
+      one ouput. The model itself does not capture these.
+      If the model only has one output (a tensor), returns that output
+      as is (a pytorch tensor).
     """
     raise NotImplementedError("__call__ not implemented")

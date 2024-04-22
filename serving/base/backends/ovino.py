@@ -106,7 +106,10 @@ class OpenVINOModel(ModelBackendWrapper):
     # Convert output into a tuple of torch tensors. Note that we're
     # already running on the CPU so this shouldn't involve any
     # memory copies.
-    return tuple([th.tensor(result[out]) for out in request.model_outputs])
+    ret = tuple([th.tensor(result[out]) for out in request.model_outputs])
+    if len(ret) == 1:
+      return ret[0]
+    return ret
 
   def __call__(self, *args : th.tensor) -> Tuple[th.tensor, ...]:
     """

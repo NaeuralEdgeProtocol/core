@@ -203,6 +203,8 @@ class ONNXModel(ModelBackendWrapper):
 
     if batch_size > 0:
       self._session.run_with_iobinding(binding)
+    if len(outputs) == 1:
+      return outputs[0]
     return tuple(outputs)
 
   def get_metadata(self):
