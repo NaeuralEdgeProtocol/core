@@ -14,6 +14,9 @@ _CONFIG = {
   "MSPN_URL": "minio:MSPN/ThYoloMSPN_bs1.ths",
   "MSPN_FILENAME": "ThYoloMSPN_bs1.ths",
 
+  "MSPN_ONNX_URL" : None,
+  "MSPN_ONNX_FILENAME" : None,
+  "MSPN_FORCE_BACKEND" : None,
 
   "MSPN_IMG_SHAPE": (256, 192),
   "NORM_MEANS": [0.406, 0.456, 0.485],
@@ -30,6 +33,19 @@ DEBUG_COVERED_SERVERS = False
 
 class ThYfMspn(BaseServingProcess):
   CONFIG = _CONFIG
+
+  def get_mspn_model_config(self):
+    """
+    The filename of the selected mspn model.
+    """
+    # First try to get the TensorRT/ONXN config
+    if self.cfg_mspn_onnx_filename is not None:
+      onnx_config = self.graph_config.get(self.cfg_mspn_onnx_filename)
+      if onnx_config is not None:
+        return onnx_config
+    #endif onnx config
+    # No TensorRT/ONNX model was selected, we must have used ths.
+    return self.graph_config[self.cfg_mspn_filename]
 
   def __init__(self, **kwargs):
     super(ThYfMspn, self).__init__(**kwargs)
@@ -51,11 +67,20 @@ class ThYfMspn(BaseServingProcess):
     return
 
   def _load_mspn_model(self):
-    self.mspn_model, self.graph_config[self.cfg_mspn_filename] = self._prepare_ts_model(
-      url=self.cfg_mspn_url,
-      fn_model=self.cfg_mspn_filename,
-      return_config=True
+    # Note that we use the same onnx file for trt/onnx/openvino.
+    config = {
+      'ths' : (self.cfg_mspn_filename, self.cfg_mspn_url),
+      'trt' : (self.cfg_mspn_onnx_filename, self.cfg_mspn_onnx_url),
+      'onnx' : (self.cfg_mspn_onnx_filename, self.cfg_mspn_onnx_url),
+      'openvino' : (self.cfg_mspn_onnx_filename, self.cfg_mspn_onnx_url),
+    }
+    self.mspn_model, model_loaded_config, fn = self.prepare_model(
+      backend_model_map=config,
+      forced_backend=self.cfg_mspn_force_backend,
+      return_config=True,
+      batch_size=self.cfg_max_batch_second_stage
     )
+    self.graph_config[fn] = model_loaded_config
 
     self.transforms = self.tv.transforms.Compose([
       self.tv.transforms.Resize(self.cfg_mspn_img_shape),
@@ -134,7 +159,7 @@ class ThYfMspn(BaseServingProcess):
     score_maps = self.th.clone(outputs)
     score_maps = score_maps / 255 + 0.5
 
-    kps = self.th.zeros((nr_img, self.graph_config[self.cfg_mspn_filename]['DATASET_KEYPOINT_NUM'], 2), device=self.dev)
+    kps = self.th.zeros((nr_img, self.get_mspn_model_config()['DATASET_KEYPOINT_NUM'], 2), device=self.dev)
     dr = self.th.clone(outputs)
 
     # We need to apply to blur operation on each "channel" (keypoint probability distribution) individually.
