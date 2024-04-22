@@ -114,9 +114,9 @@ class ApplicationMonitor(DecentrAIObject):
     core_ver = self.owner.core_version
 
     _ver = '{}{}{}'.format(
-      'A:{} '.format(app_ver) if core_ver is not None else '',
-      'C:{} '.format(app_ver) if core_ver is None else 'C:{} '.format(core_ver),
-      'P:{}'.format(self.log.version),
+      '{} | '.format(app_ver) if core_ver is not None else '',
+      '{} | '.format(app_ver) if core_ver is None else '{} |'.format(core_ver),
+      '{}'.format(self.log.version),
     )
     return _ver
   

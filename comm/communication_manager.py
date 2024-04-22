@@ -33,6 +33,7 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
     self._dct_comm_plugins = None
     self._last_print_info = time()
     self._command_queues = None
+    self.__lst_commands_from_self = []
     self._predefined_commands = avail_commands
 
     self.avg_comm_loop_timings = 0
@@ -183,15 +184,24 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
       communicator = self._dct_comm_plugins[ct.COMMS.COMMUNICATION_COMMAND_AND_CONTROL]
 
       receiver_id, receiver_addr, command_type, command_content = data
-      command = {
-        ct.EE_ID: receiver_id,
-        ct.COMMS.COMM_SEND_MESSAGE.K_ACTION: command_type,
-        ct.COMMS.COMM_SEND_MESSAGE.K_PAYLOAD: command_content,
-        ct.COMMS.COMM_SEND_MESSAGE.K_INITIATOR_ID: self._device_id,
-        ct.COMMS.COMM_SEND_MESSAGE.K_SESSION_ID: self.log.session_id,
-        ct.COMMS.COMM_SEND_MESSAGE.K_TIME: self.log.now_str()
-      }
-      communicator.send((receiver_id, receiver_addr, command))
+
+      should_bypass_commands_to_self = self._environment_variables.get("LOCAL_COMMAND_BYPASS", True)
+      is_command_to_self = receiver_addr == self.blockchain_manager.address
+
+      if should_bypass_commands_to_self and is_command_to_self:
+        # if we are the receiver, we bypass sending and receiving the command to the network
+        self.P("Bypassing network communication for {} local command to self".format(command_type), color='y')
+        self.__lst_commands_from_self.append((command_type, command_content))
+      else:
+        command = {
+          ct.EE_ID: receiver_id,
+          ct.COMMS.COMM_SEND_MESSAGE.K_ACTION: command_type,
+          ct.COMMS.COMM_SEND_MESSAGE.K_PAYLOAD: command_content,
+          ct.COMMS.COMM_SEND_MESSAGE.K_INITIATOR_ID: self._device_id,
+          ct.COMMS.COMM_SEND_MESSAGE.K_SESSION_ID: self.log.session_id,
+          ct.COMMS.COMM_SEND_MESSAGE.K_TIME: self.log.now_str()
+        }
+        communicator.send((receiver_id, receiver_addr, command))
     else:
       message = {
         'EE_ID': self._device_id,
@@ -227,6 +237,7 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
     incoming_commands = communicator_for_config.get_messages()
     for json_msg in incoming_commands:
       self.process_command_message(json_msg)
+    self.process_commands_from_self()
     return self.get_received_commands()
 
   def get_total_bandwidth(self):
@@ -307,6 +318,80 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
     )
     return
 
+  def process_commands_from_self(self):
+    for action, payload in self.__lst_commands_from_self:
+      # we populate the fields with our data because the message is supposed to be from us
+      self.process_decrypted_command(
+        action=action,
+        payload=payload,
+        sender_addr=self.blockchain_manager.address,
+        initiator_id=self._device_id,
+        session_id=self.log.session_id,
+        validated_command=True,
+      )
+    self.__lst_commands_from_self = []
+    return
+
+  def process_decrypted_command(self, action, payload, sender_addr=None, initiator_id=None, session_id=None, validated_command=False, json_msg=None):
+    """
+    This method is called to process a command that has been decrypted.
+    We assume the command has been validated at this point, so we can proceed with processing it.
+    We can discard a command if action is None or if the action is not recognized.
+
+    action: str
+      The action to be performed
+
+    payload: dict
+      The payload of the command
+
+    sender_addr: str
+      The address of the sender
+
+    initiator_id: str
+      The ID of the initiator
+
+    session_id: str
+      The ID of the session
+
+    validated_command: bool
+      Whether the command has been validated or not
+
+    json_msg: dict
+      The original JSON message
+    """
+    if action is not None:
+      action = action.upper()
+      if payload is None:
+        self.P("  Message with action '{}' does not contain payload".format(
+          action), color='y'
+        )
+        payload = {}  # initialize payload
+      # endif no payload
+
+      if isinstance(payload, dict):
+        # we add the sender address to the payload
+        payload[ct.COMMS.COMM_RECV_MESSAGE.K_SENDER_ADDR] = sender_addr
+        # we add or modify payload session & initiator for downstream tasks
+        if payload.get(ct.COMMS.COMM_RECV_MESSAGE.K_INITIATOR_ID) is None or initiator_id is not None:
+          payload[ct.COMMS.COMM_RECV_MESSAGE.K_INITIATOR_ID] = initiator_id
+        if payload.get(ct.COMMS.COMM_RECV_MESSAGE.K_SESSION_ID) is None or session_id is not None:
+          payload[ct.COMMS.COMM_RECV_MESSAGE.K_SESSION_ID] = session_id
+        # we send the message that this command was validated or not
+        payload[ct.COMMS.COMM_RECV_MESSAGE.K_VALIDATED] = validated_command
+      # endif
+
+      if action not in self._command_queues.keys():
+        self.P("  '{}' - command unknown".format(action), color='y')
+      else:
+        # each command is a tuple as below
+        self._command_queues[action].append((payload, sender_addr, initiator_id, session_id))
+        # self._save_input_command(payload)
+      # endif
+    else:
+      self.P('  Message does not contain action. Nothing to process...', color='y')
+      self.P('  Message received: \n{}'.format(json_msg), color='y')
+    return
+
   def process_command_message(self, json_msg):
     device_id = json_msg.get(ct.EE_ID, None)
     action = json_msg.get(ct.COMMS.COMM_RECV_MESSAGE.K_ACTION, None)
@@ -371,40 +456,19 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
             self.P("Error while decrypting message: {}\n{}".format(str_data, e), color='r')
       # endif is_encrypted
 
+      # TODO: change this value to False when all participants send encrypted messages
       if not is_encrypted and not self._environment_variables.get("ACCEPT_UNENCRYPTED_COMMANDS", True):
         self.P("  Message is not encrypted. Message dropped because `ACCEPT_UNENCRYPTED_COMMANDS=False`.", color='r')
       else:
-        if action is not None:
-          action = action.upper()
-          if payload is None:
-            self.P("  Message with action '{}' does not contain payload".format(
-              action), color='y'
-            )
-            payload = {}  # initialize payload
-          # endif no payload
-
-          if isinstance(payload, dict):
-            # we add the sender address to the payload
-            payload[ct.COMMS.COMM_RECV_MESSAGE.K_SENDER_ADDR] = sender_addr
-            # we add or modify payload session & initiator for downstream tasks
-            if payload.get(ct.COMMS.COMM_RECV_MESSAGE.K_INITIATOR_ID) is None or initiator_id is not None:
-              payload[ct.COMMS.COMM_RECV_MESSAGE.K_INITIATOR_ID] = initiator_id
-            if payload.get(ct.COMMS.COMM_RECV_MESSAGE.K_SESSION_ID) is None or session_id is not None:
-              payload[ct.COMMS.COMM_RECV_MESSAGE.K_SESSION_ID] = session_id
-            # we send the message that this command was validated or not
-            payload[ct.COMMS.COMM_RECV_MESSAGE.K_VALIDATED] = validated_command
-          # endif
-
-          if action not in self._command_queues.keys():
-            self.P("  '{}' - command unknown".format(action), color='y')
-          else:
-            # each command is a tuple as below
-            self._command_queues[action].append((payload, sender_addr, initiator_id, session_id))
-            # self._save_input_command(payload)
-          # endif
-        else:
-          self.P('  Message does not contain action. Nothing to process...', color='y')
-          self.P('  Message received: \n{}'.format(json_msg), color='y')
+        self.process_decrypted_command(
+          action=action,
+          payload=payload,
+          sender_addr=sender_addr,
+          initiator_id=initiator_id,
+          session_id=session_id,
+          validated_command=validated_command,
+          json_msg=json_msg
+        )
     return
 
   def validate_macro(self):
