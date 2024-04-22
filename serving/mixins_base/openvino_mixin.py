@@ -94,4 +94,5 @@ class OpenVINOMixin:
     if post_process_classes:
       config = self._process_config_classes(config)
 
+    self.P("  Model config:\n{}".format(self.log.dict_pretty_format(config)))
     return (model, config) if return_config else model
