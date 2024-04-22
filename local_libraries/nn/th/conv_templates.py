@@ -943,17 +943,13 @@ class SiameseClassifierRefactorWithStemBackbone(th.nn.Module):
       input_dim=input_dim,
       stem_layer=stem_layer,
       use_stem_activation=use_stem_activation,
+      embedding_transform='gmp/gap',
     )
 
     self.merge_mode = merge_mode
-
-    self.transform = EmbeddingTransform(
-      type='gmp/gap',
-      input_dim=(self.image_encoder.output_filters, None, None)
-    )
-    output_filters = self.transform.output_dim
-
     self.merge = None
+
+    output_filters = self.image_encoder.output_filters
 
     if self.merge_mode == 'CONCAT':
       self.diff_squeeze = None
@@ -996,7 +992,7 @@ class SiameseClassifierRefactorWithStemBackbone(th.nn.Module):
       return th.cat([tf_diff_sq, test_enc], dim=-1)
 
   def get_encodings(self, th_images):
-    return self.transform(self.image_encoder(th_images))
+    return self.image_encoder(th_images)
 
   def forward(self, th_anchor_encodings, th_images):
     th_image_encodings = self.get_encodings(th_images)

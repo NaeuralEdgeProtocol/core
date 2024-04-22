@@ -405,8 +405,8 @@ class BaseScripter(metaclass=abc.ABCMeta):
 
     if to_test:
       test_batch_size = 2 * batch_size if test_batch_size is None else test_batch_size
-      if gold_model is not None:
-        gold_model.to(device)
+      if self.gold_model is not None:
+        self.gold_model.to(device)
 
       self.log.P('Starting validation phase...')
       if self.gold_model is None:
