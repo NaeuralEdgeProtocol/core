@@ -166,6 +166,7 @@ class IdentityLayer(th.nn.Module):
 
 
 class ConcatenateLayer(th.nn.Module):
+  # TODO: REVIEW repr
   def __init__(self, dim=0, lst_input_dims=[]):
     super().__init__()
     self.dim = dim

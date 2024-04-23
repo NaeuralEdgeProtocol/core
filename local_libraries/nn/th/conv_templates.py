@@ -139,7 +139,7 @@ class CNNColumn(th.nn.Module):
 
 
 class ImageEncoder(th.nn.Module):
-  def __init__(self, filters, stride_multiplier, cnn_act, layer_norm, nconv, in_channels=None, input_dim=None):
+  def __init__(self, filters, stride_multiplier, cnn_act, layer_norm, nconv, in_channels=None, embedding_transform=None, input_dim=None):
     """
     TODO: Docstrings
 
@@ -163,11 +163,18 @@ class ImageEncoder(th.nn.Module):
         layer_norm=layer_norm,
         nconv=nconv
       )
-      columns.append(tf_x_column)
-      self.output_filters += filters[i][-1][0]
+      transform = EmbeddingTransform(
+          type=embedding_transform,
+          input_dim=tf_x_column.output_dim
+        )
+      columns.append(th.nn.Sequential(
+        tf_x_column,
+        transform
+      ))
+      self.output_filters += transform.output_dim
     self.columns = th.nn.ModuleList(columns)
     # TODO: fix verbosity
-    self.concat_layer = ConcatenateLayer(dim=1, lst_input_dims=[col.output_dim for col in columns])
+    return
 
   def forward(self, x):
     results = []
@@ -177,7 +184,7 @@ class ImageEncoder(th.nn.Module):
     for column in self.columns:
       results.append(column(x))
 
-    results = self.concat_layer(results)
+    results = th.cat(results, dim=1)
     return results
 
 
@@ -504,8 +511,21 @@ class ClassificationHead(th.nn.Module):
 
 
 class OrdinalRegressionHead(th.nn.Module):
-  def __init__(self, input_size, output_size) -> None:
+  def __init__(self, input_size, output_size, units_dense=None) -> None:
     super(OrdinalRegressionHead, self).__init__()
+    
+    
+    if units_dense is None:
+      units_dense = []
+
+    layers = []
+    for unit in units_dense:
+      layers.append(th.nn.Linear(input_size, unit))
+      layers.append(th.nn.ReLU())
+      input_size = unit
+
+    self.fc = th.nn.Sequential(*layers)
+    
     self.W = th.nn.Linear(input_size, 1, bias=False)
     self.b = th.nn.Parameter(th.zeros(output_size - 1))
 
@@ -519,7 +539,8 @@ class OrdinalRegressionHead(th.nn.Module):
     To:
     (bs, X) -> (bs, nr_out) ==> M(X, 1) + W(1, nr_out)
     """
-    yh = self.W(x)
+    yh = self.fc(x)
+    yh = self.W(yh)
     yh = yh + self.b
     return yh, self.activation(yh)
 
@@ -558,16 +579,13 @@ class SiameseClassifier(th.nn.Module):
       cnn_act=cnn_act,
       layer_norm=layer_norm,
       nconv=nconv,
-      input_dim=input_dim
+      input_dim=input_dim,
+      embedding_transform='gmp/gap',
     )
 
     self.merge_mode = merge_mode
 
-    self.transform = EmbeddingTransform(
-      type='gmp/gap',
-      input_dim=(self.image_encoder.output_filters, None, None)
-    )
-    output_filters = self.transform.output_dim
+    output_filters = self.image_encoder.output_filters
 
     if self.merge_mode == 'CONCAT':
       self.diff_squeeze = None
@@ -591,7 +609,8 @@ class SiameseClassifier(th.nn.Module):
     if ordinal_regression:
       self.readout = OrdinalRegressionHead(
         input_size=no_feats,
-        output_size=nr_outputs
+        output_size=nr_outputs,
+        units_dense=units_dense,
       )
     else:
       self.readout = ClassificationHead(
@@ -608,8 +627,8 @@ class SiameseClassifier(th.nn.Module):
     else:
       anchor_imgs, test_imgs = kwargs['anchor_imgs'], kwargs['test_imgs']
 
-    anch_enc = self.transform(self.image_encoder(anchor_imgs))
-    test_enc = self.transform(self.image_encoder(test_imgs))
+    anch_enc = self.image_encoder(anchor_imgs)
+    test_enc = self.image_encoder(test_imgs)
 
     if self.merge_mode == 'CONCAT':
       th_x = th.cat([anch_enc, test_enc], dim=-1)
@@ -702,7 +721,8 @@ class SiameseClassifierWithStem(th.nn.Module):
     if ordinal_regression:
       self.readout = OrdinalRegressionHead(
         input_size=no_feats,
-        output_size=nr_outputs
+        output_size=nr_outputs,
+        units_dense=units_dense,
       )
     else:
       self.readout = ClassificationHead(
