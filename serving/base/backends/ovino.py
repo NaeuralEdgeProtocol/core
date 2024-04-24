@@ -47,7 +47,8 @@ class OpenVINOModel(ModelBackendWrapper):
 
   def load_model(
     self,
-    model_path : str
+    model_path : str,
+    half : bool
   ) -> None:
     """
     Loads the OpenVINO from disk (in ONNX format).
@@ -58,6 +59,8 @@ class OpenVINOModel(ModelBackendWrapper):
 
     model_path : str
       The path of the model on disk, in ONNX format
+    half : bool
+      If True loads the model in fp16
 
     Returns
     -------
@@ -81,6 +84,21 @@ class OpenVINOModel(ModelBackendWrapper):
     for meta in onnx_metadata_dict:
       if meta['key'] == OpenVINOModel.ONNX_METADATA_KEY:
         self._metadata = json.loads(meta['value'])
+
+    model_precision = self._metadata.get('precision')
+    if model_precision is not None:
+      if (model_precision.lower() == "fp16") != half:
+        if half and model_precision.lower() == "fp32":
+          #from onnxconverter_common import float16
+          from onnxruntime.transformers import float16
+          model_fp16 = float16.convert_float_to_float16(model_onnx, disable_shape_infer=True)
+          fp16path = str(Path(model_path).with_suffix('.tofp16.onnx'))
+          onnx.save(model_fp16, fp16path)
+          model_path = fp16path
+        else:
+          raise RuntimeError('Incompatible precision in ONNX model')
+    #endif check onnx precision
+
     del model_onnx
     model_onnx = None
 

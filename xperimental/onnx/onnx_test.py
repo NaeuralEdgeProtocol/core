@@ -35,7 +35,7 @@ if __name__ == '__main__':
     aggressive_shape_inference=True)
 
   model = ONNXModel()
-  model.load_model(path, 4, device)
+  model.load_model(path, 4, device, False)
 
   o0, o1, o2, o3 = model(
     imgs[:4],
@@ -73,7 +73,8 @@ if __name__ == '__main__':
 
   # Try this with a reduced batch size
   onnx_model = ONNXModel()
-  onnx_model.load_model(path, 8, device)
+  onnx_model.load_model(path, 8, device, True)
+  imgs = imgs.half()
   o0, o1 = onnx_model(imgs[:4])
   for i in range(o0.shape[0]):
     print('==============================')

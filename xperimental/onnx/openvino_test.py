@@ -43,7 +43,8 @@ if __name__ == '__main__':
     metadata=config)
 
   vmodel = OpenVINOModel()
-  vmodel.load_model(model_path=path)
+  vmodel.load_model(model_path=path, half=True)
+  imgs = imgs.half()
   print(vmodel.get_metadata())
   print(vmodel.get_input_dtype(0))
   o0, o1 = vmodel(imgs)

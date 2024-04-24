@@ -81,7 +81,7 @@ class OpenVINOMixin:
     # Just load or rebuild the model.
     model = OpenVINOModel()
     self.P("Trying to load from {}".format(fn_path))
-    model.load_model(fn_path)
+    model.load_model(fn_path, half=self.cfg_use_fp16)
     config = model.get_metadata()
 
     err_keys = ['torch']

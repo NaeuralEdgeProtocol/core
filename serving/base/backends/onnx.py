@@ -5,6 +5,7 @@ import numpy as np
 import onnx
 import onnxruntime as ort
 from typing import Tuple
+from pathlib import Path
 
 from core.serving.base.backends.model_backend_wrapper import ModelBackendWrapper
 
@@ -104,7 +105,8 @@ class ONNXModel(ModelBackendWrapper):
     self,
     model_path : str,
     max_batch_size : int,
-    device : th.device
+    device : th.device,
+    half : bool
   ) -> None:
     """
     Initialize from a path on the disk.
@@ -114,6 +116,7 @@ class ONNXModel(ModelBackendWrapper):
       model_path - path to onnx model on disk
       max_batch_size - maximum batch size for the inference
       device - torch device to use.
+      half - if True converts model to fp16
 
     Returns
     -------
@@ -130,6 +133,21 @@ class ONNXModel(ModelBackendWrapper):
     for meta in onnx_metadata_dict:
       if meta['key'] == ONNXModel.ONNX_METADATA_KEY:
         self._metadata = json.loads(meta['value'])
+
+    model_precision = self._metadata.get('precision')
+    if model_precision is not None:
+      if (model_precision.lower() == "fp16") != half:
+        if half and model_precision.lower() == "fp32":
+          #from onnxconverter_common import float16
+          from onnxruntime.transformers import float16
+          model_fp16 = float16.convert_float_to_float16(model_onnx, disable_shape_infer=True)
+          fp16path = str(Path(model_path).with_suffix('.tofp16.onnx'))
+          onnx.save(model_fp16, fp16path)
+          model_path = fp16path
+        else:
+          raise RuntimeError('Incompatible precision in ONNX model')
+    #endif check onnx precision
+
     del model_onnx
     model_onnx = None
 
