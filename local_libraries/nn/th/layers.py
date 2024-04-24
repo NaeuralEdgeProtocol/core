@@ -622,6 +622,15 @@ class EmbeddingTransform(th.nn.Module):
     else:
       return self.input_dim
 
+  def __repr__(self):
+    s = super().__repr__()
+
+    s += " [Input={} => Output={}]".format(
+      self.input_dim,
+      self.output_dim
+    )
+    return s
+
 if False:
   # This is done in order for us to be able to use both the old version and the new version of DSepConv2DModule
   # with as little code as possible.

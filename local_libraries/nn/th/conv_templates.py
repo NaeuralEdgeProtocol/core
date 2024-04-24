@@ -139,7 +139,13 @@ class CNNColumn(th.nn.Module):
 
 
 class ImageEncoder(th.nn.Module):
-  def __init__(self, filters, stride_multiplier, cnn_act, layer_norm, nconv, in_channels=None, embedding_transform=None, input_dim=None):
+  def __init__(
+      self, filters, stride_multiplier, cnn_act, layer_norm, nconv,
+      in_channels=None, embedding_transform='gmp/gap', input_dim=None,
+      dropout=0, dropout_type='classic', dropout_value_type='constant',
+      resize_conv=False, skipping='residual', equalize_columns=False,
+      equalize_method='min'
+  ):
     """
     TODO: Docstrings
 
@@ -151,6 +157,7 @@ class ImageEncoder(th.nn.Module):
       input_dim = (in_channels, None, None)
 
     assert any(input_dim), ValueError("ImageEncoder expects 'in_channels' or 'input_dim' parameters")
+    self.input_dim = input_dim
 
     self.output_filters = 0
     columns = []
@@ -161,17 +168,39 @@ class ImageEncoder(th.nn.Module):
         act=cnn_act,
         stride_multiplier=stride_multiplier,
         layer_norm=layer_norm,
-        nconv=nconv
+        nconv=nconv,
+        dropout=dropout,
+        dropout_type=dropout_type,
+        dropout_value_type=dropout_value_type,
+        skipping=skipping,
+        resize_conv=resize_conv
       )
       transform = EmbeddingTransform(
-          type=embedding_transform,
-          input_dim=tf_x_column.output_dim
-        )
-      columns.append(th.nn.Sequential(
-        tf_x_column,
-        transform
-      ))
-      self.output_filters += transform.output_dim
+        type=embedding_transform,
+        input_dim=tf_x_column.output_dim
+      )
+      columns.append([tf_x_column, transform])
+    # endfor columns
+    embedding_sizes = [transform.output_dim for _, transform in columns]
+    if equalize_columns:
+      # Equalize the number of output filters for each column
+      # First, decide the embedding size
+      if equalize_method == 'min':
+        embedding_size = min(embedding_sizes)
+      elif equalize_method == 'max':
+        embedding_size = max(embedding_sizes)
+      else:
+        raise ValueError(f"Equalize method {equalize_method} not implemented")
+      # endif equalize_method
+      # Second, add a linear layer to each column to equalize the number of filters
+      for i in range(len(columns)):
+        columns[i].append(th.nn.Linear(embedding_sizes[i], embedding_size))
+      # endfor columns
+      self.output_filters = len(columns) * embedding_size
+    else:
+      self.output_filters = sum(embedding_sizes)
+    # endif equalize_columns
+    columns = [th.nn.Sequential(*column) for column in columns]
     self.columns = th.nn.ModuleList(columns)
     # TODO: fix verbosity
     return
@@ -187,6 +216,21 @@ class ImageEncoder(th.nn.Module):
     results = th.cat(results, dim=1)
     return results
 
+  @property
+  def output_dim(self):
+    return self.output_filters
+
+  def __repr__(self):
+    s = super().__repr__()
+
+    if self.input_dim is None:
+      return s
+
+    s += " [Input={} => Output={}]".format(
+      self.input_dim,
+      self.output_dim
+    )
+    return s
 
 class ImageEncoderWithStem(th.nn.Module):
   def __init__(self, filters, stride_multiplier, cnn_act, layer_norm, nconv, stem_layer, use_stem_activation, in_channels=None, embedding_transform=None, input_dim=None):
@@ -202,6 +246,7 @@ class ImageEncoderWithStem(th.nn.Module):
 
     assert any(input_dim), ValueError("ImageEncoderWithStem expects 'in_channels' or 'input_dim' parameters")
 
+    self.input_dim = input_dim
     stem_layers = []
     stem_layers.append(
       Conv2dExt(
@@ -251,6 +296,22 @@ class ImageEncoderWithStem(th.nn.Module):
     results = th.cat(results, dim=1)
     return results
 
+  @property
+  def output_dim(self):
+    return self.output_filters
+
+  def __repr__(self):
+    s = super().__repr__()
+
+    if self.input_dim is None:
+      return s
+
+    s += " [Input={} => Output={}]".format(
+      self.input_dim,
+      self.output_dim
+    )
+    return s
+
 
 class ReadoutConv(th.nn.Module):
   """
@@ -259,7 +320,7 @@ class ReadoutConv(th.nn.Module):
   def __init__(
       self, lst_convs, in_channels, input_dim,
       act='relu6', dropout=0, embedding_type='flatten',
-      dropout_type='classic', dropout_value_type=''
+      dropout_type='classic', dropout_value_type='constant'
   ):
     """
 
@@ -340,7 +401,7 @@ class ReadoutConv(th.nn.Module):
 class ReadoutFC(th.nn.Module):
   def __init__(
       self, lst_fc_sizes, in_features, dropout, act='relu',
-      dropout_type='classic', dropout_value_type=''
+      dropout_type='classic', dropout_value_type='constant'
   ):
     super(ReadoutFC, self).__init__()
     self.in_features = in_features
@@ -378,13 +439,20 @@ class ReadoutFC(th.nn.Module):
     th_out = self.fcs(th_x)
     return th_out
 
+  def __repr__(self):
+    s = super().__repr__()
+    s += " [Input={} => Output={}]".format(
+      self.in_features,
+      self.output_size
+    )
+    return s
 
 class Readout(th.nn.Module):
   def __init__(
       self, lst_coords_sizes, input_shape, dropout, act='relu',
       readout_act=None, nr_outputs=1, use_conv_dropout=False,
       embedding_type='flatten', lst_fc_preredout=None, dropout_type='classic',
-      dropout_value_type=''
+      dropout_value_type='constant'
   ):
     super(Readout, self).__init__()
 

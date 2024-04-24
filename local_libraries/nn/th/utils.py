@@ -38,7 +38,7 @@ def get_dropout(
 
   """
   dropout_rate = get_dropout_rate(value_type, dropout, step, max_step)
-  dropout_class = th.nn.Dropout2d if dropout_type == 'spatial' else th.nn.Dropout2d
+  dropout_class = th.nn.Dropout2d if dropout_type == 'spatial' else th.nn.Dropout
   return dropout_class(dropout_rate)
 
 
