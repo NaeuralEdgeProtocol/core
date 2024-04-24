@@ -20,6 +20,9 @@ _CONFIG = {
 
   "FRAME_H": None,  # 720,
   "FRAME_W": None,  # 1280,
+  
+  "USER": None,
+  "PASSWORD": None,
 
   "FFMPEG_GENERAL_COMMAND_PARAMETERS": {},
   "DEFAULT_FFMPEG_GENERAL_COMMAND_PARAMETERS": {
@@ -237,6 +240,8 @@ class VideoStreamFfmpegDataCapture(DataCaptureThread, _VideoConfigMixin):
     self._last_read_time = 0
 
     self.last_url = None
+    self.last_user = None
+    self.last_password = None
     self.last_downloaded_file = None
     self.last_hw = None
 
@@ -356,6 +361,33 @@ class VideoStreamFfmpegDataCapture(DataCaptureThread, _VideoConfigMixin):
 
     return filepath, True
 
+  def _maybe_edit_user_password_in_url(self, url):
+    parsed_url = self.urlparse(url)
+
+    old_user, old_password = parsed_url.username, parsed_url.password
+
+    host, port = parsed_url.hostname, parsed_url.port
+
+    user = self.cfg_user if self.cfg_user is not None else old_user
+    password = self.cfg_password if self.cfg_password is not None else old_password
+
+    self.last_user = user
+    self.last_password = password
+
+    self.P(f"User: {old_user} -> {user}")
+    self.P(f"Password: {old_password} -> {password}")
+
+    new_url = self.urlunparse
+
+    new_netloc = f"{user}:{password}@{host}"
+    new_netloc = f"{new_netloc}:{port}" if port is not None else new_netloc
+
+    new_url = self.urlunparse((parsed_url.scheme, new_netloc, parsed_url.path, parsed_url.params, parsed_url.query, parsed_url.fragment))
+
+    self.P(f"New URL: {new_url}")
+
+    return new_url
+
   def _create_ffmpeg_subprocess(self):
 
     url, is_file = self._get_url()
@@ -366,6 +398,8 @@ class VideoStreamFfmpegDataCapture(DataCaptureThread, _VideoConfigMixin):
       ffmpeg_command += [
         '-re',  # Read input at native frame rate. Mainly used to simulate a grab device
       ]
+    else:
+      url = self._maybe_edit_user_password_in_url(url)
 
     dct_general_command_parameters = {
       **self.cfg_default_ffmpeg_general_command_parameters,
@@ -464,15 +498,25 @@ class VideoStreamFfmpegDataCapture(DataCaptureThread, _VideoConfigMixin):
     if self.cfg_url != self.last_url:
       self.has_connection = False  # forces reconnection
       self.last_downloaded_file = None
-      self.P("RTSP URI change detected from {} to {}, reconnecting...".format(
-        self.last_url, self.cfg_url,
-      ))
+      self.P("RTSP URI change detected from `{}` to `{}`, reconnecting...".format(
+        self.last_url, self.cfg_url), color='r')
 
     if self.get_configured_hw() != self.last_hw:
       self.has_connection = False  # forces reconnection
-      self.P("Video stream acquisition resolution changed from {} to {}, reconnecting...".format(
-        self.last_hw, self.get_configured_hw(),
-      ))
+      self.P("Video stream acquisition resolution changed from `{}` to `{}`, reconnecting...".format(
+        self.last_hw, self.get_configured_hw()), color='r')
+
+    # Trigger a reconnect if the user changes and the url is a video stream
+    if self.cfg_user != self.last_user and self.__is_video_stream(self.cfg_url):
+      self.has_connection = False  # forces reconnection
+      self.P("User change detected from `{}` to `{}`, reconnecting...".format(
+        self.last_user, self.cfg_user), color='r')
+
+    # Trigger a reconnect if the password changes and the url is a video stream
+    if self.cfg_password != self.last_password and self.__is_video_stream(self.cfg_url):
+      self.has_connection = False
+      self.P("Password change detected from `{}` to `{}`, reconnecting...".format(
+        self.last_password, self.cfg_password), color='r')
     return
 
   def _read_frame(self):

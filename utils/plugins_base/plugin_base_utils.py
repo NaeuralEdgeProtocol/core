@@ -20,7 +20,7 @@ from time import sleep, time
 from datetime import datetime, timedelta
 from copy import deepcopy
 from xml.etree import ElementTree
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 from functools import partial
 
 from core import constants as ct
@@ -371,6 +371,18 @@ class _UtilsBaseMixin(
 
     """
     return urlparse
+
+  @property
+  def urlunparse(self):
+    """
+    Provides access to `urlunparse` method from `urllib.parse` package
+
+    Returns
+    -------
+    `urlunparse` method      
+
+    """
+    return urlunparse
   
   @property
   def consts(self):
