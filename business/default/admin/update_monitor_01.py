@@ -53,8 +53,6 @@ Examples:
  
 """
 from core.business.base import BasePluginExecutor
-import json
-import yaml
 import os
 
 
@@ -219,7 +217,9 @@ class UpdateMonitor01Plugin(BasePluginExecutor):
 
 
   def needs_forced_restart(self):
-    if self.get_node_running_time() > self.cfg_force_restart_after:
+    if self.cfg_force_restart_after is None:
+      return False
+    elif self.get_node_running_time() > self.cfg_force_restart_after:
       return True
     return False
   
@@ -309,11 +309,11 @@ class UpdateMonitor01Plugin(BasePluginExecutor):
       self.P("Initial version check\n{}".format(msg))
     #endif log info 
     
+    local_ver = self.ee_ver
     if server_ver is None:
       self.__failed_download = True
     else:
       self.__failed_download = False
-      local_ver = self.ee_ver
       i_sver = self.get_int_ver(server_ver)
       i_lver = self.get_int_ver(local_ver)      
       if local_ver != server_ver:
