@@ -15,6 +15,7 @@ ARM64_CPU_DEFAULT = ['onnx', 'openvino', 'ths']
 ARM64_GPU_DEFAULT = ['trt', 'ths']
 AMD64_CPU_DEFAULT = ['openvino', 'onnx', 'ths']
 AMD64_GPU_DEFAULT = ['trt', 'ths']
+BACKEND_REQUIRES_CPU = ['onnx', 'openvino']
 
 
 _CONFIG = {
@@ -23,8 +24,8 @@ _CONFIG = {
   "IMAGE_HW"                    : None,
   "WARMUP_COUNT"                : 3,
   "USE_AMP"                     : False,
-  "USE_FP16"                    : True,
-  "DEFAULT_DEVICE"              : "cuda:0",
+  "USE_FP16"                    : None,
+  "DEFAULT_DEVICE"              : None,
   "URL"                         : None,
   "DEBUG_TIMERS"                : False,
   "MAX_BATCH_FIRST_STAGE"       : None,
@@ -66,6 +67,7 @@ class UnifiedFirstStage(
     self.class_names = None
     self.graph_config = {}
     self._platform_backend_priority = None
+    self._str_dev = None
 
     super(UnifiedFirstStage, self).__init__(**kwargs)
     return
@@ -84,12 +86,20 @@ class UnifiedFirstStage(
 
   @property
   def cfg_fp16(self):
-    return self.cfg_use_fp16
+    # Use the USE_FP16 value if that was specified in the config.
+    # If it wasn't specified and we're using the CPU don't use
+    # fp16 as that will crash pytorch. If we're using CUDA
+    # default to fp16.
+    if self.cfg_use_fp16 is not None:
+      return self.cfg_use_fp16
+    if self.dev.type == 'cpu':
+      return False
+    return True
 
   @property
   def th_dtype(self):
     ### TODO: Maybe we have uint as input
-    return th.float16 if self.cfg_use_fp16 else th.float32
+    return th.float16 if self.cfg_fp16 else th.float32
 
   @property
   def get_model_weights_filename(self):
@@ -120,6 +130,19 @@ class UnifiedFirstStage(
   def get_url(self):
     return self.cfg_url
 
+  def get_device_string(self):
+    """
+    Get the device string for the torch device used by this serving.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    str - the torch device string used
+    """
+    return self._str_dev
+
   def get_saved_model_fn(self):
     fn_saved_model = self.get_model_weights_filename if self.get_model_weights_filename is not None else self.server_name + '_weights.pt'
     return fn_saved_model
@@ -130,7 +153,7 @@ class UnifiedFirstStage(
 
   def has_device(self, dev=None):
     if dev is None:
-      dev = th.device(self.cfg_default_device)
+      dev = th.device(self.get_device_string())
     elif isinstance(dev, str):
       dev = th.device(dev)
     dev_idx = 0 if dev.index is None else dev.index
@@ -172,19 +195,58 @@ class UnifiedFirstStage(
       return AMD64_GPU_DEFAULT
     if is_arm64:
       return ARM64_GPU_DEFAULT
+    # TODO: we might have more platforms and this code is a bit too specific.
     raise ValueError('Unexpected platform')
+
+  def _setup_device_string(self):
+    """
+    Initializes the device string of this serving based on the
+    configuration and platform. If DEFAULT_DEVICE was explicitly
+    set in the config, we use that. If a backend that needs the
+    CPU was explicitly and DEFAULT_DEVICE was not specified, we
+    will use the CPU device. Otherwise, if the platform has a
+    CUDA device we will use cuda:0 or fall back to the CPU.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None
+    """
+    has_cuda = (th.cuda.is_available() and th.cuda.device_count() > 0)
+    if self.cfg_default_device is not None:
+      self._str_dev = self.cfg_default_device.lower()
+      return
+    elif has_cuda:
+      self.P("Machine support CUDA, using cuda:0 as the default device", color='b')
+      self._str_dev = 'cuda:0'
+    else:
+      self.P("Machine does not support CUDA, falling back to CPU", color='r')
+      self._str_dev = 'cpu'
+    #endif select default device
+
+    if self.cfg_force_backend is not None:
+      if self.cfg_force_backend in BACKEND_REQUIRES_CPU:
+        self._str_dev = 'cpu'
+        self.P("Forcing device to CPU for backend", c='r')
+    #endif force device for backend
+    return
 
   def _setup_model(self):
     self.P("Model setup initiated for {}".format(self.__class__.__name__))
 
-    if self.cfg_use_amp and self.cfg_use_fp16:
-      self.P('Using both AMP and FP16 is not usually recommended.', color='r')
+    # Determine the device string based on configs and platform.
+    self._setup_device_string()
 
-    str_dev = self.cfg_default_device.lower()
-    dev = th.device(str_dev)
+    dev = th.device(self.get_device_string())
     if not self.has_device(dev):
       raise ValueError('Current machine does not have compute device {}'.format(dev))
     self.dev = dev
+
+    if self.cfg_use_amp and self.cfg_fp16:
+      self.P('Using both AMP and FP16 is not usually recommended.', color='r')
 
     # Now that we've chosen the device we can determine the default
     # backend order for this platform.
@@ -192,7 +254,7 @@ class UnifiedFirstStage(
 
     # record gpu info status pre-loading
     lst_gpu_status_pre = None
-    if 'cuda' in self.cfg_default_device:
+    if 'cuda' in self.get_device_string():
       lst_gpu_status_pre = self.log.gpu_info(mb=True)
 
     self.P("Prepping classes if available...")
@@ -372,7 +434,7 @@ class UnifiedFirstStage(
         self.__class__.__name__, model_dev, device), color='y')
       model.to(device)
     model.eval()
-    if self.cfg_use_fp16:
+    if self.cfg_fp16:
       model.half()
     return
 

@@ -17,7 +17,6 @@ _CONFIG = {
   "DEBUG_SERVING": False,
 
   "PICKED_INPUT": "IMG",
-  "DEFAULT_DEVICE": "cuda:0",
 
   'MAX_BATCH_FIRST_STAGE': 8,
 

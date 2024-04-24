@@ -22,7 +22,7 @@ class OpenVINOMixin:
       by ONNX_URL)
 
     fn_model : str
-      The filename of the ONNX model. If None, the default ONNX filename value
+      The filename of the OpenVINO model. If None, the default ONNX filename value
       will be used (specified by MODEL_ONNX_URL)
 
     post_process_classes : bool
@@ -36,10 +36,10 @@ class OpenVINOMixin:
     Returns
     -------
     if return_config is False
-      res - the ONNXModel that was loaded
+      res - the OpenVINOModel that was loaded
 
     if return_config is True
-      res - tuple of (ONNXModel, config) where the ONNXModel is the model that
+      res - tuple of (OpenVINOModel, config) where the OpenVINOModel is the model that
         was loaded/prepared, config is the configuration of the model (dict)
     """
 
@@ -81,10 +81,12 @@ class OpenVINOMixin:
     # Just load or rebuild the model.
     model = OpenVINOModel()
     self.P("Trying to load from {}".format(fn_path))
-    model.load_model(fn_path, half=self.cfg_use_fp16)
+    model.load_model(fn_path, half=self.cfg_fp16)
     config = model.get_metadata()
 
     err_keys = ['torch']
+    # torch and torchvisions versions may not affect anything here since
+    # the model is already traced (as onnx).
     env_versions = {
       'python': self.python_version(),
       'torch': self.th.__version__,
