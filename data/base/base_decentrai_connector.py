@@ -106,7 +106,7 @@ class BaseDecentraiConnectorDataCapture(DataCaptureThread):
     return
 
   @abc.abstractmethod
-  def interpret_message(self, message) -> dict | None:
+  def interpret_message(self, message) -> dict:
     """
     Interpret a message received from the network. The message is structured like this:
     ```
