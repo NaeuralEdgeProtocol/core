@@ -4,8 +4,8 @@ import os
 class TensortRTMixin:
 
   def _prepare_trt_model(self,
-    url : str | None = None,
-    fn_model : str | None = None,
+    url : str = None,
+    fn_model : str = None,
     post_process_classes : bool = False,
     return_config : bool = False,
     **kwargs

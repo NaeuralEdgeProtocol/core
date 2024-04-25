@@ -22,8 +22,8 @@ class ONNXMixin:
     return True
 
   def _prepare_onnx_model(self,
-    url : str | None = None,
-    fn_model : str | None = None,
+    url : str = None,
+    fn_model : str = None,
     post_process_classes : bool = False,
     return_config : bool = False,
     **kwargs

@@ -189,7 +189,7 @@ class Y8(th.nn.Module):
 
   def __init__(
     self,
-    model : str | Tuple[th.nn.Module, dict],
+    model,
     dev : th.device,
     topk : bool = False,
     backend_type : BackendType = BackendType.TORCH

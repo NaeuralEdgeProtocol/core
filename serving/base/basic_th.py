@@ -417,8 +417,8 @@ class UnifiedFirstStage(
 
   def prepare_model(
     self,
-    backend_model_map : dict | None = None,
-    forced_backend : str | None = None,
+    backend_model_map : dict = None,
+    forced_backend : str = None,
     post_process_classes : bool = False,
     return_config : bool = False,
     **kwargs
