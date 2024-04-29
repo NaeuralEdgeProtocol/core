@@ -451,15 +451,19 @@ class ServingManager(Manager):
     }
     self.owner.set_loop_stage('3.serving.start.{}.shm_starting'.format(server_name))
     self.log.start_timer('create_server_shm_start()')
-    try:
-      npy_shm = NumpySharedMemory(**npy_shm_kwargs, create=True, log=self.log) if comm_method == 'shm' else None
-    except Exception as e:
-      self.P(f"Failed creating shared memory for server '{server_name}':\n{e}\nAttempting to create user instance")
-      npy_shm = NumpySharedMemory(**npy_shm_kwargs, create=False, log=self.log)
+    npy_shm = NumpySharedMemory(**npy_shm_kwargs, create=True, log=self.log) if comm_method == 'shm' else None
+    if not npy_shm.initialized:
+      self.P(
+        f"Failed to initialize shared memory for server '{server_name}'. Defaulting to pipe communication",
+        color='error'
+      )
+      comm_method = 'default'
+      npy_shm = None
+    # endif initializing shared memory failed
     self.log.stop_timer('create_server_shm_start()')
     _server = _Class(
       server_name=server_name,
-      comm_eng=comm_client, # None if inprocess
+      comm_eng=comm_client,  # None if inprocess
       full_debug=self.full_debug,
       inprocess=inprocess,
       default_config=_default_config,

@@ -96,9 +96,12 @@ class NumpySharedMemory(DecentrAIObject):
     else:
       return "posix_ipc"      
 
+  def get_instance_type(self, initiator=False):
+    return "Creator" if initiator else "User"
+
   @property
   def instance_type(self):
-    return "Creator" if self.initiator else "User"
+    return self.get_instance_type(self.initiator)
 
   def _set_error(self, err):
     self.error_message = err
@@ -225,17 +228,35 @@ class NumpySharedMemory(DecentrAIObject):
       def initialize_mp_shared_memory(
           create, mem_name, mem_size, np_shape, np_type
       ):
-        shm = shared_memory.SharedMemory(
-          create=create,
-          name=mem_name,
-          size=int(mem_size),
-        )
+        try:
+          # Attempt to create the shared memory object.
+          shm = shared_memory.SharedMemory(
+            create=create,
+            name=mem_name,
+            size=int(mem_size),
+          )
+        except Exception as exc:
+          # If the shared memory object already exists, attempt to open it.
+          # If the shared memory object does not exist, create it.
+          initial_instance_type = self.get_instance_type(create)
+          current_instance_type = self.get_instance_type(not create)
+          self.P(f"Failed to create shared memory '{mem_name}'[{initial_instance_type}]: {exc}\n"
+                 f"Attempting to open shared memory '{mem_name}'[{current_instance_type}]")
+          create = not create
+          shm = shared_memory.SharedMemory(
+            create=create,
+            name=mem_name,
+            size=int(mem_size),
+          )
+        # endtry create shared memory
+        # Create a numpy array from the shared memory object.
+        # The numpy array will be used to read and write data to the shared memory object.
         np_mem = np.ndarray(
           np_shape,
           dtype=np_type,
           buffer=shm.buf,
         )
-        return shm, np_mem
+        return shm, np_mem, create
 
       mem_init_kwargs = {
         'create': self.initiator,
@@ -244,7 +265,7 @@ class NumpySharedMemory(DecentrAIObject):
         'np_shape': self._np_shape,
         'np_type': self._np_type,
       }
-      self._shm, self._np_mem = initialize_mp_shared_memory(**mem_init_kwargs)
+      self._shm, self._np_mem, self.initiator = initialize_mp_shared_memory(**mem_init_kwargs)
       if self.is_buffer:
         # additional memory for buffer mode
         # This will be used to store the availability of memory and the shape of the numpy array
@@ -252,7 +273,8 @@ class NumpySharedMemory(DecentrAIObject):
         mem_init_kwargs['np_shape'] = (self.maxlen, 1 + self.shape_offset)
         mem_init_kwargs['np_type'] = np.int32
         mem_init_kwargs['mem_size'] = int(self.maxlen * (1 + self.shape_offset) * np.dtype(np.int32).itemsize)
-        self._shm_additional, self._np_mem_additional = initialize_mp_shared_memory(**mem_init_kwargs)
+        mem_init_kwargs['create'] = self.initiator
+        self._shm_additional, self._np_mem_additional, _ = initialize_mp_shared_memory(**mem_init_kwargs)
       # endif buffer mode
       error_msg = None
     except:
