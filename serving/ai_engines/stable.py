@@ -152,7 +152,15 @@ AI_ENGINES['lowres_pose_classifier_detector'] = {
 }
 
 AI_ENGINES['age_gender_detector'] = {
-  'SERVING_PROCESS': 'th_yf_age_gender'
+  'SERVING_PROCESS': 'th_yf_ag'
+}
+
+AI_ENGINES['lowres_age_gender_detector'] = {
+  'SERVING_PROCESS': 'th_yfs_ag'
+}
+
+AI_ENGINES['nano_age_gender_detector'] = {
+  'SERVING_PROCESS': 'th_yfn_ag'
 }
 
 AI_ENGINES['planogram_stage1'] = {
