@@ -12,7 +12,6 @@ from core.utils.sys_mon import SystemMonitor
 MAX_LOG_SIZE = 10_000
 
 BASE_INCREMENT_MB = 250
-MIN_AVAIL_DISK_GB = 10
 
 
 MIN_GLOBAL_INCREASE_GB = BASE_INCREMENT_MB * 2 / 1000
@@ -320,11 +319,11 @@ class ApplicationMonitor(DecentrAIObject):
     total_disk = round(self.log.total_disk, 3)
     avail_disk = round(self.log.get_avail_disk(gb=True), 3)
     display = True
-    if avail_disk < MIN_AVAIL_DISK_GB:
+    if avail_disk < self.owner.cfg_min_avail_disk_thr:
       info = "WARNING: Avail disk on '{}' current volume is {:.1f} GB below minimum of {:.1f} GB".format(
         self.owner.cfg_eeid,
         avail_disk,
-        MIN_AVAIL_DISK_GB
+        self.owner.cfg_min_avail_disk_thr
       )
       if display:
         self.P(info, color='error')

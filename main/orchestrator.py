@@ -355,6 +355,14 @@ class Orchestrator(DecentrAIObject,
   def cfg_min_avail_mem_thr(self):
     return self.config_data.get('MIN_AVAIL_MEM_THR', 0.25)
   
+  @property
+  def cfg_min_avail_disk_size(self):
+    return self.config_data.get('MIN_AVAIL_DISK_SIZE_GB', 10)
+  
+  @property
+  def cfg_min_avail_disk_thr(self):
+    return self.cfg_min_avail_disk_size
+
   
   @property
   def cfg_extended_timers_dump(self):
