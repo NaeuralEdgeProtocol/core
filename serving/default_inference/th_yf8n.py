@@ -9,6 +9,11 @@ _CONFIG = {
   "URL": "minio:Y8/20231117_y8n_nms.ths",
   "URL_DEBUG": "minio:Y8/20231117_y8n_nms_top6.ths",
 
+  "MODEL_ONNX_FILENAME": "20240430_y8n_448x640_nms_f32.onnx",
+  "MODEL_TRT_FILENAME": "20240430_y8n_448x640_nms_f32_trt.onnx",
+  "ONNX_URL": "minio:Y8/20240430_y8n_448x640_nms_f32.onnx",
+  "TRT_URL": "minio:Y8/20240430_y8n_448x640_nms_f32_trt.onnx",
+
   'IMAGE_HW': (448, 640),
 
   'VALIDATION_RULES': {
