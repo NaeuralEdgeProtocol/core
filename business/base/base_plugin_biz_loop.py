@@ -339,7 +339,26 @@ class _BasePluginLoopMixin(object):
     if self.cfg_instance_command_log:
       self.P("* * * * * Received INSTANCE_COMMAND: <{} ...> with kwargs {}".format(str(data)[:30], kwargs))
     self._maybe_simulate_loop_crash()
-    self._on_command(data, **kwargs)
+    try:
+      self._on_command(data, **kwargs)
+      notif = ct.STATUS_TYPE.STATUS_NORMAL
+      notif_code = ct.NOTIFICATION_CODES.PLUGIN_INSTANCE_COMMAND_OK
+      msg = "Command {} executed.".format(data)
+      info = ""
+    except:
+      notif = ct.STATUS_TYPE.STATUS_EXCEPTION
+      notif_code = ct.NOTIFICATION_CODES.PLUGIN_INSTANCE_COMMAND_FAILED
+      info = traceback.format_exc()
+      msg = "Command {} failed.".format(data)
+
+    self._create_notification(
+      notif=notif,
+      notif_code=notif_code,
+      msg=msg,
+      info=info,
+      displayed=True
+    )
+
     return
 
   def __maybe_trigger_instance_command(self):
