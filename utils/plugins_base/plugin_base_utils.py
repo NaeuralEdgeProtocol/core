@@ -11,6 +11,7 @@ import traceback
 import inspect
 import re
 import base64
+import yaml
 import zlib
 
 
@@ -322,6 +323,18 @@ class _UtilsBaseMixin(
 
     """
     return json
+
+  @property
+  def yaml(self):
+    """
+    Provides access to `yaml` package
+
+    Returns
+    -------
+    `yaml` package      
+
+    """
+    return yaml
 
   @property
   def re(self):

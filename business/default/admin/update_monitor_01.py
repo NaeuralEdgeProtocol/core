@@ -84,6 +84,9 @@ _CONFIG = {
 
   "RESTART_ON_BEHIND"   : True,
 
+  "USE_YAML"            : False,
+  "RELEASE_TAG"         : "staging",
+
   # debug stuff
   # end debug stuff
 
@@ -237,6 +240,57 @@ class UpdateMonitor01Plugin(BasePluginExecutor):
       raise ValueError("`get_int_ver FAILED: " + msg)
     return int_ver
 
+  def get_version_from_raw(self, resp):
+    """
+    Assume the response is a string with the version in the format:
+    version="__VER__"
+
+    Parameters
+    ----------
+    resp : str
+        The response string
+
+    Returns
+    -------
+    str
+        The version string.
+    """
+    ver = resp.split('=')[1]
+    ver = ver.rstrip().lstrip().replace('"','').replace("'", '')
+    return ver
+
+  def get_version_from_yaml(self, resp):
+    """
+    Parse the response as a yaml file and extract the version from the release tag.
+    The response is expected to be in the format:
+    application:
+      envs:
+        - name: staging
+          version: "__VER__"
+          info: "..."
+        - name: production
+          version: "__VER__"
+          info: "..."
+        ...
+
+    Parameters
+    ----------
+    resp : str
+        The response string
+
+    Returns
+    -------
+    str
+        The version string.
+    """
+    dct = self.yaml.safe_load(resp)
+    lst_releases = dct["application"]["envs"]
+    release = [x for x in lst_releases if x["name"] == self.cfg_release_tag][0]
+    ver = release["version"]
+    ver = ver.rstrip().lstrip().replace('"','').replace("'", '')
+
+    return ver
+
   def get_git_server_version(self):
     ver = None
     branch = self.docker_branch if self.runs_in_docker else self.log.git_branch
@@ -254,8 +308,10 @@ class UpdateMonitor01Plugin(BasePluginExecutor):
           "docker" if self.runs_in_docker else "git-src", branch,
           resp[:100].replace('\n', ' '))
         )
-        ver = resp.split('=')[1]
-        ver = ver.rstrip().lstrip().replace('"','').replace("'", '')
+        if self.cfg_use_yaml:
+          ver = self.get_version_from_yaml(resp)
+        else:
+          ver = self.get_version_from_raw(resp)
       except Exception as exc:
         self.P("Exception while retrieving version with url:{} , headers:{}. Response was: {}, exception: {}".format(
           url0, headers, resp, exc), color='r')
