@@ -276,24 +276,32 @@ class ApplicationMonitor(DecentrAIObject):
         str_info += "\n  GPU issue: No GPU present or driver issue"
     return str_info
 
-  def get_summary_perf_info(self):
+  def get_summary_perf_info(self, last_n=10):
     gpu_info_list = []
 
+    cpu_mean = round(np.mean(list(self.cpu_log)[-last_n:]), 1)
+    ee_occupied_mem = round(self.process_memory_log[-1], 1)
+    pc_occupied_mem = round(self.log.total_memory - self.avail_memory_log[-1], 1)
+    pc_total_mem = round(self.log.total_memory, 1)
+
+
     for i, dct_gpu in self.gpu_log.items():
-      str_gpu_info = "gpu cuda:{} use {}%, mem {}GB, temp {}°C".format(
+      gpu_load_mean = round(np.mean(list(dct_gpu[ct.GPU_INFO.GPU_USED])[-last_n:]), 1)
+      str_gpu_info = "gpu cuda:{} {}%, mem {}/{}GB, temp {}°C".format(
         i,
-        round(dct_gpu[ct.GPU_INFO.GPU_USED][-1], 1),
+        gpu_load_mean,
         round(dct_gpu[ct.GPU_INFO.ALLOCATED_MEM][-1], 1),
+        round(dct_gpu[ct.GPU_INFO.TOTAL_MEM], 1),
         round(dct_gpu[ct.GPU_INFO.GPU_TEMP][-1], 1),
       )
       gpu_info_list.append(str_gpu_info)
 
     str_gpu_info_list = ", ".join(gpu_info_list) if len(gpu_info_list) > 0 else "no gpu"
 
-    str_info = "cpu {}%, ram EE/PC {}/{} GB, {}".format(
-      round(np.mean(self.cpu_log), 1),
-      round(self.process_memory_log[-1], 1),
-      round(self.log.total_memory - self.avail_memory_log[-1], 1),
+    str_info = "cpu {}%, ram(EE) {}({})/{} GB, {}".format(
+      cpu_mean,
+      pc_occupied_mem, ee_occupied_mem,
+      pc_total_mem,
       str_gpu_info_list
     )
 
