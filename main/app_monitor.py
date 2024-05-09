@@ -251,12 +251,15 @@ class ApplicationMonitor(DecentrAIObject):
       gpu_used = dct_gpu.get(ct.GPU_INFO.GPU_USED)
       gpu_mem = dct_gpu.get(ct.GPU_INFO.ALLOCATED_MEM)
       gpu_total_mem = dct_gpu.get(ct.GPU_INFO.TOTAL_MEM)
+      gpu_temp = dct_gpu.get(ct.GPU_INFO.GPU_TEMP)
       if (gpu_used is not None) and (None not in gpu_used):
         str_info += "\n  Used GPU: [{}] '{}'".format(cuda, gpu_name)
         cuda_loads = np.array(gpu_used).astype('float16')
         mem_loads = np.array(gpu_mem).astype('float16')
+        gpu_temp = np.array(gpu_temp).astype('float16')
         str_cuda_loads = ' '.join('{:>4.1f}'.format(x) for x in cuda_loads[-10:])
         str_mem_loads = ' '.join('{:>4.1f}'.format(x) for x in mem_loads[-10:])
+        str_gpu_temp = ' '.join('{:>4.1f}'.format(x) for x in gpu_temp[-10:])
         str_info += "\n    Avg. GPU core used: {:>4.1f}% ({} %load)".format(
           np.mean(gpu_used),
           str_cuda_loads,
@@ -265,10 +268,37 @@ class ApplicationMonitor(DecentrAIObject):
           np.mean(gpu_mem) / gpu_total_mem * 100,
           str_mem_loads,
         )
+        str_info += "\n    GPU temp:           {:>4.1f}°C ({} °C)".format(
+          np.mean(gpu_temp), 
+          str_gpu_temp
+        )
       else:
         str_info += "\n  GPU issue: No GPU present or driver issue"
     return str_info
-  
+
+  def get_summary_perf_info(self):
+    gpu_info_list = []
+
+    for i, dct_gpu in self.gpu_log.items():
+      str_gpu_info = "gpu cuda:{} use {}%, mem {}GB, temp {}°C".format(
+        i,
+        round(dct_gpu[ct.GPU_INFO.GPU_USED][-1], 1),
+        round(dct_gpu[ct.GPU_INFO.ALLOCATED_MEM][-1], 1),
+        round(dct_gpu[ct.GPU_INFO.GPU_TEMP][-1], 1),
+      )
+      gpu_info_list.append(str_gpu_info)
+
+    str_gpu_info_list = ", ".join(gpu_info_list) if len(gpu_info_list) > 0 else "no gpu"
+
+    str_info = "cpu {}%, ram EE/PC {}/{} GB, {}".format(
+      round(np.mean(self.cpu_log), 1),
+      round(self.process_memory_log[-1], 1),
+      round(self.log.total_memory - self.avail_memory_log[-1], 1),
+      str_gpu_info_list
+    )
+
+    return str_info
+
   def _add_gpu_data(self, lst_info):
     if not isinstance(lst_info, list):
       return
@@ -279,9 +309,11 @@ class ApplicationMonitor(DecentrAIObject):
           ct.GPU_INFO.NAME : gpu[ct.GPU_INFO.NAME],
           ct.GPU_INFO.GPU_USED : deque(maxlen=MAX_LOG_SIZE),
           ct.GPU_INFO.ALLOCATED_MEM : deque(maxlen=MAX_LOG_SIZE),
+          ct.GPU_INFO.GPU_TEMP : deque(maxlen=MAX_LOG_SIZE),
           }
       self.gpu_log[i][ct.GPU_INFO.GPU_USED].append(gpu[ct.GPU_INFO.GPU_USED])
       self.gpu_log[i][ct.GPU_INFO.ALLOCATED_MEM].append(gpu[ct.GPU_INFO.ALLOCATED_MEM])
+      self.gpu_log[i][ct.GPU_INFO.GPU_TEMP].append(gpu[ct.GPU_INFO.GPU_TEMP])
     return
       
 
