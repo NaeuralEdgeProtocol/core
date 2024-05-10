@@ -301,7 +301,7 @@ class ModelServingProcess(
     -------
 
     """
-    if self.npy_shm_kwargs is not None and self.comm_method == 'shm':
+    if self.npy_shm_kwargs is not None and self.comm_method != 'pipe':
       self.npy_shm = NumpySharedMemory(
         **self.npy_shm_kwargs,
         create=False,

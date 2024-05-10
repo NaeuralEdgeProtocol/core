@@ -441,6 +441,8 @@ class ServingManager(Manager):
     self.log.start_timer('create_server_new()')
     max_img_shape = self.cfg_serving_environment.get('SHM_MAX_IMAGE_SHAPE', ct.SERVING.SHM_IMG_MAX_SHAPE)
     comm_method = self.get_comm_method()
+    if comm_method == 'pipe':
+      self.P(f"Attempting to use pipe communication for server '{server_name}'")
     npy_shm_kwargs = {
       'mem_name': self.get_server_name(server_name),
       'mem_size': 0,  # irrelevant for buffer mode
@@ -451,13 +453,13 @@ class ServingManager(Manager):
     }
     self.owner.set_loop_stage('3.serving.start.{}.shm_starting'.format(server_name))
     self.log.start_timer('create_server_shm_start()')
-    npy_shm = NumpySharedMemory(**npy_shm_kwargs, create=True, log=self.log) if comm_method == 'shm' else None
-    if not npy_shm.initialized:
+    npy_shm = None if comm_method == 'pipe' else NumpySharedMemory(**npy_shm_kwargs, create=True, log=self.log)
+    if npy_shm is not None and not npy_shm.initialized:
       self.P(
         f"Failed to initialize shared memory for server '{server_name}'. Defaulting to pipe communication",
         color='error'
       )
-      comm_method = 'default'
+      comm_method = 'pipe'
       npy_shm = None
     # endif initializing shared memory failed
     self.log.stop_timer('create_server_shm_start()')

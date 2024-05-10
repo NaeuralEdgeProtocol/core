@@ -457,10 +457,10 @@ class Readout(th.nn.Module):
     super(Readout, self).__init__()
 
     transformation = lst_coords_sizes[0]
-    assert transformation in ['gmp/gap', 'flatten', 'conv']
+    assert transformation in ['gmp/gap', 'flatten', 'conv', 'identity']
 
     self.pre_readout = None
-    if transformation in ['gmp/gap', 'flatten']:
+    if transformation in ['gmp/gap', 'flatten', 'identity']:
       transformation, lst_sizes = lst_coords_sizes
 
       self.pre_readout = ReadoutFC(
