@@ -273,6 +273,53 @@ class ConfigManager(
         os.remove(fn_full)
     return
   
+  def __apply_nested_key(self, config: dict, nested_key: str, value: any):
+    # will apply the value to the nested key in the configuration
+    keys = nested_key.split('.')
+    for nested_key in keys[:-1]:
+      if nested_key not in config:
+        config[nested_key] = {}
+      config = config[nested_key]
+    #endfor
+    config[keys[-1]] = value
+    return
+
+  def _apply_delta_to_config(self, original_config: dict, delta_config: dict, ignore_fields: list = None) -> dict:
+    """
+    Will apply the delta configuration to the original configuration inplace.
+    The delta configuration is a dictionary with the keys that need to be updated.
+    The keys can be nested, separated by '.'. In this case, the original configuration
+    will be traversed in depth.
+    
+    Parameters
+    ----------
+    original_config : dict
+        The original configuration
+    delta_config : dict
+        The proposed changes to the original configuration
+    ignore_fields : list | None, optional
+        List of fields to ignore when applying the delta configuration, by default None
+
+    Returns
+    -------
+    dict
+        The updated configuration
+    """
+
+    if ignore_fields is None:
+      ignore_fields = []
+
+    for k, v in delta_config.items():
+      if k in ignore_fields:
+        continue
+      
+      if '.' not in k:
+        original_config[k] = v
+      else:
+        self.__apply_nested_key(original_config, k, v)
+    # endfor
+
+    return original_config
   
   def save_instance_modifications(self, pipeline_name, signature, instance_id, config):
     """

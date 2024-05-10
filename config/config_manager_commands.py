@@ -110,7 +110,7 @@ class ConfigCommandHandlers:
     delta_config_stream[ct.CONFIG_STREAM.K_MODIFIED_BY_ADDR] = sender_addr
     delta_config_stream[ct.CONFIG_STREAM.K_MODIFIED_BY_ID] = initiator_id
     
-    config_stream = {**config_stream, **delta_config_stream}
+    config_stream = self._apply_delta_to_config(config_stream, delta_config_stream)
     config_stream = self.keep_good_stream(config_stream)
 
     if config_stream is not None:
@@ -192,9 +192,7 @@ class ConfigCommandHandlers:
       )
       if instance_config is not None:
         # the actual update
-        for k in instance_update:
-          if k.upper() != ct.PLUGIN_INFO.INSTANCE_ID:
-            instance_config[k] = instance_update[k]
+        instance_config = self._apply_delta_to_config(instance_config, instance_update, ignore_fields=[ct.PLUGIN_INFO.INSTANCE_ID])
         # end update
         self._save_stream_config(self.dct_config_streams[pipeline_name])
         notif = ct.STATUS_TYPE.STATUS_NORMAL
