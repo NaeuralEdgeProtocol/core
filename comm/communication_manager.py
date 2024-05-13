@@ -498,6 +498,15 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
       if len(set(ct.COMMS.COMMUNICATION_VALID_CHANNELS) - set(found_channels)) != 0:
         self.add_error("Make sure that all communication channels {} are configured as 'PARAMS' for 'COMMUNICATION' in `config_app.txt`".format(
           ct.COMMS.COMMUNICATION_VALID_CHANNELS))
+      port = params.get("PORT", None)
+      if port is not None:
+        if not isinstance(port, int):
+          self.add_warning("Parameter 'PORT' is not an integer for 'COMMUNICATION' in `config_app.txt` - casting to int")
+          params["PORT"] = int(port)
+        # endif not int
+      # endif port
+          
+    #endif params
 
     if dct_instances is None:
       msg = "Parameter 'INSTANCES' is not configured for 'COMMUNICATION' in `config_app.txt`"

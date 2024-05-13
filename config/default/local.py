@@ -38,7 +38,7 @@ class LocalConfigRetriever(BaseConfigRetrievingPlugin):
 
   def _get_app_configuration(self, endpoint):
     path = self.__create_full_path(endpoint)
-    config_app = self.log.load_json(path, folder=None, verbose=False)
+    config_app = self.log.load_json(path, folder=None, verbose=True)
     return config_app
 
   def _get_streams_configurations(self, endpoint):
