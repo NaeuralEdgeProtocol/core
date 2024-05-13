@@ -54,6 +54,14 @@ class NetMon01Plugin(
     super().startup()
     return
   
+  def on_init(self):
+    is_supervisor = self.cfg_supervisor
+    if isinstance(is_supervisor, str):
+      self.P("Found string value for SUPERVISOR: {}. Converting to bool".format(is_supervisor))
+      self.config_data['SUPERVISOR'] = is_supervisor.lower() == 'true'
+    #endif is string
+    return
+  
   def _maybe_load_state(self):
     if self.__state_loaded:
       return
