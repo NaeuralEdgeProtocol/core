@@ -287,7 +287,7 @@ class ApplicationMonitor(DecentrAIObject):
 
     for i, dct_gpu in self.gpu_log.items():
       gpu_load_mean = round(np.mean(list(dct_gpu[ct.GPU_INFO.GPU_USED])[-last_n:]), 1)
-      str_gpu_info = "gpu cuda:{} {}%, mem {}/{}GB, temp {}°C".format(
+      str_gpu_info = "cuda:{} {}%, mem {}/{}GB, {}°C".format(
         i,
         gpu_load_mean,
         round(dct_gpu[ct.GPU_INFO.ALLOCATED_MEM][-1], 1),

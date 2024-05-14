@@ -769,7 +769,7 @@ class Orchestrator(DecentrAIObject,
           extra = "Total {}/{}/{} data/inf/send".format(
             n_upstream, n_inferences, n_comms,
           )
-          hb_msg = "{} hb:{} {}{}{}at itr {} ({} void), Hz act/cfg: {}/{}, Run: {:.1f} hrs, New paylds: {}, {}".format(
+          hb_msg = "{} hb:{} {}{}{}itr {} ({} void), Hz: {}/{}, {:.1f} hrs, New.pl.: {}, {}".format(
             "'{}' {}".format(self.cfg_eeid, self.__get_system_version()),
             self._heartbeat_counter,
             "with full log " if send_log else "", "status:'{}' ".format(status) if status is not None else '',
