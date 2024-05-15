@@ -83,15 +83,19 @@ def _get_node_template(name):
 class EpochsManager(Singleton):
   
   def build(self, owner, debug_date=None, debug=False):
-    self.P("Initializing EpochsManager v{} with debug={}, debug_date={}...".format(
-      EPOCH_MANAGER_VERSION, debug, debug_date
-    ))
     self.__genesis_date = self.log.str_to_date(GENESYS_EPOCH_DATE).replace(tzinfo=timezone.utc)
+
     self.owner = owner
     self.__current_epoch = None
     self.__data = {}
     self.__debug = debug
     self._set_dbg_date(debug_date)
+    self.P("Started EpochsManager v{}, epoch #{}, genesis on {} (debug={}, debug_date={})".format(
+      EPOCH_MANAGER_VERSION, 
+      self.get_current_epoch(),
+      GENESYS_EPOCH_DATE,
+      debug, debug_date
+    ))
     return
 
   @property
@@ -109,14 +113,13 @@ class EpochsManager(Singleton):
         debug_date = self.log.str_to_date(debug_date).replace(tzinfo=timezone.utc)
     self._debug_date = debug_date
     return
-  
-  
+
+
   def P(self, msg, **kwargs):
     self.log.P('[EPM] ' + msg, **kwargs)
     return
-  
-  
-  
+
+
   def start_timer(self, name):
     self.log.start_timer(name, section='epoch')
     return
@@ -689,7 +692,9 @@ if __name__ == '__main__':
       l.P("Running step {} - epoch {} / {}".format(
         step, epoch, current_date), color='b'
       )
-      l.P("Starting registering data for epoch {}...".format(eng.get_current_epoch()), color='b')
+      epoch_has_data = any([epoch in dct_hb[x] for x in dct_hb])
+      if epoch_has_data:
+        l.P("Starting registering data for epoch {}...".format(eng.get_current_epoch()), color='b')
       data_counter = 0
       for node_name in dct_hb:
         node_addr = eng.owner.network_node_address(node_name)
