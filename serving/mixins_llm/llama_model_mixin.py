@@ -107,8 +107,6 @@ class LlamaModelMixin(object):
       use_auth_token=token,
       low_cpu_mem_usage=True,
       torch_dtype=torch_dtype,
-      load_in_8bit=load_in_8bit,
-      load_in_4bit=load_in_4bit,
       device_map=device_map,
       use_flash_attention_2=self.cfg_use_flash_attention,
     )
