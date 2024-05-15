@@ -7,6 +7,7 @@ _CONFIG = {
   **BaseServingProcess.CONFIG,
   **PLATE_READ_CONFIG,
   'MAX_BATCH_SECOND_STAGE': 10,
+  "WITNESS_INFO": True,
 
   'COVERED_SERVERS': ['th_lpd'],
 
