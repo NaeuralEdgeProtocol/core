@@ -69,7 +69,7 @@ class YfBase(ParentServingProcess):
     #endif check for torchscript file config
     model, model_loaded_config, fn = self.prepare_model(
       backend_model_map=config,
-      forced_backend=self.cfg_force_backend,
+      forced_backend=self.cfg_backend,
       post_process_classes=True,
       return_config=True,
       batch_size = self.cfg_max_batch_first_stage

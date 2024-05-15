@@ -10,11 +10,15 @@ from core.serving.mixins_base.trt_mixin import TensortRTMixin
 from core.serving.mixins_base.onnx_mixin import ONNXMixin
 from core.serving.mixins_base.openvino_mixin import OpenVINOMixin
 
+from core.utils.plugins_base.plugin_base_utils import NestedDotDict
 
-ARM64_CPU_DEFAULT = ['onnx', 'openvino', 'ths']
-ARM64_GPU_DEFAULT = ['trt', 'ths']
-AMD64_CPU_DEFAULT = ['openvino', 'onnx', 'ths']
-AMD64_GPU_DEFAULT = ['trt', 'ths']
+BACKEND_PRIORITY = NestedDotDict({
+  'ARM64_CPU' : ['onnx', 'openvino', 'ths'],
+  'ARM64_GPU' : ['trt', 'ths'],
+  'AMD64_CPU' : ['openvino', 'onnx', 'ths'],
+  'AMD64_GPU' : ['trt', 'ths'],
+})
+
 BACKEND_REQUIRES_CPU = ['onnx', 'openvino']
 
 
@@ -38,7 +42,7 @@ _CONFIG = {
   "ONNX_URL"                    : None,
   "MODEL_TRT_FILENAME"          : None,
   "TRT_URL"                     : None,
-  "FORCE_BACKEND"               : None,
+  "BACKEND"                     : None,
 
   "SECOND_STAGE_MODEL_WEIGHTS_FILENAME" : None,
   "SECOND_STAGE_MODEL_CLASSES_FILENAME" : None,
@@ -187,14 +191,14 @@ class UnifiedFirstStage(
     is_cpu = (self.dev.type == 'cpu')
     if is_cpu:
       if is_x86:
-        return AMD64_CPU_DEFAULT
+        return BACKEND_PRIORITY.AMD64_CPU
       if is_arm64:
-        return ARM64_CPU_DEFAULT
+        return BACKEND_PRIORITY.ARM64_CPU
 
     if is_x86:
-      return AMD64_GPU_DEFAULT
+      return BACKEND_PRIORITY.AMD64_GPU
     if is_arm64:
-      return ARM64_GPU_DEFAULT
+      return BACKEND_PRIORITY.ARM64_GPU
     # TODO: we might have more platforms and this code is a bit too specific.
     raise ValueError('Unexpected platform')
 
@@ -227,8 +231,8 @@ class UnifiedFirstStage(
       self._str_dev = 'cpu'
     #endif select default device
 
-    if self.cfg_force_backend is not None:
-      if self.cfg_force_backend in BACKEND_REQUIRES_CPU:
+    if self.cfg_backend is not None:
+      if self.cfg_backend in BACKEND_REQUIRES_CPU:
         self._str_dev = 'cpu'
         self.P("Forcing device to CPU for backend", c='r')
     #endif force device for backend

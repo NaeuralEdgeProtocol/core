@@ -16,7 +16,7 @@ _CONFIG = {
 
   "MSPN_ONNX_URL" : None,
   "MSPN_ONNX_FILENAME" : None,
-  "MSPN_FORCE_BACKEND" : None,
+  "MSPN_BACKEND" : None,
 
   "MSPN_IMG_SHAPE": (256, 192),
   "NORM_MEANS": [0.406, 0.456, 0.485],
@@ -76,7 +76,7 @@ class ThYfMspn(BaseServingProcess):
     }
     self.mspn_model, model_loaded_config, fn = self.prepare_model(
       backend_model_map=config,
-      forced_backend=self.cfg_mspn_force_backend,
+      forced_backend=self.cfg_mspn_backend,
       return_config=True,
       batch_size=self.cfg_max_batch_second_stage
     )
