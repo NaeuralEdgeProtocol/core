@@ -398,6 +398,8 @@ def get_activation(act):
     return th.nn.GELU()
   elif act.lower() == 'sigmoid':
     return th.nn.Sigmoid()
+  elif act.lower() == 'softmax':
+    return th.nn.Softmax()
   else:
     raise ValueError("Unknown activation function '{}'".format(act))
 

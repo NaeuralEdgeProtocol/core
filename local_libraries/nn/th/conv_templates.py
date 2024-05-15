@@ -232,6 +232,66 @@ class ImageEncoder(th.nn.Module):
     )
     return s
 
+
+class StemLayer(th.nn.Module):
+  def __init__(
+    self, filters, in_channels=None, input_dim=None, act='relu', skip_last_act=False, **kwargs
+  ):
+    """
+    Neural Network Stem Layer class that applies a series of convolutional layers
+    for the initial part of the network with the purpose of feature extraction.
+    Parameters
+    ----------
+    filters : list(int) or list(tuple(int)), list of filters for each layer
+    in_channels : int, number of input channels
+    input_dim : tuple of int, input dimensions
+    act : str, activation function
+    skip_last_act : bool, whether to skip the last activation function
+    kwargs : dict, additional parameters
+    """
+    super().__init__()
+    if input_dim is None or not any(input_dim):
+      input_dim = (in_channels, None, None)
+    assert any(input_dim), ValueError("StemLayer expects 'in_channels' or 'input_dim' parameters")
+
+    self.input_dim = input_dim
+    current_input_shape = input_dim
+    stem_layers = []
+    for i, layer_filter in enumerate(filters):
+      if isinstance(layer_filter, int):
+        layer_filter = [layer_filter]
+      current_layer = Conv2dExt(
+        input_shape=current_input_shape,
+        in_channels=current_input_shape[0],
+        out_channels=layer_filter[0],
+        kernel_size=layer_filter[1] if len(layer_filter) > 1 else 3,
+        stride=layer_filter[2] if len(layer_filter) > 2 else 2
+      )
+      stem_layers.append(current_layer)
+      if not skip_last_act or i < len(filters) - 1:
+        stem_layers.append(get_activation(act))
+      current_input_shape = current_layer.output_shape
+    # endfor layers
+    self.stem = th.nn.Sequential(*stem_layers)
+    self.output_dim = current_input_shape
+    return
+
+  def forward(self, x):
+    return self.stem(x)
+
+  def __repr__(self):
+    s = super().__repr__()
+
+    if self.input_dim is None:
+      return s
+
+    s += " [Input={} => Output={}]".format(
+      self.input_dim,
+      self.output_dim
+    )
+    return s
+
+
 class ImageEncoderWithStem(th.nn.Module):
   def __init__(self, filters, stride_multiplier, cnn_act, layer_norm, nconv, stem_layer, use_stem_activation, in_channels=None, embedding_transform=None, input_dim=None):
     """
