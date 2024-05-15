@@ -24,13 +24,7 @@ class KernelLogMonitor01Plugin(BasePluginExecutor):
 
   CONFIG = _CONFIG
 
-  def __init__(self, **kwargs):
-    self.last_exec_time = None
-    super(KernelLogMonitor01Plugin, self).__init__(**kwargs)
-    return
-
-  def startup(self):
-    super().startup()
+  def on_init(self):
     self.last_exec_time = self.time()
     return
 
@@ -72,7 +66,6 @@ class KernelLogMonitor01Plugin(BasePluginExecutor):
     return out
 
   def process(self):
-    payload_params = {}
     current_time = self.time()
     eps = 0.05
     minutes = round((current_time - self.last_exec_time) / 60 + eps, 3)
@@ -81,10 +74,10 @@ class KernelLogMonitor01Plugin(BasePluginExecutor):
       level = self.cfg_kernel_log_level.lower()
       out = self._get_kernel_errors(minutes=minutes, level=level)
       if len(out) > 0:
-        self.P(f"Found the following kernel errors:\n{out}", color='red')
+        msg = f"Found the following kernel errors:\n{out}"
+        self.P(msg, color='red')
         # Fill out the payload
-        payload_params['IS_ALERT'] = True
-        self.add_payload_by_fields(**payload_params)
+        self.add_payload_by_fields(is_alert=True, status=msg)
     except Exception as E:
       self.P(f"Could not retrieve kernel errors, {E}", color="red")
 
