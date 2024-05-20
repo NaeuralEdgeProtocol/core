@@ -62,7 +62,7 @@ class _MachineMixin(object):
     if temps is None:
       msg = 'Running on unsupported platform'
     elif len(temps) == 0:
-      msg = 'No temperature sensors found'
+      msg = 'No temperature sensors found. Make sure you install with sudo apt-get install lm-sensors && sudo sensors-detect && sudo service kmod start'
     else:
       msg = 'Temperature sensors found'
       if as_dict:
@@ -78,6 +78,7 @@ class _MachineMixin(object):
           #end for
         #end for
         temps = transformed
+      #end if as_dict
     #end temperature checks
     data = {
       'message': msg,

@@ -337,7 +337,7 @@ class ApplicationMonitor(DecentrAIObject):
     
     temp = self.get_temperature_status(return_max=True)
     if temp is not None:
-      str_info += ", temp: {}".format(temp)
+      str_info += ", {}".format(temp)
 
     return str_info
 

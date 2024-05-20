@@ -121,7 +121,7 @@ def main():
     base_folder='.',
     app_folder=ct.LOCAL_CACHE,
     config_file=config_file,
-    max_lines=1500, 
+    max_lines=1000, 
     TF_KERAS=False
   )
   

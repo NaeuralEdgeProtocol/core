@@ -1233,6 +1233,20 @@ class _UtilsBaseMixin(
       log=self.log,
       **kwargs
     )
+    
+    
+  def get_temperature_sensors(self, as_dict=True):
+    """
+    Returns the temperature of the machine if available
+
+    Returns
+    -------
+    dict
+      The dictionary contains the following:
+      - 'message': string indicating the status of the temperature sensors
+      - 'temperatures': dict containing the temperature sensors
+    """
+    return self.log.get_temperatures(as_dict=as_dict)
 
 if __name__ == '__main__':
   from core import Logger
