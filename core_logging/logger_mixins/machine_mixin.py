@@ -16,12 +16,14 @@ class _MachineMixin(object):
     self.__total_disk = self.get_total_disk(gb=True)
     return
   
+  
   @property 
   def total_memory(self):
     """
     Returns total memory in GBs
     """
     return self.__total_memory
+  
 
 
   @property 
@@ -38,6 +40,51 @@ class _MachineMixin(object):
     system = platform.system()
     release = platform.release()
     return system, release
+  
+  
+  @staticmethod
+  def get_temperatures(as_dict=True):
+    """
+    Returns the temperature of the machine if available
+
+    Returns
+    -------
+    dict
+      The dictionary contains the following:
+      - message: string indicating the status of the temperature sensors
+      - temperatures: dict containing the temperature sensors
+    """
+    import psutil
+    temps = None
+    if hasattr(psutil, 'sensors_temperatures'):
+      temps = psutil.sensors_temperatures()
+
+    if temps is None:
+      msg = 'Running on unsupported platform'
+    elif len(temps) == 0:
+      msg = 'No temperature sensors found'
+    else:
+      msg = 'Temperature sensors found'
+      if as_dict:
+        transformed = {}
+        for name, entries in temps.items():
+          for entry in entries:
+            key = f"{name}.{entry.label or 'N/A'}"
+            transformed[key] = {
+              "current": entry.current if entry.current is not None else 0,
+              "high": entry.high if entry.high is not None else 65536,
+              "critical": entry.critical if entry.critical is not None else 65536,
+            }
+          #end for
+        #end for
+        temps = transformed
+    #end temperature checks
+    data = {
+      'message': msg,
+      'temperatures': temps,
+    }
+    return data
+  
 
   @staticmethod
   def get_cpu_usage():

@@ -64,6 +64,36 @@ class ApplicationMonitor(DecentrAIObject):
     return
   
   
+  def get_temperature_status(self, return_max=True):
+    temperature_info = self.log.get_temperatures(as_dict=True)
+    temps = temperature_info['temperatures']
+    msg = temperature_info['message']
+    max_temp = None
+    critical_temp = False
+    max_val = 0
+    if temps in [None, {}]:
+      self.P(msg, color='r')
+      temps = None
+    else:
+      for sensor, status in temps.items():
+        current = status['current']
+        critical_temp = status['current'] >= status['high']
+        if max_val < current or critical_temp:
+          max_val = current
+          max_temp = "{} at {}°C".format(sensor, current)
+          if critical_temp:
+            self.P("ALERT: High temperature detected: {}".format(max_temp), color='r')
+            max_temp += ' ERROR/CRITICAL!'
+            break
+          #endif high temp
+        #endfor values
+    #endif temps    
+    if return_max:
+      return max_temp
+    else:        
+      return temps
+  
+  
   def get_opencv_info(self):
     result = ""
     try:
@@ -304,6 +334,10 @@ class ApplicationMonitor(DecentrAIObject):
       pc_total_mem,
       str_gpu_info_list
     )
+    
+    temp = self.get_temperature_status(return_max=True)
+    if temp is not None:
+      str_info += ", temp: {}".format(temp)
 
     return str_info
 
