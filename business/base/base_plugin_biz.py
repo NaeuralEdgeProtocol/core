@@ -13,6 +13,7 @@ from threading import Thread
 
 # local dependencies
 from core import constants as ct
+from core.business.mixins_base.threading import _ThreadingAPIMixin
 from core.main.net_mon import NetworkMonitor
 
 from core.business.base.base_plugin_biz_loop import _BasePluginLoopMixin
@@ -304,6 +305,7 @@ class BasePluginExecutor(
   _EmailerMixin,
   _DataAPIMixin,
   _DeAPIMixin,
+  _ThreadingAPIMixin,
   _WorkingHoursMixin,
   _IntervalAggregationMixin,
   _DailyIntervalMixin,
