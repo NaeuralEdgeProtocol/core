@@ -1,16 +1,14 @@
-from core import constants as ct
-from datetime import datetime as dt
+import traceback
 from copy import deepcopy
-
+from datetime import datetime as dt
 from time import sleep, time
-from core import DecentrAIObject
-from core import Logger
-from core.local_libraries import _ConfigHandlerMixin
+
+from core import DecentrAIObject, Logger
+from core import constants as ct
 from core.data_structures import MetadataObject
-from core.utils.shm_manager import SharedMemoryManager
-
+from core.local_libraries import _ConfigHandlerMixin
 from core.utils.plugins_base.bc_wrapper import BCWrapper
-
+from core.utils.shm_manager import SharedMemoryManager
 
 _CONFIG = {
   'IS_THREAD'               : False,
@@ -254,12 +252,17 @@ class BaseDataCapture(DecentrAIObject, _ConfigHandlerMixin):
       # rollback
       self.config = last_config
       self.config_data = last_config
-      msg = "Exception occured while updating the capture config. Rollback to the last good config."
+      msg = "Exception occured while updating the capture config: '{}' Rollback to the last good config.".format(exc)
+      info = traceback.format_exc()
       self.P(msg, color='r')
+
+      self.__save_config(keys=[k for k in upstream_config.keys() if k in self.config_data])
+
       self._create_notification(
         notif=ct.STATUS_TYPE.STATUS_EXCEPTION, 
         notif_code=ct.NOTIFICATION_CODES.PIPELINE_DCT_CONFIG_FAILED,
         msg=msg,
+        info=info,
         displayed=True,
       )
 
@@ -337,6 +340,21 @@ class BaseDataCapture(DecentrAIObject, _ConfigHandlerMixin):
   def stop(self, join_time=10):
     return
 
+  def __save_config(self, keys):
+    # writes the config for a set of particular keys on the local cache!
+    save_config_fn = self.shmem[ct.CALLBACKS.PIPELINE_CONFIG_SAVER_CALLBACK]
+    try:
+      config = {k: self.config_data[k] for k in keys}
+      save_config_fn(self.cfg_name, config_data=config)
+      # the save will trigger a update config when the BusinessManager will get the new config from
+      # the ConfigManager and will pass it as upstream_config to the plugin
+      # so we already update the upstream_config to avoid this
+      for k in keys:
+        self._upstream_config[k] = self.config_data[k]
+    except Exception as exc:
+      self.P("Error '{}' while saving keys {}".format(exc, keys))
+      raise exc
+    return
 
   
   def __repr__(self):
