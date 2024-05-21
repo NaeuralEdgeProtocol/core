@@ -291,8 +291,8 @@ class EpochsManager(Singleton):
     
     Returns
     -------
-    float
-      The availability percentage.
+    int
+      The availability seconds interval.
     """
     avail_seconds = 0
     nr_timestamps = len(timestamps)
