@@ -11,6 +11,7 @@ _CONFIG = {
 
   'PROCESS_DELAY'       : 180,
   'KERNEL_LOG_LEVEL'    : 'emerg,alert,crit,err',
+  'MAX_TEMPERATURE'     : None,
 
   'VALIDATION_RULES': {
     **BasePluginExecutor.CONFIG['VALIDATION_RULES'],
@@ -65,22 +66,91 @@ class KernelLogMonitor01Plugin(BasePluginExecutor):
     out = out.decode().strip()
     return out
 
-  def process(self):
+  def monitor_kernel_logs(self) -> str:
+    """
+    Get the last error log lines since the last run.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    str: all kernel errors since the last run
+    """
     current_time = self.time()
     eps = 0.05
     minutes = round((current_time - self.last_exec_time) / 60 + eps, 3)
 
+    msg = ""
     try:
       level = self.cfg_kernel_log_level.lower()
       out = self._get_kernel_errors(minutes=minutes, level=level)
       if len(out) > 0:
-        msg = f"Found the following kernel errors:\n{out}"
-        self.P(msg, color='red')
-        # Fill out the payload
-        self.add_payload_by_fields(is_alert=True, status=msg)
+        msg = f"Found the following kernel errors:\n{out}\n"
     except Exception as E:
       self.P(f"Could not retrieve kernel errors, {E}", color="red")
 
-    self.last_exec_time = current_time
+    return msg
 
+  def monitor_temperatures(self) -> str:
+    """
+    Get a string listing all temperature issues found on the device.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    str: all kernel errors since the last run
+    """
+    temperature_info = self.get_temperature_sensors(as_dict=True)
+    temps = temperature_info['temperatures']
+    if temps in [None, {}]:
+      self.P(temperature_info['message'], color='r')
+      return ""
+    #endif no sensor data
+
+    msg = ""
+    for sensor, status in temps.items():
+      current = status['current']
+      temp_threshold = status['high']
+      if self.cfg_max_temperature is not None:
+        temp_threshold = self.cfg_max_temperature
+      if status['current'] >= temp_threshold:
+        sensor_str = f"{sensor} at {current}°C CRITICAL!"
+        msg += f"High temperature detected: {sensor_str}\n"
+      #endif high temp
+    #endfor values
+
+    if len(msg) > 0:
+      msg = f"Found the following temperature issues:\n{msg}"
+
+    return msg
+
+  def process(self):
+    current_time = self.time()
+
+    # A list with all the monitor hooks so we can easily add more if needed.
+    monitor_hooks = [
+      self.monitor_kernel_logs,
+      self.monitor_temperatures
+    ]
+
+    # Run all monitoring hooks. We concatenate any interesting messages
+    # and raise an alert if there are any such messages.
+    msg = ""
+    for hook in monitor_hooks:
+      msg += hook()
+    #endfor all hooks
+    msg = msg.rstrip()
+
+    if len(msg) > 0:
+      self.P(msg, color='red')
+      self.add_payload_by_fields(is_alert=True, status=msg)
+    #endif signal found errors
+
+    # Finally update the last run time.
+    self.last_exec_time = current_time
     return
