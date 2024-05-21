@@ -136,10 +136,11 @@ class EpochsManager(Singleton):
   
   def __get_max_hb_per_epoch(self):
     max_hb = 0
+    addr = self.owner.node_addr
     eeid = self.owner.node_name
-    interval = self.owner.network_node_hb_interval(eeid=eeid)
+    interval = self.owner.network_node_hb_interval(addr=addr)
     if interval is None:
-      raise ValueError("Heartbeat interval not found for node: {}".format(eeid))
+      raise ValueError("Heartbeat interval not found for node: {} ({})".format(addr, eeid))
     nr_hb = 24 * 3600 // interval
     return nr_hb
 
@@ -659,17 +660,14 @@ if __name__ == '__main__':
   if has_data:    
     l.P("Current time epoch is: {} ({})".format(eng.get_time_epoch(), eng.epoch_to_date()))
     
-    
-    nodes = {
-      x: netmon.network_node_address(x) for x in netmon.all_nodes
-    }
+    nodes = netmon.all_nodes
         
     dct_hb = {}
     
     # now check the nodes for some usable data
     current_epoch = eng.get_time_epoch()
-    for node_name in nodes:
-      hbs = netmon.get_box_heartbeats(node_name)
+    for node_addr in nodes:
+      hbs = netmon.get_box_heartbeats(node_addr)
       idx = -1
       done = False
       good_hbs = defaultdict(list)
@@ -678,7 +676,7 @@ if __name__ == '__main__':
         if ep >= current_epoch:
           good_hbs[ep].append(hb)
       if len(good_hbs) > 0:
-        dct_hb[node_name] = good_hbs
+        dct_hb[node_addr] = good_hbs
     
     l.P("Data available for epochs:\n{}".format(
       "\n".join(["{}: {}".format(x, list(dct_hb[x].keys())) for x in dct_hb]) 
@@ -696,9 +694,8 @@ if __name__ == '__main__':
       if epoch_has_data:
         l.P("Starting registering data for epoch {}...".format(eng.get_current_epoch()), color='b')
       data_counter = 0
-      for node_name in dct_hb:
-        node_addr = eng.owner.network_node_address(node_name)
-        for hb in dct_hb[node_name][epoch]:
+      for node_addr in dct_hb:
+        for hb in dct_hb[node_addr][epoch]:
           eng.register_data(node_addr, hb)
           data_counter += 1
       if data_counter > 0:

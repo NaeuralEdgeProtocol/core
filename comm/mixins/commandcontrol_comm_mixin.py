@@ -67,16 +67,16 @@ class _CommandControlCommMixin(object):
 
             # TODO: @Stefan - explain why this was moved in if in comment
             # also why register heartbeat dependant on formatter
-            device_id = json_msg.get(ct.EE_ID, None)
+            device_addr = json_msg.get(ct.EE_ADDR, json_msg.get(ct.PAYLOAD_DATA.EE_SENDER))
             event_type = json_msg.get(ct.PAYLOAD_DATA.EE_EVENT_TYPE, None)
             
               
-            if device_id is None or event_type is None:
+            if device_addr is None or event_type is None:
               self._deque_invalid_messages.append(json_msg)
 
             is_heartbeat = (event_type == ct.HEARTBEAT)
             if is_heartbeat:
-              self._network_monitor.register_heartbeat(eeid=device_id, data=json_msg)
+              self._network_monitor.register_heartbeat(addr=device_addr, data=json_msg)
             # endif
         # endif
 

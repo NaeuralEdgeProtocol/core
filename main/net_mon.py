@@ -45,6 +45,7 @@ NETMON_DB = 'db.pkl'
 NETMON_DB_SUBFOLDER = 'network_monitor'
 
 ERROR_ADDRESS = '0xai_unknownunknownunknown'
+MISSING_ID = 'missing_id'
 
 class NetworkMonitor(DecentrAIObject):
   
@@ -87,16 +88,16 @@ class NetworkMonitor(DecentrAIObject):
   
   def _set_network_heartbeats(self, network_heartbeats):
     if isinstance(network_heartbeats, dict):
-      for eeid in network_heartbeats:
+      for addr in network_heartbeats:
         # make sure that the heartbeats are deques
-        network_heartbeats[eeid] = deque(network_heartbeats[eeid], maxlen=self.HB_HISTORY)
+        network_heartbeats[addr] = deque(network_heartbeats[addr], maxlen=self.HB_HISTORY)
       self.__network_heartbeats = network_heartbeats
     else:
       self.P("Error setting network heartbeats. Invalid type: {}".format(type(network_heartbeats)), color='r')
     return 
   
   
-  def __register_heartbeat(self, eeid, data):
+  def __register_heartbeat(self, addr, data):
     # first check if data is encoded (as it always should be)
     if ct.HB.ENCODED_DATA in data:
       str_data = data.pop(ct.HB.ENCODED_DATA)
@@ -106,27 +107,21 @@ class NetworkMonitor(DecentrAIObject):
         **dct_hb,
       }
     #endif encoded data
-    if eeid not in self.__network_heartbeats:
-      addr = data.get(ct.HB.EE_ADDR, ERROR_ADDRESS)
-      if addr == ERROR_ADDRESS:
-        extra_msg = 'EE_ADDR not found in heartbeat data'
-      else:
-        extra_msg = ''
-      self.P("Box alive: {}:{}. {}".format(
-        addr[:10] + '...' + addr[-5:], eeid, extra_msg), color='y' if len(extra_msg) == 0 else 'r'
-      )
-      self.__network_heartbeats[eeid] = deque(maxlen=self.HB_HISTORY)
+    __eeid = data.get(ct.EE_ID, MISSING_ID)
+    if addr not in self.__network_heartbeats:
+      self.P("Box alive: {}:{}.".format(addr, __eeid), color='y')
+      self.__network_heartbeats[addr] = deque(maxlen=self.HB_HISTORY)
     #endif
     # begin mutexed section
     self.log.lock_resource(NETMON_MUTEX)
-    self.__network_heartbeats[eeid].append(data)
+    self.__network_heartbeats[addr].append(data)
     self.log.unlock_resource(NETMON_MUTEX)
     # end mutexed section
     return
     
   
-  def get_box_heartbeats(self, eeid):
-    box_heartbeats = deque(self.all_heartbeats[eeid], maxlen=self.HB_HISTORY)
+  def get_box_heartbeats(self, addr):
+    box_heartbeats = deque(self.all_heartbeats[addr], maxlen=self.HB_HISTORY)
     return box_heartbeats
 
 
@@ -137,28 +132,28 @@ class NetworkMonitor(DecentrAIObject):
         return []
       return list(self.all_heartbeats.keys())
 
-    def __network_node_past_hearbeats_by_number(self, eeid, nr=1, reverse_order=True):
-      if eeid not in self.__network_nodes_list():
-        self.P("`_network_node_past_hearbeats_by_number`: EE_ID '{}' not available".format(eeid))
+    def __network_node_past_hearbeats_by_number(self, addr, nr=1, reverse_order=True):
+      if addr not in self.__network_nodes_list():
+        self.P("`_network_node_past_hearbeats_by_number`: ADDR '{}' not available".format(addr))
         return
       
-      box_heartbeats = self.get_box_heartbeats(eeid)
+      box_heartbeats = self.get_box_heartbeats(addr)
       if reverse_order:
         lst_heartbeats = list(reversed(box_heartbeats))[:nr]
       else:
         lst_heartbeats = box_heartbeats[-nr:]
       return lst_heartbeats
 
-    def __network_node_past_heartbeats_by_interval(self, eeid, minutes=60, dt_now=None, reverse_order=True):
-      if eeid not in self.__network_nodes_list():
-        self.P("`_network_node_past_heartbeats_by_interval`: EE_ID '{}' not available".format(eeid))
+    def __network_node_past_heartbeats_by_interval(self, addr, minutes=60, dt_now=None, reverse_order=True):
+      if addr not in self.__network_nodes_list():
+        self.P("`_network_node_past_heartbeats_by_interval`: ADDR '{}' not available".format(addr))
         return
       
       if dt_now is None:
         dt_now = dt.now()
         
       lst_heartbeats = []
-      box_heartbeats = self.get_box_heartbeats(eeid)
+      box_heartbeats = self.get_box_heartbeats(addr)
       for heartbeat in reversed(box_heartbeats):
         remote_time = heartbeat[ct.HB.CURRENT_TIME]
         remote_tz = heartbeat.get(ct.PAYLOAD_DATA.EE_TIMEZONE)
@@ -172,77 +167,139 @@ class NetworkMonitor(DecentrAIObject):
         lst_heartbeats = list(reversed(lst_heartbeats))
       return lst_heartbeats
 
-    def __network_node_last_heartbeat(self, eeid, return_empty_dict=False):
-      if eeid not in self.__network_nodes_list():
-        msg = "`_network_node_last_heartbeat`: EE_ID '{}' not available".format(eeid)
+    def __network_node_last_heartbeat(self, addr, return_empty_dict=False):
+      if addr not in self.__network_nodes_list():
+        msg = "`_network_node_last_heartbeat`: ADDR '{}' not available".format(addr)
         if not return_empty_dict:
           raise ValueError(msg)
         else:
           self.P(msg, color='r')
           return {}
         #endif raise or return
-      return self.all_heartbeats[eeid][-1]
+      return self.all_heartbeats[addr][-1]
 
-    def __network_node_last_valid_heartbeat(self, eeid, minutes=3):
-      past_heartbeats = self.__network_node_past_heartbeats_by_interval(eeid=eeid, minutes=minutes, )
+    def __network_node_last_valid_heartbeat(self, addr, minutes=3):
+      past_heartbeats = self.__network_node_past_heartbeats_by_interval(addr=addr, minutes=minutes, )
       if len(past_heartbeats) == 0:
         return
 
       return past_heartbeats[0]
 
+    def __convert_node_id_address(self, network_heartbeats):
+      """
+      Method to convert the database from the old format to the new format
+      The old format was using the node_id as the key, and the new format uses the address as the key
+      
+      Parameters
+      ----------
+      network_heartbeats : dict
+          The dictionary with the network heartbeats
+
+      Returns
+      -------
+      dict
+          The dictionary with the network heartbeats with the address as the key
+      """
+      new_network_heartbeats = {}
+      for node_id, data in network_heartbeats.items():
+        addr = data[-1].get(ct.HB.EE_ADDR)
+        if addr is None:
+          self.P(f"Node ID {node_id} has no address. Skipping...", color='r')
+          continue
+        new_network_heartbeats[addr] = data
+      return new_network_heartbeats
+
+    def __looks_like_an_address(self, string):
+      if not isinstance(string, str):
+        return False
+      if len(string) != 49:
+        return False
+      if string[:5] == '0xai_':
+        return True
+      if string[:5] == 'aixp_':
+        return True
+
+      return False
+
+    def __maybe_convert_node_id_address(self, network_heartbeats):
+      """
+      Method to convert the database from the old format to the new format
+      The old format was using the node_id as the key, and the new format uses the address as the key
+      
+      As we cannot say for sure what is an address, we will use the heuristic that if the key doesn't 
+      look like an address, we will convert it
+
+      We cannot have a state where we save both the node_id and the address, so we will convert all the keys,
+      as this conversion will happen one time only
+
+      Parameters
+      ----------
+      network_heartbeats : dict
+          The dictionary with the network heartbeats
+
+      Returns
+      -------
+      dict
+          The dictionary with the network heartbeats with the address as the key
+      """
+      if any([not self.__looks_like_an_address(key) for key in network_heartbeats.keys()]):
+        self.log.save_pickle_to_data(network_heartbeats, 'network_heartbeats_old.pkl', subfolder_path=NETMON_DB_SUBFOLDER)
+        return self.__convert_node_id_address(network_heartbeats)
+      
+      return network_heartbeats
 
   # "MACHINE_MEMORY" section (protected methods)
   if True:
-    def __network_node_machine_memory(self, eeid):
-      hearbeat = self.__network_node_last_heartbeat(eeid=eeid)
+    def __network_node_machine_memory(self, addr):
+      hearbeat = self.__network_node_last_heartbeat(addr=addr)
       return hearbeat[ct.HB.MACHINE_MEMORY]
   #endif
 
 
   # "AVAILABLE_MEMORY" section (protected methods)
   if True:
-    def __network_node_past_available_memory_by_number(self, eeid, nr=1, norm=True):
-      machine_mem = self.__network_node_machine_memory(eeid=eeid)
-      lst_heartbeats = self.__network_node_past_hearbeats_by_number(eeid=eeid, nr=nr)
+    def __network_node_past_available_memory_by_number(self, addr, nr=1, norm=True):
+      machine_mem = self.__network_node_machine_memory(addr=addr)
+      lst_heartbeats = self.__network_node_past_hearbeats_by_number(addr=addr, nr=nr)
       lst = [h[ct.HB.AVAILABLE_MEMORY] / machine_mem if norm else h[ct.HB.AVAILABLE_MEMORY] for h in lst_heartbeats]
       return lst
 
-    def __network_node_past_available_memory_by_interval(self, eeid, minutes=60, norm=True, reverse_order=True):
-      machine_mem = self.__network_node_machine_memory(eeid=eeid)
-      lst_heartbeats = self.__network_node_past_heartbeats_by_interval(eeid=eeid, minutes=minutes, reverse_order=reverse_order)
+    def __network_node_past_available_memory_by_interval(self, addr, minutes=60, norm=True, reverse_order=True):
+      machine_mem = self.__network_node_machine_memory(addr=addr)
+      lst_heartbeats = self.__network_node_past_heartbeats_by_interval(addr=addr, minutes=minutes, reverse_order=reverse_order)
       lst = [h[ct.HB.AVAILABLE_MEMORY] / machine_mem if norm else h[ct.HB.AVAILABLE_MEMORY] for h in lst_heartbeats]
       return lst
 
-    def __network_node_last_available_memory(self, eeid, norm=True):
-      machine_mem = self.__network_node_machine_memory(eeid=eeid)
-      hearbeat = self.__network_node_last_heartbeat(eeid=eeid)
+    def __network_node_last_available_memory(self, addr, norm=True):
+      machine_mem = self.__network_node_machine_memory(addr=addr)
+      hearbeat = self.__network_node_last_heartbeat(addr=addr)
       return hearbeat[ct.HB.AVAILABLE_MEMORY] / machine_mem if norm else hearbeat[ct.HB.AVAILABLE_MEMORY]
   #endif
 
   # "PROCESS_MEMORY" section (protected methods)
   if True:
-    def __network_node_past_process_memory_by_number(self, eeid, nr=1, norm=True):
-      machine_mem = self.__network_node_machine_memory(eeid=eeid)
-      lst_heartbeats = self.__network_node_past_hearbeats_by_number(eeid=eeid, nr=nr)
+    def __network_node_past_process_memory_by_number(self, addr, nr=1, norm=True):
+      machine_mem = self.__network_node_machine_memory(addr=addr)
+      lst_heartbeats = self.__network_node_past_hearbeats_by_number(addr=addr, nr=nr)
       lst = [h[ct.HB.PROCESS_MEMORY] / machine_mem if norm else h[ct.HB.PROCESS_MEMORY] for h in lst_heartbeats]
       return lst
 
-    def __network_node_past_process_memory_by_interval(self, eeid, minutes=60, norm=True):
-      machine_mem = self.__network_node_machine_memory(eeid=eeid)
-      lst_heartbeats = self.__network_node_past_heartbeats_by_interval(eeid=eeid, minutes=minutes)
+    def __network_node_past_process_memory_by_interval(self, addr, minutes=60, norm=True):
+      machine_mem = self.__network_node_machine_memory(addr=addr)
+      lst_heartbeats = self.__network_node_past_heartbeats_by_interval(addr=addr, minutes=minutes)
       lst = [100*h[ct.HB.PROCESS_MEMORY] / machine_mem if norm else h[ct.HB.PROCESS_MEMORY] for h in lst_heartbeats]
       return lst
 
-    def __network_node_last_process_memory(self, eeid, norm=True):
-      machine_mem = self.__network_node_machine_memory(eeid=eeid)
-      hearbeat = self.__network_node_last_heartbeat(eeid=eeid)
+    def __network_node_last_process_memory(self, addr, norm=True):
+      machine_mem = self.__network_node_machine_memory(addr=addr)
+      hearbeat = self.__network_node_last_heartbeat(addr=addr)
       return hearbeat[ct.HB.PROCESS_MEMORY] / machine_mem if norm else hearbeat[ct.HB.PROCESS_MEMORY]
   #endif
 
   # "CPU_USED" section (protected methods)
   if True:
-    def __network_node_past_cpu_used_by_number(self, eeid, nr=1):
-      lst_heartbeats = self.__network_node_past_hearbeats_by_number(eeid=eeid, nr=nr)
+    def __network_node_past_cpu_used_by_number(self, addr, nr=1):
+      lst_heartbeats = self.__network_node_past_hearbeats_by_number(addr=addr, nr=nr)
       lst = [h[ct.HB.CPU_USED] for h in lst_heartbeats]
       return lst
     
@@ -251,11 +308,11 @@ class NetworkMonitor(DecentrAIObject):
       return timestamps
 
     def __network_node_past_cpu_used_by_interval(
-      self, eeid, minutes=60, dt_now=None, 
+      self, addr, minutes=60, dt_now=None, 
       return_timestamps=False, reverse_order=True
     ):
       lst_heartbeats = self.__network_node_past_heartbeats_by_interval(
-        eeid=eeid, minutes=minutes, dt_now=dt_now, reverse_order=reverse_order
+        addr=addr, minutes=minutes, dt_now=dt_now, reverse_order=reverse_order
       )
       lst = [h[ct.HB.CPU_USED] for h in lst_heartbeats]
       if return_timestamps:
@@ -264,15 +321,15 @@ class NetworkMonitor(DecentrAIObject):
       else:
         return lst
 
-    def __network_node_last_cpu_used(self, eeid):
-      hearbeat = self.__network_node_last_heartbeat(eeid=eeid)
+    def __network_node_last_cpu_used(self, addr):
+      hearbeat = self.__network_node_last_heartbeat(addr=addr)
       return hearbeat[ct.HB.CPU_USED]
   #endif
 
   # "GPUS" section (protected methods)
   if True:
-    def __network_node_past_gpus_by_number(self, eeid, nr=1):
-      lst_heartbeats = self.__network_node_past_hearbeats_by_number(eeid=eeid, nr=nr)
+    def __network_node_past_gpus_by_number(self, addr, nr=1):
+      lst_heartbeats = self.__network_node_past_hearbeats_by_number(addr=addr, nr=nr)
       lst = [h[ct.HB.GPUS] for h in lst_heartbeats]
       for i in range(len(lst)):
         if isinstance(lst[i], str):
@@ -280,11 +337,11 @@ class NetworkMonitor(DecentrAIObject):
       return lst
 
     def __network_node_past_gpus_by_interval(
-      self, eeid, minutes=60, dt_now=None, 
+      self, addr, minutes=60, dt_now=None, 
       return_timestamps=False, reverse_order=True
     ):
       lst_heartbeats = self.__network_node_past_heartbeats_by_interval(
-        eeid=eeid, minutes=minutes, dt_now=dt_now, reverse_order=reverse_order,
+        addr=addr, minutes=minutes, dt_now=dt_now, reverse_order=reverse_order,
       )
       lst = [h[ct.HB.GPUS] for h in lst_heartbeats]
       for i in range(len(lst)):
@@ -296,8 +353,8 @@ class NetworkMonitor(DecentrAIObject):
       else:
         return lst
 
-    def __network_node_last_gpus(self, eeid):
-      hearbeat = self.__network_node_last_heartbeat(eeid=eeid)
+    def __network_node_last_gpus(self, addr):
+      hearbeat = self.__network_node_last_heartbeat(addr=addr)
       gpus = hearbeat[ct.HB.GPUS]
       if isinstance(gpus, str):
         gpus = [{}]
@@ -306,8 +363,8 @@ class NetworkMonitor(DecentrAIObject):
 
   # "UPTIME" section (protected methods)
   if True:
-    def __network_node_uptime(self, eeid, as_minutes=True):
-      hearbeat = self.__network_node_last_heartbeat(eeid=eeid)
+    def __network_node_uptime(self, addr, as_minutes=True):
+      hearbeat = self.__network_node_last_heartbeat(addr=addr)
       result = hearbeat[ct.HB.UPTIME]
       if as_minutes:
         result = result / 60
@@ -316,103 +373,103 @@ class NetworkMonitor(DecentrAIObject):
 
   # "DEVICE_STATUS" section (protected methods)
   if True:
-    def __network_node_past_device_status_by_number(self, eeid, nr=1):
-      lst_heartbeats = self.__network_node_past_hearbeats_by_number(eeid=eeid, nr=nr)
+    def __network_node_past_device_status_by_number(self, addr, nr=1):
+      lst_heartbeats = self.__network_node_past_hearbeats_by_number(addr=addr, nr=nr)
       lst = [h[ct.HB.DEVICE_STATUS] for h in lst_heartbeats]
       return lst
 
-    def __network_node_past_device_status_by_interval(self, eeid, minutes=60):
-      lst_heartbeats = self.__network_node_past_heartbeats_by_interval(eeid=eeid, minutes=minutes)
+    def __network_node_past_device_status_by_interval(self, addr, minutes=60):
+      lst_heartbeats = self.__network_node_past_heartbeats_by_interval(addr=addr, minutes=minutes)
       lst = [h[ct.HB.DEVICE_STATUS] for h in lst_heartbeats]
       return lst
 
-    def __network_node_last_device_status(self, eeid):
-      hearbeat = self.__network_node_last_heartbeat(eeid=eeid)
+    def __network_node_last_device_status(self, addr):
+      hearbeat = self.__network_node_last_heartbeat(addr=addr)
       return hearbeat[ct.HB.DEVICE_STATUS]
   #endif
 
   # "ACTIVE_PLUGINS" section (protected methods)
   if True:
-    def __network_node_past_active_plugins_by_number(self, eeid, nr=1):
-      lst_heartbeats = self.__network_node_past_hearbeats_by_number(eeid=eeid, nr=nr)
+    def __network_node_past_active_plugins_by_number(self, addr, nr=1):
+      lst_heartbeats = self.__network_node_past_hearbeats_by_number(addr=addr, nr=nr)
       lst = [h[ct.HB.ACTIVE_PLUGINS] for h in lst_heartbeats]
       return lst
 
-    def __network_node_past_active_plugins_by_interval(self, eeid, minutes=60):
-      lst_heartbeats = self.__network_node_past_heartbeats_by_interval(eeid=eeid, minutes=minutes)
+    def __network_node_past_active_plugins_by_interval(self, addr, minutes=60):
+      lst_heartbeats = self.__network_node_past_heartbeats_by_interval(addr=addr, minutes=minutes)
       lst = [h[ct.HB.ACTIVE_PLUGINS] for h in lst_heartbeats]
       return lst
 
-    def __network_node_last_active_plugins(self, eeid):
-      hearbeat = self.__network_node_last_heartbeat(eeid=eeid)
+    def __network_node_last_active_plugins(self, addr):
+      hearbeat = self.__network_node_last_heartbeat(addr=addr)
       return hearbeat[ct.HB.ACTIVE_PLUGINS]
   #endif
 
   # "TOTAL_DISK" section (protected methods)
   if True:
-    def __network_node_total_disk(self, eeid):
-      hearbeat = self.__network_node_last_heartbeat(eeid=eeid)
+    def __network_node_total_disk(self, addr):
+      hearbeat = self.__network_node_last_heartbeat(addr=addr)
       return hearbeat[ct.HB.TOTAL_DISK]
   #endif
 
   # "AVAILABLE_DISK" section (protected methods)
   if True:
-    def __network_node_past_available_disk_by_number(self, eeid, nr=1, norm=True):
-      total_disk = self.__network_node_total_disk(eeid=eeid)
-      lst_heartbeats = self.__network_node_past_hearbeats_by_number(eeid=eeid, nr=nr)
+    def __network_node_past_available_disk_by_number(self, addr, nr=1, norm=True):
+      total_disk = self.__network_node_total_disk(addr=addr)
+      lst_heartbeats = self.__network_node_past_hearbeats_by_number(addr=addr, nr=nr)
       lst = [h[ct.HB.AVAILABLE_DISK] / total_disk if norm else h[ct.HB.AVAILABLE_DISK] for h in lst_heartbeats]
       return lst
 
-    def __network_node_past_available_disk_by_interval(self, eeid, minutes=60, norm=True):
-      total_disk = self.__network_node_total_disk(eeid=eeid)
-      lst_heartbeats = self.__network_node_past_heartbeats_by_interval(eeid=eeid, minutes=minutes)
+    def __network_node_past_available_disk_by_interval(self, addr, minutes=60, norm=True):
+      total_disk = self.__network_node_total_disk(addr=addr)
+      lst_heartbeats = self.__network_node_past_heartbeats_by_interval(addr=addr, minutes=minutes)
       lst = [h[ct.HB.AVAILABLE_DISK] / total_disk if norm else h[ct.HB.AVAILABLE_DISK] for h in lst_heartbeats]
       return lst
 
-    def __network_node_last_available_disk(self, eeid, norm=True):
-      total_disk = self.__network_node_total_disk(eeid=eeid)
-      hearbeat = self.__network_node_last_heartbeat(eeid=eeid)
+    def __network_node_last_available_disk(self, addr, norm=True):
+      total_disk = self.__network_node_total_disk(addr=addr)
+      hearbeat = self.__network_node_last_heartbeat(addr=addr)
       return hearbeat[ct.HB.AVAILABLE_DISK] / total_disk if norm else hearbeat[ct.HB.AVAILABLE_DISK]
   #endif
 
   # "SERVING_PIDS" section (protected methods)
   if True:
-    def __network_node_past_serving_pids_by_number(self, eeid, nr=1):
-      lst_heartbeats = self.__network_node_past_hearbeats_by_number(eeid=eeid, nr=nr)
+    def __network_node_past_serving_pids_by_number(self, addr, nr=1):
+      lst_heartbeats = self.__network_node_past_hearbeats_by_number(addr=addr, nr=nr)
       lst = [h[ct.HB.SERVING_PIDS] for h in lst_heartbeats]
       return lst
 
-    def __network_node_past_serving_pids_by_interval(self, eeid, minutes=60):
-      lst_heartbeats = self.__network_node_past_heartbeats_by_interval(eeid=eeid, minutes=minutes)
+    def __network_node_past_serving_pids_by_interval(self, addr, minutes=60):
+      lst_heartbeats = self.__network_node_past_heartbeats_by_interval(addr=addr, minutes=minutes)
       lst = [h[ct.HB.SERVING_PIDS] for h in lst_heartbeats]
       return lst
 
-    def __network_node_last_serving_pids(self, eeid):
-      hearbeat = self.__network_node_last_heartbeat(eeid=eeid)
+    def __network_node_last_serving_pids(self, addr):
+      hearbeat = self.__network_node_last_heartbeat(addr=addr)
       return hearbeat[ct.HB.SERVING_PIDS]
   #endif
 
   # "LOOPS_TIMINGS" section (protected methods)
   if True:
-    def __network_node_past_loops_timings_by_number(self, eeid, nr=1):
-      lst_heartbeats = self.__network_node_past_hearbeats_by_number(eeid=eeid, nr=nr)
+    def __network_node_past_loops_timings_by_number(self, addr, nr=1):
+      lst_heartbeats = self.__network_node_past_hearbeats_by_number(addr=addr, nr=nr)
       lst = [h[ct.HB.LOOPS_TIMINGS] for h in lst_heartbeats]
       return lst
 
-    def __network_node_past_loops_timings_by_interval(self, eeid, minutes=60):
-      lst_heartbeats = self.__network_node_past_heartbeats_by_interval(eeid=eeid, minutes=minutes)
+    def __network_node_past_loops_timings_by_interval(self, addr, minutes=60):
+      lst_heartbeats = self.__network_node_past_heartbeats_by_interval(addr=addr, minutes=minutes)
       lst = [h[ct.HB.LOOPS_TIMINGS] for h in lst_heartbeats]
       return lst
 
-    def __network_node_last_loops_timings(self, eeid):
-      hearbeat = self.__network_node_last_heartbeat(eeid=eeid)
+    def __network_node_last_loops_timings(self, addr):
+      hearbeat = self.__network_node_last_heartbeat(addr=addr)
       return hearbeat[ct.HB.LOOPS_TIMINGS]
   #endif
 
   # "DEFAULT_CUDA" section (protected methods)
   if True:
-    def __network_node_default_cuda(self, eeid, as_int=True):
-      hearbeat = self.__network_node_last_heartbeat(eeid=eeid)
+    def __network_node_default_cuda(self, addr, as_int=True):
+      hearbeat = self.__network_node_last_heartbeat(addr=addr)
       default_cuda = hearbeat[ct.HB.DEFAULT_CUDA]
       if as_int:
         if ':' not in default_cuda:
@@ -427,7 +484,7 @@ class NetworkMonitor(DecentrAIObject):
   # PUBLIC METHODS SECTION
   if True:    
     
-    def network_node_last_comm_info(self, eeid):
+    def network_node_last_comm_info(self, addr):
       """
         "COMMS" : {
           "IN_KB": value /-1 if not available
@@ -445,7 +502,7 @@ class NetworkMonitor(DecentrAIObject):
         }
       """
       dct_comms = {}    
-      hb = self.__network_node_last_heartbeat(eeid=eeid, return_empty_dict=True)
+      hb = self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
       dct_comms[ct.HB.COMM_INFO.IN_KB] = round(hb.get(ct.HB.COMM_INFO.IN_KB, -1), 3)
       dct_comms[ct.HB.COMM_INFO.OUT_KB] = round(hb.get(ct.HB.COMM_INFO.OUT_KB, -1), 3)
       dct_stats = hb.get(ct.HB.COMM_STATS, {})
@@ -477,45 +534,46 @@ class NetworkMonitor(DecentrAIObject):
       return dct_comms
       
     
-    def network_node_info_available(self, eeid):
-      return eeid in self.__network_nodes_list()
+    def network_node_info_available(self, addr):
+      return addr in self.__network_nodes_list()
     
     
-    def network_node_last_heartbeat(self, eeid):
-      return self.__network_node_last_heartbeat(eeid=eeid, return_empty_dict=True)
+    def network_node_last_heartbeat(self, addr):
+      return self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
     
-    def register_heartbeat(self, eeid, data):
-      self.__register_heartbeat(eeid, data)
+    def register_heartbeat(self, addr, data):
+      self.epoch_manager.register_data(addr, data)
+      self.__register_heartbeat(addr, data)
       return
         
     def network_nodes_status(self):
       dct_results = {}
       nodes = self.__network_nodes_list()
-      for eeid in nodes:
-        dct_res = self.network_node_status(eeid=eeid)
-        dct_results[eeid] = dct_res
+      for addr in nodes:
+        dct_res = self.network_node_status(addr=addr)
+        dct_results[addr] = dct_res
       return dct_results
     
     
-    def network_node_main_loop(self, eeid):
+    def network_node_main_loop(self, addr):
       try:
-        dct_timings = self.__network_node_last_loops_timings(eeid=eeid)
+        dct_timings = self.__network_node_last_loops_timings(addr=addr)
       except:
         return 1e10
       return round(dct_timings['main_loop_avg_time'],4)
       
           
-    def network_node_is_ok_loops_timings(self, eeid, max_main_loop_timing=1):
-      return self.network_node_main_loop(eeid) <= max_main_loop_timing
+    def network_node_is_ok_loops_timings(self, addr, max_main_loop_timing=1):
+      return self.network_node_main_loop(addr) <= max_main_loop_timing
 
 
-    def network_node_is_ok_uptime(self, eeid, min_uptime=60):
-      uptime = self.__network_node_uptime(eeid=eeid)
+    def network_node_is_ok_uptime(self, addr, min_uptime=60):
+      uptime = self.__network_node_uptime(addr=addr)
       return uptime >= min_uptime
 
 
-    def network_node_uptime(self, eeid, as_str=True):
-      uptime_sec = self.__network_node_uptime(eeid=eeid, as_minutes=False)
+    def network_node_uptime(self, addr, as_str=True):
+      uptime_sec = self.__network_node_uptime(addr=addr, as_minutes=False)
       if as_str:
         result = self.log.elapsed_to_str(uptime_sec)
       else:
@@ -523,114 +581,114 @@ class NetworkMonitor(DecentrAIObject):
       return result
 
 
-    def network_node_available_disk(self, eeid):
-      available_disk = self.__network_node_last_available_disk(eeid=eeid, norm=False)
+    def network_node_available_disk(self, addr):
+      available_disk = self.__network_node_last_available_disk(addr=addr, norm=False)
       return available_disk
 
-    def network_node_available_disk_prc(self, eeid):
-      prc_available_disk = self.__network_node_last_available_disk(eeid=eeid, norm=True)
+    def network_node_available_disk_prc(self, addr):
+      prc_available_disk = self.__network_node_last_available_disk(addr=addr, norm=True)
       return prc_available_disk
 
-    def network_node_is_ok_available_disk_prc(self, eeid, min_prc_available=0.15):
+    def network_node_is_ok_available_disk_prc(self, addr, min_prc_available=0.15):
       # can create other heuristics based on what happened on the last x minutes interval (using _network_node_past_available_disk_by_interval)
-      prc_available_disk = self.network_node_available_disk_prc(eeid=eeid)
+      prc_available_disk = self.network_node_available_disk_prc(addr=addr)
       return prc_available_disk >= min_prc_available
 
-    def network_node_is_ok_available_disk_size(self, eeid, min_gb_available=50):
+    def network_node_is_ok_available_disk_size(self, addr, min_gb_available=50):
       # can create other heuristics based on what happened on the last x minutes interval (using _network_node_past_available_disk_by_interval)
-      available_disk = self.network_node_available_disk(eeid=eeid)
+      available_disk = self.network_node_available_disk(addr=addr)
       return available_disk >= min_gb_available
 
 
-    def network_node_available_memory(self, eeid):
-      available_mem = self.__network_node_last_available_memory(eeid=eeid, norm=False)
+    def network_node_available_memory(self, addr):
+      available_mem = self.__network_node_last_available_memory(addr=addr, norm=False)
       return available_mem
 
-    def network_node_available_memory_prc(self, eeid):
-      prc_available_mem = self.__network_node_last_available_memory(eeid=eeid, norm=True)
+    def network_node_available_memory_prc(self, addr):
+      prc_available_mem = self.__network_node_last_available_memory(addr=addr, norm=True)
       return prc_available_mem
 
-    def network_node_is_ok_available_memory_prc(self, eeid, min_prc_available=0.20):
+    def network_node_is_ok_available_memory_prc(self, addr, min_prc_available=0.20):
       # can create other heuristics based on what happened on the last x minutes interval (using _network_node_past_available_memory_by_interval)
-      prc_available_mem = self.network_node_available_memory_prc(eeid=eeid)
+      prc_available_mem = self.network_node_available_memory_prc(addr=addr)
       return prc_available_mem >= min_prc_available
 
-    def network_node_is_ok_available_memory_size(self, eeid, min_gb_available=2):
+    def network_node_is_ok_available_memory_size(self, addr, min_gb_available=2):
       # can create other heuristics based on what happened on the last x minutes interval (using _network_node_past_available_memory_by_interval)
-      available_mem = self.network_node_available_memory(eeid=eeid)
+      available_mem = self.network_node_available_memory(addr=addr)
       return available_mem >= min_gb_available
 
 
-    def network_node_is_ok_device_status(self, eeid, dt_now=None):
-      if self.__network_node_last_device_status(eeid=eeid) != ct.DEVICE_STATUS_ONLINE:
+    def network_node_is_ok_device_status(self, addr, dt_now=None):
+      if self.__network_node_last_device_status(addr=addr) != ct.DEVICE_STATUS_ONLINE:
         return False
 
-      if ct.DEVICE_STATUS_EXCEPTION in self.__network_node_past_device_status_by_interval(eeid=eeid, minutes=60):
+      if ct.DEVICE_STATUS_EXCEPTION in self.__network_node_past_device_status_by_interval(addr=addr, minutes=60):
         return False
       
-      if self.network_node_last_seen(eeid=eeid, as_sec=True, dt_now=dt_now) > 60:
+      if self.network_node_last_seen(addr=addr, as_sec=True, dt_now=dt_now) > 60:
         return False
 
       return True
 
-    def network_node_simple_status(self, eeid, dt_now=None):
+    def network_node_simple_status(self, addr, dt_now=None):
 
 
-      if ct.DEVICE_STATUS_EXCEPTION in self.__network_node_past_device_status_by_interval(eeid=eeid, minutes=60):
+      if ct.DEVICE_STATUS_EXCEPTION in self.__network_node_past_device_status_by_interval(addr=addr, minutes=60):
         return "PAST-EXCEPTION"
       
-      if self.network_node_last_seen(eeid=eeid, as_sec=True, dt_now=dt_now) > 60:
+      if self.network_node_last_seen(addr=addr, as_sec=True, dt_now=dt_now) > 60:
         return "LOST STATUS"
 
-      last_status = self.__network_node_last_device_status(eeid=eeid)
+      last_status = self.__network_node_last_device_status(addr=addr)
       return last_status
     
     
-    def network_node_py_ver(self, eeid):
+    def network_node_py_ver(self, addr):
       result = None
-      hb = self.__network_node_last_heartbeat(eeid)
+      hb = self.__network_node_last_heartbeat(addr)
       if isinstance(hb, dict):
         result = hb.get(ct.HB.PY_VER)
       return result      
     
     
-    def network_node_version(self, eeid):
+    def network_node_version(self, addr):
       result = None
-      hb = self.__network_node_last_heartbeat(eeid)
+      hb = self.__network_node_last_heartbeat(addr)
       if isinstance(hb, dict):
         result = hb.get(ct.HB.VERSION)
       return result
 
     
-    def network_node_is_recent(self, eeid, dt_now=None, max_recent_minutes=15):
-      elapsed_seconds = self.network_node_last_seen(eeid=eeid, as_sec=True, dt_now=dt_now)
+    def network_node_is_recent(self, addr, dt_now=None, max_recent_minutes=15):
+      elapsed_seconds = self.network_node_last_seen(addr=addr, as_sec=True, dt_now=dt_now)
       mins = elapsed_seconds / 60
       recent = mins <= max_recent_minutes
       return recent
 
 
-    def network_node_is_ok_cpu_used(self, eeid, max_cpu_used=50):
+    def network_node_is_ok_cpu_used(self, addr, max_cpu_used=50):
       # can create other heuristics based on what happened on the last x minutes interval (using _network_node_past_cpu_used_by_interval)
-      return self.__network_node_last_cpu_used(eeid=eeid) <= max_cpu_used
+      return self.__network_node_last_cpu_used(addr=addr) <= max_cpu_used
 
 
-    def network_node_is_available(self, eeid):
-      ok_loops_timings = self.network_node_is_ok_loops_timings(eeid=eeid, max_main_loop_timing=5)
-      ok_avail_disk = self.network_node_is_ok_available_disk_size(eeid=eeid, min_gb_available=5)
-      ok_avail_mem = self.network_node_is_ok_available_memory_size(eeid=eeid)
-      ok_cpu_used = self.network_node_is_ok_cpu_used(eeid=eeid, max_cpu_used=50)
-      ok_device_status = self.network_node_is_ok_device_status(eeid=eeid)
-      ok_uptime = self.network_node_is_ok_uptime(eeid=eeid, min_uptime=60)
+    def network_node_is_available(self, addr):
+      ok_loops_timings = self.network_node_is_ok_loops_timings(addr=addr, max_main_loop_timing=5)
+      ok_avail_disk = self.network_node_is_ok_available_disk_size(addr=addr, min_gb_available=5)
+      ok_avail_mem = self.network_node_is_ok_available_memory_size(addr=addr)
+      ok_cpu_used = self.network_node_is_ok_cpu_used(addr=addr, max_cpu_used=50)
+      ok_device_status = self.network_node_is_ok_device_status(addr=addr)
+      ok_uptime = self.network_node_is_ok_uptime(addr=addr, min_uptime=60)
 
       ok_node = ok_loops_timings and ok_avail_disk and ok_avail_mem and ok_cpu_used and ok_device_status and ok_uptime
       return ok_node
     
-    def network_node_gpu_capability(self, eeid, device_id,
+    def network_node_gpu_capability(self, addr, device_id,
                                     min_gpu_used=20, max_gpu_used=90,
                                     min_prc_allocated_mem=20, max_prc_allocated_mem=90,
                                     min_gpu_mem_gb=4, max_gpu_mem_gb=30):
 
-      gpus = self.__network_node_last_gpus(eeid=eeid)
+      gpus = self.__network_node_last_gpus(addr=addr)
       dct_ret = {
         'WEIGHTED_CAPABILITY'       : 0, 
         'INDIVIDUAL_CAPABILITIES'   : {}, 
@@ -640,12 +698,12 @@ class NetworkMonitor(DecentrAIObject):
 
       if not isinstance(device_id, int):
         if device_id is not None:
-          self.P("Requested device_id '{}' in `_network_node_gpu_capability` is not integer for e2:{}".format(device_id, eeid), color='r')
+          self.P("Requested device_id '{}' in `_network_node_gpu_capability` is not integer for e2:{}".format(device_id, addr), color='r')
         return dct_ret
 
       if device_id >= len(gpus):
         if device_id is not None:
-          self.P("Requested device_id '{}' in `_network_node_gpu_capability` not available e2:{}".format(device_id, eeid), color='r')
+          self.P("Requested device_id '{}' in `_network_node_gpu_capability` not available e2:{}".format(device_id, addr), color='r')
         return dct_ret
 
       dct_g = gpus[device_id]
@@ -692,13 +750,13 @@ class NetworkMonitor(DecentrAIObject):
       dct_ret['WEIGHTED_CAPABILITY'] = round(weighted_capability, 2)
       return dct_ret
 
-    def network_node_default_gpu_capability(self, eeid,
+    def network_node_default_gpu_capability(self, addr,
                                             min_gpu_used=20, max_gpu_used=90,
                                             min_prc_allocated_mem=20, max_prc_allocated_mem=90,
                                             min_gpu_mem_gb=4, max_gpu_mem_gb=30):
-      default_cuda = self.__network_node_default_cuda(eeid=eeid, as_int=True)
+      default_cuda = self.__network_node_default_cuda(addr=addr, as_int=True)
       dct_gpu_capability = self.network_node_gpu_capability(
-        eeid=eeid, device_id=default_cuda,
+        addr=addr, device_id=default_cuda,
         min_gpu_used=min_gpu_used,
         max_gpu_used=max_gpu_used,
         min_prc_allocated_mem=min_prc_allocated_mem,
@@ -710,14 +768,14 @@ class NetworkMonitor(DecentrAIObject):
       return dct_gpu_capability
     
 
-    def network_node_gpus_capabilities(self, eeid,
+    def network_node_gpus_capabilities(self, addr,
                                        min_gpu_used=20, max_gpu_used=90,
                                        min_prc_allocated_mem=20, max_prc_allocated_mem=90,
                                        min_gpu_mem_gb=8, max_gpu_mem_gb=30):
       capabilities = []
-      for device_id in range(len(self.__network_node_last_gpus(eeid=eeid))):
+      for device_id in range(len(self.__network_node_last_gpus(addr=addr))):
         dct_gpu_capability = self.network_node_gpu_capability(
-          eeid=eeid, device_id=device_id,
+          addr=addr, device_id=device_id,
           min_gpu_used=min_gpu_used,
           max_gpu_used=max_gpu_used,
           min_prc_allocated_mem=min_prc_allocated_mem,
@@ -761,7 +819,7 @@ class NetworkMonitor(DecentrAIObject):
 
       lst_nodes = self.__network_nodes_list()
       lst_available_nodes = list(filter(
-        lambda _eeid: self.network_node_is_available(eeid=_eeid),
+        lambda _addr: self.network_node_is_available(addr=_addr),
         lst_nodes
       ))
 
@@ -771,17 +829,17 @@ class NetworkMonitor(DecentrAIObject):
       min_gpu_used, max_gpu_used = 20, 90
       min_prc_allocated_mem, max_prc_allocated_mem = 20, 90
       min_gpu_mem_gb, max_gpu_mem_gb = 4, 40
-      for _eeid in lst_available_nodes:
+      for _addr in lst_available_nodes:
         dct_gpu_capability = self.network_node_default_gpu_capability(
-          eeid=_eeid,
+          addr=_addr,
           min_gpu_used=min_gpu_used, max_gpu_used=max_gpu_used,
           min_prc_allocated_mem=min_prc_allocated_mem, max_prc_allocated_mem=max_prc_allocated_mem,
           min_gpu_mem_gb=min_gpu_mem_gb, max_gpu_mem_gb=max_gpu_mem_gb,
         )
 
         lst_capabilities.append(dct_gpu_capability['WEIGHTED_CAPABILITY'])
-        dct_individual_capabilities[_eeid] = dct_gpu_capability['INDIVIDUAL_CAPABILITIES']
-        dct_device_id[_eeid] = dct_gpu_capability['DEVICE_ID']
+        dct_individual_capabilities[_addr] = dct_gpu_capability['INDIVIDUAL_CAPABILITIES']
+        dct_device_id[_addr] = dct_gpu_capability['DEVICE_ID']
       #endfor
 
       np_capabilities_ranking = np.argsort(lst_capabilities)[::-1]
@@ -852,6 +910,7 @@ class NetworkMonitor(DecentrAIObject):
       if db_file is not None:
         self.P("Previous nodes states found. Loading network map status...")
         __network_heartbeats = self.log.load_pickle(db_file)
+        __network_heartbeats = self.__maybe_convert_node_id_address(__network_heartbeats)
         if __network_heartbeats is not None:
           # update the current network info with the loaded info
           # this means that all heartbeats received until this point
@@ -868,10 +927,10 @@ class NetworkMonitor(DecentrAIObject):
           )
           self.P("Nodes not present in current network: {}".format(not_present_keys), color='r')
           # lock the NETMON_MUTEX
-          for eeid in current_heartbeats:
-            for data in current_heartbeats[eeid]:
+          for addr in current_heartbeats:
+            for data in current_heartbeats[addr]:
               # TODO: replace register_heartbeat with something simpler
-              self.__register_heartbeat(eeid, data)
+              self.__register_heartbeat(addr, data)
           # unlock the NETMON_MUTEX
           # end for
           result = True
@@ -887,15 +946,15 @@ class NetworkMonitor(DecentrAIObject):
       return result
     
       
-    def network_node_last_seen(self, eeid, as_sec=True, dt_now=None):
+    def network_node_last_seen(self, addr, as_sec=True, dt_now=None):
       """
       Returns the `datetime` in local time when a particular remote node has last been seen
       according to its heart-beats.
 
       Parameters
       ----------
-      eeid : str
-        the node id.
+      addr : str
+        the node address.
         
       as_sec: bool (optional)
         will returns seconds delta instead of actual date
@@ -915,7 +974,7 @@ class NetworkMonitor(DecentrAIObject):
       
 
       """
-      hb = self.__network_node_last_heartbeat(eeid=eeid)
+      hb = self.__network_node_last_heartbeat(addr=addr)
       ts = hb[ct.PAYLOAD_DATA.EE_TIMESTAMP]
       tz = hb.get(ct.PAYLOAD_DATA.EE_TIMEZONE)
       dt_remote_to_local = self.log.utc_to_local(ts, tz, fmt=ct.HB.TIMESTAMP_FORMAT)
@@ -931,14 +990,14 @@ class NetworkMonitor(DecentrAIObject):
     
       
     def network_node_default_gpu_history(
-      self, eeid, minutes=60, dt_now=None, 
+      self, addr, minutes=60, dt_now=None, 
       reverse_order=True, return_timestamps=False
     ):
-      device_id = self.__network_node_default_cuda(eeid=eeid)
+      device_id = self.__network_node_default_cuda(addr=addr)
       lst_statuses, timestamps = [], []
       if device_id is not None:
         result = self.__network_node_past_gpus_by_interval(
-          eeid=eeid, minutes=minutes, dt_now=dt_now, 
+          addr=addr, minutes=minutes, dt_now=dt_now, 
           reverse_order=reverse_order, return_timestamps=return_timestamps,
         )
         if return_timestamps:
@@ -957,9 +1016,9 @@ class NetworkMonitor(DecentrAIObject):
       return lst_statuses
       
     
-    def network_node_default_gpu_average_avail_mem(self, eeid, minutes=60, dt_now=None):
+    def network_node_default_gpu_average_avail_mem(self, addr, minutes=60, dt_now=None):
       result = None
-      lst_statuses = self.network_node_default_gpu_history(eeid=eeid, minutes=minutes, dt_now=dt_now)
+      lst_statuses = self.network_node_default_gpu_history(addr=addr, minutes=minutes, dt_now=dt_now)
       mem = [x['FREE_MEM'] for x in lst_statuses]
       try:
         val = np.mean(mem)
@@ -969,9 +1028,9 @@ class NetworkMonitor(DecentrAIObject):
       return result
     
     
-    def network_node_default_gpu_average_load(self, eeid, minutes=60, dt_now=None):
+    def network_node_default_gpu_average_load(self, addr, minutes=60, dt_now=None):
       result = None
-      lst_statuses = self.network_node_default_gpu_history(eeid=eeid, minutes=minutes, dt_now=dt_now)      
+      lst_statuses = self.network_node_default_gpu_history(addr=addr, minutes=minutes, dt_now=dt_now)      
       try:
         gpuload = [x['GPU_USED'] for x in lst_statuses]
         val = np.mean(gpuload)
@@ -981,60 +1040,60 @@ class NetworkMonitor(DecentrAIObject):
       return result
     
     
-    def network_node_remote_time(self, eeid):
-      hb = self.__network_node_last_heartbeat(eeid=eeid, return_empty_dict=True)
+    def network_node_remote_time(self, addr):
+      hb = self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
       return hb.get(ct.HB.CURRENT_TIME)
     
     
-    def network_node_deploy_type(self, eeid):
-      hb = self.__network_node_last_heartbeat(eeid=eeid, return_empty_dict=True)
+    def network_node_deploy_type(self, addr):
+      hb = self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
       return hb.get(ct.HB.GIT_BRANCH)      
     
 
-    def network_node_is_supervisor(self, eeid):
-      hb = self.__network_node_last_heartbeat(eeid=eeid, return_empty_dict=True)
+    def network_node_is_supervisor(self, addr):
+      hb = self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
       res = hb.get(ct.HB.EE_IS_SUPER, False)
       if res is None:
         res = False
       return res
 
-    def network_node_address(self, eeid):
-      hb = self.__network_node_last_heartbeat(eeid=eeid, return_empty_dict=True)
-      return hb.get(ct.HB.EE_ADDR)
-    
-    def network_node_eeid(self, address):
-      nodes = self.__network_nodes_list()
-      for eeid in nodes:
-        if self.network_node_address(eeid) == address:
-          return eeid
+    def network_node_addr(self, eeid):
+      for addr in self.__network_heartbeats:
+        hb = self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
+        if hb.get(ct.EE_ID) == eeid:
+          return addr
       return None
+
+    def network_node_eeid(self, addr):
+      hb = self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
+      return hb.get(ct.EE_ID, MISSING_ID)
     
-    def network_node_whitelist(self, eeid):
-      hb = self.__network_node_last_heartbeat(eeid=eeid, return_empty_dict=True)
+    def network_node_whitelist(self, addr):
+      hb = self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
       return hb.get(ct.HB.EE_WHITELIST)
     
-    def network_node_local_tz(self, eeid, as_zone=True):
-      hb = self.__network_node_last_heartbeat(eeid=eeid, return_empty_dict=True)
+    def network_node_local_tz(self, addr, as_zone=True):
+      hb = self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
       if as_zone:
         return hb.get(ct.PAYLOAD_DATA.EE_TZ)
       else:
         return hb.get(ct.PAYLOAD_DATA.EE_TIMEZONE)
       
-    def network_node_today_heartbeats(self, eeid, dt_now=None):
+    def network_node_today_heartbeats(self, addr, dt_now=None):
       """
       Returns the today (overridable via dt_now) heartbeats of a particular remote node.
 
       Parameters
       ----------
-      eeid : str
-          id of the node
+      addr : str
+          address of the node
       dt_now : datetime, optional
           override the now-time, by default None
       """
       if dt_now is None:
         dt_now = dt.now()
       dt_now = dt_now.replace(hour=0, minute=0, second=0, microsecond=0)
-      hbs = self.__network_heartbeats[eeid]
+      hbs = self.__network_heartbeats[addr]
       for hb in hbs:
         ts = hb[ct.PAYLOAD_DATA.EE_TIMESTAMP]
         dt_ts = self.log.utc_to_local(ts, fmt=ct.HB.TIMESTAMP_FORMAT)
@@ -1042,48 +1101,48 @@ class NetworkMonitor(DecentrAIObject):
           yield hb
       
             
-    def network_node_is_secured(self, eeid):
-      hb = self.__network_node_last_heartbeat(eeid=eeid, return_empty_dict=True)
+    def network_node_is_secured(self, addr):
+      hb = self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
       return hb.get(ct.HB.SECURED, False) 
     
     
-    def network_node_pipelines(self, eeid):
-      hb = self.__network_node_last_heartbeat(eeid=eeid, return_empty_dict=True)
+    def network_node_pipelines(self, addr):
+      hb = self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
       return hb.get(ct.HB.CONFIG_STREAMS)
     
     
-    def network_node_hb_interval(self, eeid):
-      hb = self.__network_node_last_heartbeat(eeid=eeid, return_empty_dict=True)
+    def network_node_hb_interval(self, addr):
+      hb = self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
       return hb.get(ct.HB.EE_HB_TIME)
   
     
-    def network_node_status(self, eeid, min_uptime=60, dt_now=None):
-      avail_disk = self.__network_node_last_available_disk(eeid=eeid, norm=False)
-      avail_disk_prc = round(self.__network_node_last_available_disk(eeid=eeid, norm=True),3)
+    def network_node_status(self, addr, min_uptime=60, dt_now=None):
+      avail_disk = self.__network_node_last_available_disk(addr=addr, norm=False)
+      avail_disk_prc = round(self.__network_node_last_available_disk(addr=addr, norm=True),3)
 
-      avail_mem = self.__network_node_last_available_memory(eeid=eeid, norm=False)
-      avail_mem_prc = round(self.__network_node_last_available_memory(eeid=eeid, norm=True), 3)
+      avail_mem = self.__network_node_last_available_memory(addr=addr, norm=False)
+      avail_mem_prc = round(self.__network_node_last_available_memory(addr=addr, norm=True), 3)
 
       is_alert_disk = avail_disk_prc < 0.15
       is_alert_ram = avail_mem_prc < 0.15
 
       #comms
-      dct_comms = self.network_node_last_comm_info(eeid=eeid)
+      dct_comms = self.network_node_last_comm_info(addr=addr)
       #end comms
 
-      dct_gpu_capability = self.network_node_default_gpu_capability(eeid=eeid)
+      dct_gpu_capability = self.network_node_default_gpu_capability(addr=addr)
       gpu_name = dct_gpu_capability['NAME']
       
       score=dct_gpu_capability['WEIGHTED_CAPABILITY']
       
-      uptime_sec = round(self.__network_node_uptime(eeid=eeid, as_minutes=False),2)      
+      uptime_sec = round(self.__network_node_uptime(addr=addr, as_minutes=False),2)      
       uptime_min = uptime_sec / 60
       ok_uptime = uptime_sec >= (min_uptime * 60)
       
-      working_status = self.network_node_simple_status(eeid=eeid, dt_now=dt_now)
+      working_status = self.network_node_simple_status(addr=addr, dt_now=dt_now)
       is_online = working_status == ct.DEVICE_STATUS_ONLINE
       
-      recent = self.network_node_is_recent(eeid=eeid, dt_now=dt_now)
+      recent = self.network_node_is_recent(addr=addr, dt_now=dt_now)
 
       trusted = recent and is_online and ok_uptime
       trust_val = exponential_score(left=0, right=min_uptime * 4, val=uptime_min, normed=True, right_is_better=True)
@@ -1094,44 +1153,39 @@ class NetworkMonitor(DecentrAIObject):
       if trusted and score == 0:
         score = 10
         
-      cpu_past1h = round(np.mean(self.__network_node_past_cpu_used_by_interval(eeid=eeid, minutes=60, dt_now=dt_now)),2)
+      cpu_past1h = round(np.mean(self.__network_node_past_cpu_used_by_interval(addr=addr, minutes=60, dt_now=dt_now)),2)
       cpu_past1h = cpu_past1h if not np.isnan(cpu_past1h) else None
-      main_loop_time = self.network_node_main_loop(eeid) 
+      main_loop_time = self.network_node_main_loop(addr) 
       main_loop_freq = 0 if main_loop_time == 0 else 1 / (main_loop_time + 1e-14)
-      address=self.network_node_address(eeid)
       
       trust_info = 'NORMAL_EVAL'
+
       
-      if address is None:
-        trusted = False
-        trust = 0
-        trust_info = 'NO_ADDRESS'
-      
-      is_secured = self.network_node_is_secured(eeid)
+      is_secured = self.network_node_is_secured(addr)
       trusted = is_secured and trusted
       
       dct_result = dict(
-        address=address,        
+        address=addr,
         trusted=trusted,
         trust=trust,
         secured=is_secured,
-        whitelist=self.network_node_whitelist(eeid),
+        whitelist=self.network_node_whitelist(addr),
         trust_info=trust_info,
-        is_supervisor=self.network_node_is_supervisor(eeid),
+        is_supervisor=self.network_node_is_supervisor(addr),
         working=working_status,
         recent=recent,
-        deployment=self.network_node_deploy_type(eeid) or "Unknown",
-        version=self.network_node_version(eeid),
-        py_ver=self.network_node_py_ver(eeid),
-        last_remote_time=self.network_node_remote_time(eeid),
-        node_tz=self.network_node_local_tz(eeid),
-        node_utc=self.network_node_local_tz(eeid, as_zone=False),
+        deployment=self.network_node_deploy_type(addr) or "Unknown",
+        version=self.network_node_version(addr),
+        py_ver=self.network_node_py_ver(addr),
+        last_remote_time=self.network_node_remote_time(addr),
+        node_tz=self.network_node_local_tz(addr),
+        node_utc=self.network_node_local_tz(addr, as_zone=False),
         main_loop_avg_time=main_loop_time,
         main_loop_freq=round(main_loop_freq, 2),
         
         # main_loop_cap
         uptime=self.log.elapsed_to_str(uptime_sec),
-        last_seen_sec=round(self.network_node_last_seen(eeid, as_sec=True, dt_now=dt_now),2),
+        last_seen_sec=round(self.network_node_last_seen(addr, as_sec=True, dt_now=dt_now),2),
         
         avail_disk=avail_disk,
         avail_disk_prc=avail_disk_prc,
@@ -1142,8 +1196,8 @@ class NetworkMonitor(DecentrAIObject):
         is_alert_ram=is_alert_ram,    
         
         cpu_past1h=cpu_past1h,        
-        gpu_load_past1h=self.network_node_default_gpu_average_load(eeid=eeid, minutes=60, dt_now=dt_now),
-        gpu_mem_past1h=self.network_node_default_gpu_average_avail_mem(eeid=eeid, minutes=60, dt_now=dt_now),
+        gpu_load_past1h=self.network_node_default_gpu_average_load(addr=addr, minutes=60, dt_now=dt_now),
+        gpu_mem_past1h=self.network_node_default_gpu_average_avail_mem(addr=addr, minutes=60, dt_now=dt_now),
         gpu_name=gpu_name,
         SCORE=score,        
         #comms:
@@ -1153,31 +1207,31 @@ class NetworkMonitor(DecentrAIObject):
       return dct_result    
     
     
-    def network_node_history(self, eeid, minutes=8*60, dt_now=None, reverse_order=True, hb_step=4):
+    def network_node_history(self, addr, minutes=8*60, dt_now=None, reverse_order=True, hb_step=4):
       # TODO: set HIST_DEBUG to False
       HIST_DEBUG = True
       lst_heartbeats = self.__network_node_past_heartbeats_by_interval(
-        eeid=eeid, minutes=minutes, dt_now=dt_now,
+        addr=addr, minutes=minutes, dt_now=dt_now,
         reverse_order=True,
       )
       last_hb = lst_heartbeats[0]
         
       timestamps = self.__get_timestamps(lst_heartbeats)
-      hb = self.__network_node_last_heartbeat(eeid)
+      hb = self.__network_node_last_heartbeat(addr)
       
       cpu_hist = self.__network_node_past_cpu_used_by_interval(
-        eeid=eeid, minutes=minutes,  dt_now=dt_now, return_timestamps=HIST_DEBUG,
+        addr=addr, minutes=minutes,  dt_now=dt_now, return_timestamps=HIST_DEBUG,
         reverse_order=True,
       )
             
       mem_avail_hist = self.__network_node_past_available_memory_by_interval(
-        eeid=eeid, minutes=minutes, 
+        addr=addr, minutes=minutes, 
         reverse_order=True,
         # dt_now=dt_now, # must implement
       )
 
       gpu_hist = self.network_node_default_gpu_history(
-        eeid=eeid, minutes=minutes, dt_now=dt_now, return_timestamps=HIST_DEBUG,        
+        addr=addr, minutes=minutes, dt_now=dt_now, return_timestamps=HIST_DEBUG,        
         reverse_order=True, 
       )      
       
@@ -1234,18 +1288,19 @@ if __name__ == '__main__':
   
   str_dt = '2023-05-25 18:13:00'
   dt_now = None # l.str_to_date(str_dt)
-  eeids = list(network_heartbeats.keys())
-  eeid = 'gts-test2' # eeids[0]
+  addrs = list(network_heartbeats.keys())
+  # TODO: change address here to the address of gts-test2
+  addr = addrs[0]
   
   nmon = NetworkMonitor(log=l)
   nmon._set_network_heartbeats(network_heartbeats)
   res = {}
-  for eeid in eeids:
-    if eeid == 'gts-test2':
+  for addr in addrs:
+    if addr == addrs[0]:
       print()
-    res[eeid] = nmon.network_node_status(eeid=eeid, min_uptime=120, dt_now=dt_now)
+    res[addr] = nmon.network_node_status(addr=addr, min_uptime=120, dt_now=dt_now)
   l.P("Results:\n{}".format(
     json.dumps(res, indent=4), 
   ))
-  l.P(nmon.network_node_history(eeid))
+  l.P(nmon.network_node_history(addr))
   

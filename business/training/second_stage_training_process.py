@@ -25,6 +25,7 @@ class SecondStageTrainingProcessPlugin(GeneralTrainingProcessPlugin):
 
   def _auto_deploy(self):
     box_auto_deploy = self.cfg_auto_deploy.get('BOX_ID', None)
+    node_address_auto_deploy = self.cfg_auto_deploy.get('NODE_ADDRESS', None)
     streams = self.cfg_auto_deploy.get('STREAMS', [])
 
     for s in streams:
@@ -47,7 +48,8 @@ class SecondStageTrainingProcessPlugin(GeneralTrainingProcessPlugin):
         ]
       })
 
-      self.cmdapi_start_stream_by_config_on_other_box(box_id=box_auto_deploy, config_stream=s)
+      node_address = node_address_auto_deploy or self.netmon.network_node_addr(box_auto_deploy)
+      self.cmdapi_start_stream_by_config_on_other_box(node_address=node_address, config_stream=s)
     #endfor
 
     return

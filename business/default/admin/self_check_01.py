@@ -101,15 +101,15 @@ class SelfCheck01Plugin(BasePluginExecutor):
     is_alert, msg = False, ""
     # end mandatory
     is_ok_mem = self.netmon.network_node_is_ok_available_memory_prc(
-      eeid=self.eeid, 
+      addr=self.e2_addr, 
       min_prc_available=self.cfg_mem_low_prc,
     )      
     self.alerter_add_observation(not is_ok_mem, alerter=alerter_name) 
     
     if self.alerter_is_alert(alerter=alerter_name): #check if current alert exists
-      mem_avail_prc = self.netmon.network_node_available_memory_prc(eeid=self.eeid)      
-      msg = "Memory low (free mem {:.1f}% < {:.1f}%) on node '{}'".format(
-          100 * mem_avail_prc, 100 * self.cfg_mem_low_prc, self.eeid,
+      mem_avail_prc = self.netmon.network_node_available_memory_prc(addr=self.e2_addr)      
+      msg = "Memory low (free mem {:.1f}% < {:.1f}%) on node {} ({})".format(
+          100 * mem_avail_prc, 100 * self.cfg_mem_low_prc, self.e2_addr, self.eeid,
       )
       is_alert = True
       dct_result = self.__get_result(
@@ -126,15 +126,15 @@ class SelfCheck01Plugin(BasePluginExecutor):
     is_alert, msg = False, ""
     # end mandatory
     is_ok_disk = self.netmon.network_node_is_ok_available_disk_prc(
-      eeid=self.eeid, 
+      addr=self.e2_addr, 
       min_prc_available=self.cfg_disk_low_prc
     )
     self.alerter_add_observation(not is_ok_disk, alerter=alerter_name) 
     
     if self.alerter_is_alert(alerter=alerter_name):  #check if current alert exists
-      disk_avail_prc = self.netmon.network_node_available_disk_prc(eeid=self.eeid)      
-      msg = "Disk low (free disk {:.1f}% < {:.1f}%) on node '{}'".format(
-          100 * disk_avail_prc, 100 * self.cfg_mem_low_prc, self.eeid,
+      disk_avail_prc = self.netmon.network_node_available_disk_prc(addr=self.e2_addr)      
+      msg = "Disk low (free disk {:.1f}% < {:.1f}%) on node {} ({})".format(
+          100 * disk_avail_prc, 100 * self.cfg_mem_low_prc, self.e2_addr, self.eeid,
       ) 
       is_alert = True
       dct_result = self.__get_result(
@@ -155,8 +155,8 @@ class SelfCheck01Plugin(BasePluginExecutor):
 
     self.log_info("Self check iteration...")    
     # run all chekers
-    if not self.net_mon.network_node_info_available(eeid=self.eeid):
-      self.P("No hb info available for self at this moment '{}'".format(self.eeid), color='r')
+    if not self.net_mon.network_node_info_available(addr=self.e2_addr):
+      self.P("No hb info available for self at this moment {} ({})".format(self.e2_addr, self.eeid), color='r')
     else:
       has_alerts, dct_status = self.check_all()
       self.log_info("Self check iteration done. Has alerts: {}, Status:\n{}".format(

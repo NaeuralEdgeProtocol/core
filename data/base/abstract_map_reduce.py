@@ -30,11 +30,6 @@ class AbstractMapReduceDataCapture(BaseDecentraiConnectorDataCapture):
 
   def startup(self):
     super().startup()
-    # although the map-reduce should make strong use of window-size considering the
-    # fact that we usually process offline data (such as movies, large datasets, etc)
-    # the actual window-size is required ONLY in worker jobs and not here in the "distributer"
-    # stream. So `cfg_stream_window` should always be 1
-    assert self.cfg_stream_window == 1
     if False:
       # initial method disabled and left here for future reference
       for method_name, func in self.log.get_class_methods(self.network_monitor.__class__, include_parent=False):

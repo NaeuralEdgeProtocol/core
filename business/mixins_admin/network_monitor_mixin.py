@@ -34,23 +34,24 @@ class _NetworkMonitorMixin:
     new_nodes = []
     self.__history.append(nodes) 
     current_nodes = list(nodes.keys())
-    for eeid in current_nodes:
-      if eeid not in self.__active_nodes:
-        if nodes[eeid]['last_seen_sec'] < self.cfg_supervisor_alert_time:
+    for addr in current_nodes:
+      if addr not in self.__active_nodes:
+        if nodes[addr]['last_seen_sec'] < self.cfg_supervisor_alert_time:
           if self.cfg_log_info:
-            self.P("New node '{}':\n{}".format(eeid, self.json.dumps(nodes[eeid], indent=4)))
-          new_nodes.append(eeid)
+            eeid = self.netmon.network_node_eeid(addr=addr)
+            self.P("New node {} ({}):\n{}".format(addr, eeid, self.json.dumps(nodes[addr], indent=4)))
+          new_nodes.append(addr)
     self.__active_nodes.update(new_nodes)
     return nodes, new_nodes
   
   
   def _supervisor_check(self):
     is_alert, nodes = False, {}
-    for eeid in list(self.__active_nodes):
-      last_seen_ago = self.netmon.network_node_last_seen(eeid=eeid, as_sec=True)
+    for addr in list(self.__active_nodes):
+      last_seen_ago = self.netmon.network_node_last_seen(addr=addr, as_sec=True)
       if last_seen_ago > self.cfg_supervisor_alert_time:
         if self.cfg_log_info:
-          hb = self.netmon.network_node_last_heartbeat(eeid=eeid)              
+          hb = self.netmon.network_node_last_heartbeat(addr=addr)              
           hb_t = hb.get(self.const.HB.CURRENT_TIME)
           ts = hb[self.const.PAYLOAD_DATA.EE_TIMESTAMP]
           tz = hb.get(self.const.PAYLOAD_DATA.EE_TIMEZONE)
@@ -59,29 +60,30 @@ class _NetworkMonitorMixin:
           
           elapsed = dt_now.timestamp() - dt_local.timestamp()
           
-          self.P("Found issue with {}:\n\nLast seen: {}\nStatus: {}\nHB: {}\n\n".format(
-            eeid, last_seen_ago, self.json.dumps(self.__history[-1][eeid], indent=4),
+          eeid = self.netmon.network_node_eeid(addr=addr)
+          self.P("Found issue with {} ({}):\n\nLast seen: {}\nStatus: {}\nHB: {}\n\n".format(
+            addr, eeid, last_seen_ago, self.json.dumps(self.__history[-1][addr], indent=4),
             self.json.dumps(dict(hb_t=hb_t, ts=ts, tz=tz, elapsed=elapsed),indent=4)
           ))
         #endif debug
-        uptime_sec = self.netmon.network_node_uptime(eeid=eeid, as_str=True)
+        uptime_sec = self.netmon.network_node_uptime(addr=addr, as_str=True)
         is_alert = True
-        nodes[eeid] = {
+        nodes[addr] = {
             'last_seen_sec' : round(last_seen_ago, 1),
             'uptime_sec' : uptime_sec,
         }        
-        self.__lost_nodes[eeid] += 1
+        self.__lost_nodes[addr] += 1
       else:
-        if eeid in self.__lost_nodes:
-          del self.__lost_nodes[eeid]
+        if addr in self.__lost_nodes:
+          del self.__lost_nodes[addr]
       #endif is active or not
     #endfor check if any "active" is not active anymore
-    
-    for lost_eeid in self.__lost_nodes:
-      if self.__lost_nodes[lost_eeid] > 10 and lost_eeid in self.__active_nodes:
-        self.__active_nodes.remove(lost_eeid)
+
+    for lost_addr in self.__lost_nodes:
+      if self.__lost_nodes[lost_addr] > 10 and lost_addr in self.__active_nodes:
+        self.__active_nodes.remove(lost_addr)
         self.P("Removed '{}' from active nodes after {} fails. Ongoing issues: {}".format(
-          lost_eeid, self.__lost_nodes[lost_eeid], {k:v for k,v in self.__lost_nodes.items()},
+          lost_addr, self.__lost_nodes[lost_addr], {k:v for k,v in self.__lost_nodes.items()},
         ))
       #endif
     #endfor clean lost nodes after a while
@@ -91,22 +93,24 @@ class _NetworkMonitorMixin:
   def _get_rankings(self):
     nodes = self.__history[-1]
     if self.cfg_exclude_self:
-      nodes = {k:v for k,v in nodes.items() if k != self.eeid}
-    ranking = [(eeid, nodes[eeid]['SCORE'], nodes[eeid]['last_seen_sec']) for eeid in nodes]
+      nodes = {k:v for k,v in nodes.items() if k != self.e2_addr}
+    ranking = [(addr, nodes[addr]['SCORE'], nodes[addr]['last_seen_sec']) for addr in nodes]
     ranking = sorted(ranking, key=lambda x:x[1], reverse=True)
     return ranking  
   
   
-  def _exec_netmon_request(self,  target_id, target_addr, request_type, request_options={}):
+  def _exec_netmon_request(self, target_addr, request_type, request_options={}):
     if not isinstance(request_options, dict):
       request_options = {}
     payload_params = {}
     elapsed_t = 0
-    if target_id not in self.all_nodes:
+    if target_addr not in self.all_nodes:
       self.P("Received `{}` request for missing node '{}'".format(
-        request_type, target_id), color='r'
+        request_type, target_addr), color='r'
       )
       return
+    
+    eeid = self.netmon.network_node_eeid(addr=target_addr)
     
     if request_type == NMonConst.NMON_CMD_HISTORY:
       step = request_options.get('step', 20)
@@ -116,34 +120,32 @@ class _NetworkMonitorMixin:
       if not isinstance(step, int):
         step = 4
       minutes = time_window_hours * 60
-      self.P("Received edge node history request for '{}', step={}, hours={}".format(
-        target_id, step, minutes // 60
+      self.P("Received edge node history request for {}, step={}, hours={}".format(
+        target_addr, step, minutes // 60
       ))
       start_t = self.time()
       info = self.netmon.network_node_history(
-        eeid=target_id, hb_step=step, minutes=minutes,
+        addr=target_addr, hb_step=step, minutes=minutes,
         reverse_order=False
       )
       elapsed_t = round(self.time() - start_t, 5)
-      addr = self.netmon.network_node_address(eeid=target_id)
       payload_params[NMonConst.NMON_RES_NODE_HISTORY] = info
     elif request_type == NMonConst.NMON_CMD_LAST_CONFIG:
-      self.P("Received edge node status request for '{}'".format(target_id))
-      info = self.netmon.network_node_pipelines(eeid=target_id)    
-      addr = self.netmon.network_node_address(eeid=target_id)
+      self.P("Received edge node status request for '{}'".format(target_addr))
+      info = self.netmon.network_node_pipelines(addr=target_addr)    
       payload_params[NMonConst.NMON_RES_PIPELINE_INFO] = info
     else:
       self.P("Network monitor on `{}` received invalid request type `{}` for target:address <{}:{}>".format(
-        self.eeid, request_type, target_id, target_addr
+        self.e2_addr, request_type, target_addr, eeid
         ), color='r'
       )
       return
     # construct the payload
     payload_params[NMonConst.NMON_CMD_REQUEST] = request_type
     payload_params[NMonConst.NMON_RES_CURRENT_SERVER] = self.e2_addr
-    payload_params[NMonConst.NMON_RES_E2_TARGET_ID] = target_id
-    payload_params[NMonConst.NMON_RES_E2_TARGET_ADDR] = addr 
-    self.P("  Network monitor sending <{}> response to <{}>".format(request_type, target_id))
+    payload_params[NMonConst.NMON_RES_E2_TARGET_ADDR] = target_addr 
+    payload_params[NMonConst.NMON_RES_E2_TARGET_ID] = eeid
+    self.P("  Network monitor sending <{}> response to <{}>".format(request_type, target_addr))
     self.add_payload_by_fields(
       call_history_time=elapsed_t,
       **payload_params,

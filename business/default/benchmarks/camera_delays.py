@@ -55,7 +55,7 @@ class CameraDelaysPlugin(BaseClass):
     current_time = round(self.time(), 2)
     if current_time - self.start_time > self.cfg_shutdown_after_x_days * 24 * 3600:
       self._maybe_save_dataframe()
-      self.cmdapi_update_instance_config(*self.unique_identification, {'FORCED_PAUSE': True}, self.ee_id)
+      self.cmdapi_update_instance_config(*self.unique_identification, {'FORCED_PAUSE': True}, self.ee_addr)
     # endif we need to shutdown
 
     img = self.dataapi_image()

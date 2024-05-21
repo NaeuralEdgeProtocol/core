@@ -11,13 +11,14 @@ class _CmdAPIMixin(object):
     self._commands = []
     return
 
-  def cmdapi_register_command(self, box_id, command_type, command_content):
+  # TODO: change all cmdapi to work with addresses, not ids
+  def cmdapi_register_command(self, node_address, command_type, command_content):
     """
     Send a command to a particular Execution Engine
 
     Parameters
     ----------
-    box_id : str
+    node_address : str
       target Execution Engine.
     command_type : st
       type of the command - can be one of 'RESTART','STATUS', 'STOP', 'UPDATE_CONFIG', 
@@ -34,21 +35,21 @@ class _CmdAPIMixin(object):
     """
     if isinstance(command_content, dict) and PAYLOAD_DATA.TIME not in command_content:
       command_content[PAYLOAD_DATA.TIME] = self.log.now_str(nice_print=True)
-    box_address = self.net_mon.network_node_address(box_id)
-    self._commands.append((box_id, box_address, command_type, command_content))
+    box_id = self.net_mon.network_node_eeid(node_address)
+    self._commands.append((box_id, node_address, command_type, command_content))
     return
   
   ###
   ### START Official API 
   ### 
   
-  def cmdapi_start_pipeline(self, config, dest=None):
+  def cmdapi_start_pipeline(self, config, node_address=None):
     """
     Sends a start pipeline to a particular destination Execution Engine
 
     Parameters
     ----------
-    dest : str, optional
+    node_address : str, optional
       destination Execution Engine, `None` will default to local Execution Engine. The default is None
       .
     config : dict
@@ -66,15 +67,15 @@ class _CmdAPIMixin(object):
         "TYPE" : "Void",
       }
       ee_id = None # using current processing node
-      plugin.cmdapi_start_pipeline(config=config, dest=ee_id)
+      plugin.cmdapi_start_pipeline(config=config, node_address=ee_addr)
       ```
 
     """
-    self._cmdapi_start_stream_by_config(config_stream=config, box_id=dest)
+    self._cmdapi_start_stream_by_config(config_stream=config, node_address=node_address)
     return
   
   
-  def cmdapi_update_instance_config(self, pipeline, signature, instance_id, instance_config, dest=None):
+  def cmdapi_update_instance_config(self, pipeline, signature, instance_id, instance_config, node_address=None):
     """
     Sends update config for a particular plugin instance in a given box/pipeline
     
@@ -94,7 +95,7 @@ class _CmdAPIMixin(object):
     instance_config: dict
       The configuration for the given box/pipeline/plugin/instance
 
-    dest : str, optional
+    node_address : str, optional
       destination Execution Engine, `None` will default to local Execution Engine. The default is None.
 
     Returns
@@ -107,12 +108,12 @@ class _CmdAPIMixin(object):
       signature=signature,
       instance_id=instance_id,
       instance_config=instance_config,
-      dest=dest,
+      node_address=node_address,
     )
     return
   
   
-  def cmdapi_batch_update_instance_config(self, lst_updates, dest=None):
+  def cmdapi_batch_update_instance_config(self, lst_updates, node_address=None):
     """Send a batch of updates for multiple plugin instances within their individual pipelines
 
     Parameters
@@ -120,7 +121,7 @@ class _CmdAPIMixin(object):
     lst_updates : list of dicts
         The list of updates for multiple plugin instances within their individual pipelines
         
-    dest : str, optional
+    node_address : str, optional
         Destination node, by default None
         
     Returns
@@ -131,7 +132,7 @@ class _CmdAPIMixin(object):
     -------
     
       ```python
-      # in this example we are modifiying the config for 2 instances of the same plugin `A_PLUGIN_01`
+      # in this example we are modifying the config for 2 instances of the same plugin `A_PLUGIN_01`
       # within the same pipeline `test123`
       lst_updates = [
         {
@@ -153,7 +154,7 @@ class _CmdAPIMixin(object):
           }
         },
       ] 
-      plugin.cmdapi_batch_update_instance_config(lst_updates=lst_updates, dest=None)
+      plugin.cmdapi_batch_update_instance_config(lst_updates=lst_updates, node_address=None)
       ```
     
     """
@@ -167,14 +168,14 @@ class _CmdAPIMixin(object):
       assert isinstance(update[PAYLOAD_DATA.INSTANCE_CONFIG], dict), "All updates must have a plugin instance config as dict"
     #endfor check all updates
     self.cmdapi_register_command(
-      box_id=dest, 
-      command_type=COMMANDS.BATCH_UPDATE_PIPELINE_INSTANCE, 
+      node_address=node_address,
+      command_type=COMMANDS.BATCH_UPDATE_PIPELINE_INSTANCE,
       command_content=lst_updates
     )
     return
   
   
-  def cmdapi_send_instance_command(self, pipeline, signature, instance_id, instance_command, dest=None):
+  def cmdapi_send_instance_command(self, pipeline, signature, instance_id, instance_command, node_address=None):
     """
     Sends a INSTANCE_COMMAND for a particular plugin instance in a given box/pipeline
 
@@ -192,7 +193,7 @@ class _CmdAPIMixin(object):
     instance_command: any
       The configuration for the given box/pipeline/plugin/instance. Can be a string, dict, etc
 
-    dest : str, optional
+    node_address : str, optional
       destination Execution Engine, `None` will default to local Execution Engine. The default is None.
       
       
@@ -217,7 +218,7 @@ class _CmdAPIMixin(object):
         signature=signature,
         instance_id=instance_id,
         instance_command=instance_command,
-        dest=None,
+        node_address=None,
       )
       ```
         
@@ -230,18 +231,18 @@ class _CmdAPIMixin(object):
       signature=signature,
       instance_id=instance_id,
       instance_config=instance_config,
-      dest=dest,
+      node_address=node_address,
     )
     return
   
   
-  def cmdapi_archive_pipeline(self, dest=None, name=None):
+  def cmdapi_archive_pipeline(self, node_address=None, name=None):
     """
     Stop and archive a active pipeline on destination Execution Engine
 
     Parameters
     ----------
-    dest : str, optional
+    node_address : str, optional
       destination Execution Engine, `None` will default to local Execution Engine. The default is None.
     name : str, optional
       Name of the pipeline. The default is `None` and will point to current pipeline where the plugin instance 
@@ -252,17 +253,17 @@ class _CmdAPIMixin(object):
     None.
 
     """
-    self._cmdapi_archive_stream(box_id=dest, stream_name=name)
+    self._cmdapi_archive_stream(node_address=node_address, stream_name=name)
     return
 
 
-  def cmdapi_stop_pipeline(self, dest=None, name=None):
+  def cmdapi_stop_pipeline(self, node_address=None, name=None):
     """
     Stop and delete a active pipeline on destination Execution Engine
 
     Parameters
     ----------
-    dest : str, optional
+    node_address : str, optional
       destination Execution Engine, `None` will default to local Execution Engine. The default is None.
     name : str, optional
       Name of the pipeline. The default is `None` and will point to current pipeline where the plugin instance 
@@ -273,30 +274,30 @@ class _CmdAPIMixin(object):
     None.
 
     """
-    self._cmdapi_stop_stream(box_id=dest, stream_name=name)
+    self._cmdapi_stop_stream(node_address=node_address, stream_name=name)
     return
 
 
-  def cmdapi_archive_all_pipelines(self, dest=None):
+  def cmdapi_archive_all_pipelines(self, node_address=None):
     """
     Stop all active pipelines on destination Execution Engine
 
     Parameters
     ----------
-    dest : str, optional
-      destination Execution Engine, `None` will default to local Execution Engine. The default is None.
+    node_address : str, optional
+      Address of the target E2 instance. The default is `None` and will run on local E2.
 
     Returns
     -------
     None.
 
     """
-    dest = dest or self._device_id
-    self.cmdapi_register_command(box_id=dest, command_type=COMMANDS.ARCHIVE_CONFIG_ALL, command_content=None)
+    node_address = node_address or self.node_addr
+    self.cmdapi_register_command(node_address=node_address, command_type=COMMANDS.ARCHIVE_CONFIG_ALL, command_content=None)
     return
   
   
-  def cmdapi_start_pipeline_by_params(self, name, pipeline_type, dest=None, url=None,
+  def cmdapi_start_pipeline_by_params(self, name, pipeline_type, node_address=None, url=None,
                                       reconnectable=None, live_feed=False, plugins=None,
                                       stream_config_metadata=None, cap_resolution=None, 
                                       **kwargs):
@@ -311,8 +312,8 @@ class _CmdAPIMixin(object):
     pipeline_type : str
       type of the pipeline. Will point the E2 instance to a particular Data Capture Thread plugin
       
-    dest : str, optional
-      Name of the target E2 instance. The default is `None` and will run on local E2.
+    node_address : str, optional
+      Address of the target E2 instance. The default is `None` and will run on local E2.
       
     url : str, optional
       The optional URL that can be used by the DCT to acquire data. The default is None.
@@ -367,13 +368,13 @@ class _CmdAPIMixin(object):
 
     """
     return self._cmdapi_start_stream_by_params(
-      name=name, stream_type=pipeline_type, box_id=dest, url=url, reconnectable=reconnectable,
+      name=name, stream_type=pipeline_type, node_address=node_address, url=url, reconnectable=reconnectable,
       live_feed=live_feed, plugins=plugins, stream_config_metadata=stream_config_metadata,
       cap_resolution=cap_resolution, **kwargs
     )
   
   
-  def cmdapi_start_simple_custom_pipeline(self, *, base64code, dest=None, name=None, instance_config={}, **kwargs):
+  def cmdapi_start_simple_custom_pipeline(self, *, base64code, node_address=None, name=None, instance_config={}, **kwargs):
     """
     Starts a CUSTOM_EXEC_01 plugin on a Void pipeline
     
@@ -383,7 +384,7 @@ class _CmdAPIMixin(object):
     base64code : str
       The base64 encoded string that will be used as custom exec plugin.
       
-    dest : str, optional
+    node_address : str, optional
       The destination processing node. The default is None and will point to current node.
       
     name : str, optional
@@ -408,7 +409,7 @@ class _CmdAPIMixin(object):
       custom_code_param = plugin.cfg_custom_code_param    # a special param expected by the custom code
       pipeline_name = plugin.cmdapi_start_simple_custom_pipeline(
         base64code=worker_code, 
-        dest=worker,
+        node_address=worker,
         custom_code_param=pcustom_code_param,
       )
       ```
@@ -431,13 +432,13 @@ class _CmdAPIMixin(object):
     self.cmdapi_start_pipeline_by_params(
         name=name, 
         pipeline_type="Void", 
-        dest=dest, 
+        node_address=node_address, 
         plugins=plugins,
     )
     return name
   
   
-  def cmdapi_send_pipeline_command(self, command, dest=None, pipeline_name=None):
+  def cmdapi_send_pipeline_command(self, command, node_address=None, pipeline_name=None):
     """Sends a command to a particular pipeline on a particular destination E2 instance
 
     Parameters
@@ -445,7 +446,7 @@ class _CmdAPIMixin(object):
     command : any
         the command content
 
-    dest : str, optional
+    node_address : str, optional
         name of the destination e2, by default None (self)
 
     pipeline_name : str, optional
@@ -463,20 +464,20 @@ class _CmdAPIMixin(object):
       # send a command directly to the current pipeline
       plugin.cmdapi_send_pipeline_command(
         command={"PARAM1" : "value1", "PARAM2" : "value2"},
-        dest=None,
+        node_address=None,
         pipeline_name=None,
       )
       ```
     
     """
-    dest = dest or self._device_id
+    node_address = node_address or self.node_addr
     pipeline_name = pipeline_name or self.get_stream_id()
     payload = {
       PAYLOAD_DATA.NAME : pipeline_name,
       COMMANDS.PIPELINE_COMMAND : command,
     }
     self.cmdapi_register_command(
-      box_id=dest,
+      node_address=node_address,
       command_type=COMMANDS.PIPELINE_COMMAND,
       command_content=payload
     )    
@@ -490,40 +491,40 @@ class _CmdAPIMixin(object):
 
   # STOP BOX SECTION
   if True:
-    def _cmdapi_stop_box(self, box_id=None):
-      box_id = box_id or self._device_id
-      self.cmdapi_register_command(box_id=box_id, command_type=COMMANDS.STOP, command_content=None)
+    def _cmdapi_stop_box(self, node_address=None):
+      node_address = node_address or self.node_addr
+      self.cmdapi_register_command(node_address=node_address, command_type=COMMANDS.STOP, command_content=None)
       return
 
     def cmdapi_stop_current_box(self):
-      self._cmdapi_stop_box(box_id=None)
+      self._cmdapi_stop_box(node_address=None)
       return
 
-    def cmdapi_stop_other_box(self, box_id):
-      self._cmdapi_stop_box(box_id=box_id)
+    def cmdapi_stop_other_box(self, node_address):
+      self._cmdapi_stop_box(node_address=node_address)
       return
   #endif
 
   # RESTART BOX SECTION
   if True:
-    def _cmdapi_restart_box(self, box_id=None):
-      box_id = box_id or self._device_id
-      self.cmdapi_register_command(box_id=box_id, command_type=COMMANDS.RESTART, command_content=None)
+    def _cmdapi_restart_box(self, node_address=None):
+      node_address = node_address or self.node_addr
+      self.cmdapi_register_command(node_address=node_address, command_type=COMMANDS.RESTART, command_content=None)
       return
 
     def cmdapi_restart_current_box(self):
-      self._cmdapi_restart_box(box_id=None)
+      self._cmdapi_restart_box(node_address=None)
       return
 
-    def cmdapi_restart_other_box(self, box_id):
-      self._cmdapi_restart_box(box_id=box_id)
+    def cmdapi_restart_other_box(self, node_address):
+      self._cmdapi_restart_box(node_address=node_address)
       return
   #endif
 
   # START STREAM SECTION
   if True:
-    def _cmdapi_start_stream_by_config(self, config_stream, box_id=None):
-      box_id = box_id or self._device_id
+    def _cmdapi_start_stream_by_config(self, config_stream, node_address=None):
+      node_address = node_address or self.node_addr
 
       for param in CONFIG_STREAM.MANDATORY:
         if param not in config_stream:
@@ -532,39 +533,39 @@ class _CmdAPIMixin(object):
           )
           return
 
-      self.cmdapi_register_command(box_id=box_id, command_type=COMMANDS.UPDATE_CONFIG, command_content=config_stream)
+      self.cmdapi_register_command(node_address=node_address, command_type=COMMANDS.UPDATE_CONFIG, command_content=config_stream)
       return
 
     def cmdapi_start_stream_by_config_on_current_box(self, config_stream):
-      self._cmdapi_start_stream_by_config(config_stream=config_stream, box_id=None)
+      self._cmdapi_start_stream_by_config(config_stream=config_stream, node_address=None)
       return
 
-    def cmdapi_start_stream_by_config_on_other_box(self, box_id, config_stream):
-      self._cmdapi_start_stream_by_config(config_stream=config_stream, box_id=box_id)
+    def cmdapi_start_stream_by_config_on_other_box(self, node_address, config_stream):
+      self._cmdapi_start_stream_by_config(config_stream=config_stream, node_address=node_address)
       return
 
     # Metastreams
-    def _cmdapi_start_metastream_by_config(self, config_metastream, box_id=None, collected_streams=None):
+    def _cmdapi_start_metastream_by_config(self, config_metastream, node_address=None, collected_streams=None):
       config_metastream[CONFIG_STREAM.TYPE] = CONFIG_STREAM.METASTREAM
       if collected_streams is not None and isinstance(collected_streams, list) and len(collected_streams) > 0:
         config_metastream[CONFIG_STREAM.COLLECTED_STREAMS] = collected_streams
         CONFIG_STREAM.COLL
-      self._cmdapi_start_stream_by_config(config_stream=config_metastream, box_id=box_id)
+      self._cmdapi_start_stream_by_config(config_stream=config_metastream, node_address=node_address)
       return
 
     def cmdapi_start_metastream_by_config_on_current_box(self, config_metastream, collected_streams=None):
-      self._cmdapi_start_metastream_by_config(config_metastream=config_metastream, box_id=None, collected_streams=collected_streams)
+      self._cmdapi_start_metastream_by_config(config_metastream=config_metastream, node_address=None, collected_streams=collected_streams)
       return
 
-    def cmdapi_start_metastream_by_config_on_other_box(self, box_id, config_metastream, collected_streams=None):
-      self._cmdapi_start_metastream_by_config(config_metastream=config_metastream, box_id=box_id, collected_streams=collected_streams)
+    def cmdapi_start_metastream_by_config_on_other_box(self, node_address, config_metastream, collected_streams=None):
+      self._cmdapi_start_metastream_by_config(config_metastream=config_metastream, node_address=node_address, collected_streams=collected_streams)
       return
     # end Metastreams
 
 
     def _cmdapi_start_stream_by_params(self, name, stream_type, url=None,
                                       reconnectable=None, live_feed=False, plugins=None,
-                                      stream_config_metadata=None, cap_resolution=None, box_id=None, **kwargs):
+                                      stream_config_metadata=None, cap_resolution=None, node_address=None, **kwargs):
 
       config_stream = {
         CONFIG_STREAM.K_NAME          : name,
@@ -593,7 +594,7 @@ class _CmdAPIMixin(object):
         **config_stream, 
         **{k.upper():v for k,v in kwargs.items()},
       }
-      self._cmdapi_start_stream_by_config(config_stream=config_stream, box_id=box_id)
+      self._cmdapi_start_stream_by_config(config_stream=config_stream, node_address=node_address)
       return
 
 
@@ -604,23 +605,23 @@ class _CmdAPIMixin(object):
         name=name, stream_type=stream_type, url=url,
         reconnectable=reconnectable, live_feed=live_feed, plugins=plugins,
         stream_config_metadata=stream_config_metadata, cap_resolution=cap_resolution,
-        box_id=None, **kwargs
+        node_address=None, **kwargs
       )
       return
 
-    def cmdapi_start_stream_by_params_on_other_box(self, box_id, name, stream_type, url=None,
+    def cmdapi_start_stream_by_params_on_other_box(self, node_address, name, stream_type, url=None,
                                                    reconnectable=None, live_feed=False, plugins=None,
                                                    stream_config_metadata=None, cap_resolution=None, **kwargs):
       self._cmdapi_start_stream_by_params(
         name=name, stream_type=stream_type, url=url,
         reconnectable=reconnectable, live_feed=live_feed, plugins=plugins,
         stream_config_metadata=stream_config_metadata, cap_resolution=cap_resolution,
-        box_id=box_id, **kwargs
+        node_address=node_address, **kwargs
       )
       return
     
-    def _cmdapi_update_pipeline_instance(self, pipeline, signature, instance_id, instance_config, dest=None):
-      dest = dest or self._device_id
+    def _cmdapi_update_pipeline_instance(self, pipeline, signature, instance_id, instance_config, node_address=None):
+      node_address = node_address or self.node_addr
       payload = {
         PAYLOAD_DATA.NAME : pipeline,
         PAYLOAD_DATA.SIGNATURE : signature,
@@ -628,7 +629,7 @@ class _CmdAPIMixin(object):
         PAYLOAD_DATA.INSTANCE_CONFIG : instance_config,
       }
       self.cmdapi_register_command(
-        box_id=dest,
+        node_address=node_address,
         command_type=COMMANDS.UPDATE_PIPELINE_INSTANCE,
         command_content=payload
       )
@@ -637,58 +638,58 @@ class _CmdAPIMixin(object):
 
   # STOP STREAM SECTION
   if True:
-    def _cmdapi_stop_stream(self, box_id=None, stream_name=None):
-      box_id = box_id or self._device_id
+    def _cmdapi_stop_stream(self, node_address=None, stream_name=None):
+      node_address = node_address or self.node_addr
       stream_name = stream_name or self.get_stream_id()
-      self.cmdapi_register_command(box_id=box_id, command_type=COMMANDS.DELETE_CONFIG, command_content=stream_name)
+      self.cmdapi_register_command(node_address=node_address, command_type=COMMANDS.DELETE_CONFIG, command_content=stream_name)
       return
     
-    def cmdapi_stop_pipeline(self, dest, name):
-      self._cmdapi_stop_stream(box_id=dest, stream_name=name)
+    def cmdapi_stop_pipeline(self, node_address, name):
+      self._cmdapi_stop_stream(node_address=node_address, stream_name=name)
       return
     
     def cmdapi_stop_current_pipeline(self):
-      self._cmdapi_stop_stream(box_id=None, stream_name=None)
+      self._cmdapi_stop_stream(node_address=None, stream_name=None)
       return
 
     def cmdapi_stop_current_stream(self):
-      self._cmdapi_stop_stream(box_id=None, stream_name=None)
+      self._cmdapi_stop_stream(node_address=None, stream_name=None)
       return
 
     def cmdapi_stop_other_stream_on_current_box(self, stream_name):
-      self._cmdapi_stop_stream(box_id=None, stream_name=stream_name)
+      self._cmdapi_stop_stream(node_address=None, stream_name=stream_name)
       return
 
-    def cmdapi_stop_stream_on_other_box(self, box_id, stream_name):
-      self._cmdapi_stop_stream(box_id=box_id, stream_name=stream_name)
+    def cmdapi_stop_stream_on_other_box(self, node_address, stream_name):
+      self._cmdapi_stop_stream(node_address=node_address, stream_name=stream_name)
       return
   #endif
 
   # ARCHIVE STREAM SECTION
   if True:
-    def _cmdapi_archive_stream(self, box_id=None, stream_name=None):
-      box_id = box_id or self._device_id
+    def _cmdapi_archive_stream(self, node_address=None, stream_name=None):
+      node_address = node_address or self.node_addr
       stream_name = stream_name or self.get_stream_id()
-      self.cmdapi_register_command(box_id=box_id, command_type=COMMANDS.ARCHIVE_CONFIG, command_content=stream_name)
+      self.cmdapi_register_command(node_address=node_address, command_type=COMMANDS.ARCHIVE_CONFIG, command_content=stream_name)
       return
 
     def cmdapi_archive_current_stream(self):
-      self._cmdapi_archive_stream(box_id=None, stream_name=None)
+      self._cmdapi_archive_stream(node_address=None, stream_name=None)
       return
 
     def cmdapi_archive_other_stream_on_current_box(self, stream_name):
-      self._cmdapi_archive_stream(box_id=None, stream_name=stream_name)
+      self._cmdapi_archive_stream(node_address=None, stream_name=stream_name)
       return
 
-    def cmdapi_archive_stream_on_other_box(self, box_id, stream_name):
-      self._cmdapi_archive_stream(box_id=box_id, stream_name=stream_name)
+    def cmdapi_archive_stream_on_other_box(self, node_address, stream_name):
+      self._cmdapi_archive_stream(node_address=node_address, stream_name=stream_name)
       return
   #endif
 
   # FINISH STREAM ACQUISITION SECTION
   if True:
-    def _cmdapi_finish_stream_acquisition(self, box_id=None, stream_name=None):
-      box_id = box_id or self._device_id
+    def _cmdapi_finish_stream_acquisition(self, node_address=None, stream_name=None):
+      node_address = node_address or self.node_addr
       stream_name = stream_name or self.get_stream_id()
       
       delta_config = {
@@ -696,19 +697,19 @@ class _CmdAPIMixin(object):
         COMMANDS.COMMANDS : [{COMMANDS.FINISH_ACQUISITION : True}]
       }
 
-      self.cmdapi_register_command(box_id=box_id, command_type=COMMANDS.UPDATE_CONFIG, command_content=delta_config)
+      self.cmdapi_register_command(node_address=node_address, command_type=COMMANDS.UPDATE_CONFIG, command_content=delta_config)
       return
 
     def cmdapi_finish_current_stream_acquisition(self):
-      self._cmdapi_finish_stream_acquisition(box_id=None, stream_name=None)
+      self._cmdapi_finish_stream_acquisition(node_address=None, stream_name=None)
       return
 
     def cmdapi_finish_other_stream_acquisition_on_current_box(self, stream_name):
-      self._cmdapi_finish_stream_acquisition(box_id=None, stream_name=stream_name)
+      self._cmdapi_finish_stream_acquisition(node_address=None, stream_name=stream_name)
       return
 
-    def cmdapi_finish_stream_acquisition_on_other_box(self, box_id, stream_name):
-      self._cmdapi_finish_stream_acquisition(box_id=box_id, stream_name=stream_name)
+    def cmdapi_finish_stream_acquisition_on_other_box(self, node_address, stream_name):
+      self._cmdapi_finish_stream_acquisition(node_address=node_address, stream_name=stream_name)
       return
   #endif
 

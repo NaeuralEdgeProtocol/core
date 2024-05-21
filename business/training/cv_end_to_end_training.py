@@ -133,8 +133,9 @@ class CVEndToEndTrainingPlugin(BasePlugin):
 
   def get_auto_deploy(self):
     auto_deploy = self.cfg_auto_deploy
-    if 'BOX_ID' not in auto_deploy:
-      auto_deploy['BOX_ID'] = self._device_id
+    if 'BOX_ID' not in auto_deploy or "NODE_ADDRESS" not in auto_deploy:
+      auto_deploy['BOX_ID'] = self.ee_id
+      auto_deploy['NODE_ADDRESS'] = self.node_addr
     if 'STREAMS' not in auto_deploy:
       auto_deploy['STREAMS'] = []
     return auto_deploy
@@ -327,7 +328,8 @@ class CVEndToEndTrainingPlugin(BasePlugin):
   
       if not self._one_time_commands_performed:
         self._one_time_commands_performed = True
-        self._cmdapi_start_stream_by_config(config_stream=self._configured_training_pipeline(), box_id=self.training_box_id)
+        training_box_addr = self.net_mon.network_node_addr(self.training_box_id)
+        self._cmdapi_start_stream_by_config(config_stream=self._configured_training_pipeline(), node_address=training_box_addr)
         config_download = self._configured_download_dataset_pipeline()
         config_upload = self._configured_upload_dataset_pipeline()
         now_str = self.now_str()

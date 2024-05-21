@@ -75,23 +75,19 @@ class NetMon01Plugin(
     request_options = {}
     if isinstance(data, dict):
       dct_cmd = {k.lower() : v for k,v in data.items()} # lower case instance command keys
-      target_id = dct_cmd.get('e2', None) or dct_cmd.get('node', None)
       target_addr = dct_cmd.get('addr', None)
       request_type = dct_cmd.get('request', 'history')
       request_options = dct_cmd.get('options', {})
-    else:
-      target_id = data
           
-    if target_id is not None or target_addr is not None:
-      self.P("Network monitor on {} received request: {}".format(self.eeid, data))
+    if target_addr is not None:
+      self.P("Network monitor on {} ({}) received request: {}".format(self.e2_addr, self.eeid, data))
       self._exec_netmon_request(
-        target_id=target_id,
         target_addr=target_addr,
         request_type=request_type,
         request_options=request_options,
       )    
     else:
-      self.P("Network monitor on {} received invalid request: {}".format(self.eeid, data), color='r')
+      self.P("Network monitor on {} ({}) received invalid request: {}".format(self.e2_addr, self.eeid, data), color='r')
     return
   
 
@@ -100,7 +96,7 @@ class NetMon01Plugin(
     self._nmon_counter += 1      
     self._maybe_load_state()
     
-    current_nodes, new_eeids = self._add_to_history()       
+    current_nodes, new_addrs = self._add_to_history()       
     ranking = self._get_rankings()    
     
     str_ranking = ", ".join(["{}:{:.0f}:{:.1f}s".format(a,b,c) for a,b,c in ranking])
@@ -112,7 +108,7 @@ class NetMon01Plugin(
     current_alerted = None
     is_supervisor = False
     current_ranking = ranking
-    current_new = new_eeids
+    current_new = new_addrs
 
     if self.cfg_supervisor:
       # save status
