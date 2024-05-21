@@ -18,7 +18,7 @@ _CONFIG = {
   },
 }
 
-class KernelLogMonitor01Plugin(BasePluginExecutor):
+class SystemMonitor01Plugin(BasePluginExecutor):
   """
   Monitors kernel logs for errors via dmesg.
   """

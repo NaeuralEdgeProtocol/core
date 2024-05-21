@@ -54,7 +54,7 @@ ADMIN_PIPELINE = {
     "PROCESS_DELAY": 10,
   },
 
-  "KERNEL_LOG_MONITOR_01": {
+  "SYSTEM_MONITOR_01": {
     "PROCESS_DELAY": 180,
     "KERNEL_LOG_LEVEL" : "emerg,alert,crit,err"
   }
