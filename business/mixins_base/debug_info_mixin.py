@@ -11,7 +11,7 @@ class _DebugInfoMixin(object):
   def _format_object_for_debug_info(obj, depth=0):
     if isinstance(obj, dict):
       if len(obj) == 0:
-        msg = '{{}}'
+        msg = '{}'
       else:
         content = ' '.join(['{}:{}'.format(k, _DebugInfoMixin._format_object_for_debug_info(v, depth + 1))
                             for k, v in obj.items()])
