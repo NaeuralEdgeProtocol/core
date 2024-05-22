@@ -110,12 +110,12 @@ DEFAULT_TRAIN_CONFIG = {
 _CONFIG = {
   **BasePlugin.CONFIG,
   'OBJECTIVE_NAME': None,
-  "AI_ENGINE": 'general_detector',
   'GENERAL_DETECTOR_OBJECT_TYPE': ['person'],
   'DATA': {},
   'TRAINING': {},
   'AUTO_DEPLOY': {},
   "CLASSES": None,
+  "ALLOW_EMPTY_INPUTS": True,
 
   'PLUGIN_LOOP_RESOLUTION': 1/5,  # once at 5s
 
@@ -126,9 +126,10 @@ _CONFIG = {
 
 
 class CVEndToEndTrainingPlugin(BasePlugin):
-  def __init__(self, **kwargs):
+  def on_init(self):
+    super(CVEndToEndTrainingPlugin, self).on_init()
+    self.__executed = False
     self._one_time_commands_performed = False
-    super(CVEndToEndTrainingPlugin, self).__init__(**kwargs)
     return
 
   def get_auto_deploy(self):
@@ -323,7 +324,6 @@ class CVEndToEndTrainingPlugin(BasePlugin):
       for config in self.data_sources:
         self.cmdapi_start_stream_by_config_on_current_box(config_stream=config)
       # endfor data sources
-  
       self.cmdapi_start_metastream_by_config_on_current_box(config_metastream=self._configured_metastream_collect_data())
   
       if not self._one_time_commands_performed:

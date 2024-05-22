@@ -192,7 +192,18 @@ class BaseDataCapture(DecentrAIObject, _ConfigHandlerMixin):
       self.__require_on_config_trigger = False
     return
 
+  def get_plugin_specific_stats(self):
+    """
+    This method should be implemented in derived classes if they need to return user defined stats
 
+    Returns
+    -------
+    status : dict
+      The user defined status
+    """
+    result = {
+    }
+    return result
 
   def maybe_update_config(self, upstream_config):
     # if the following keys are modified we do not need to update the config

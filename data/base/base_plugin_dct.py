@@ -634,19 +634,6 @@ class DataCaptureThread(BaseDataCapture,
         np_sleep.mean(), np_sleep[-last_n:],
       )
     return status
-    
-  def get_plugin_specific_stats(self):
-    """
-    This method should be implemented in derived classes if they need to return user defined stats
-
-    Returns
-    -------
-    status : dict
-      The user defined status
-    """
-    result = {      
-    }
-    return result
 
   def get_data_capture(self):
     if self.has_data and not self.received_first_data:

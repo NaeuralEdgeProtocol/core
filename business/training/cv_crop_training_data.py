@@ -3,7 +3,7 @@ from core.business.base import CVPluginExecutor as BasePlugin
 
 _CONFIG = {
   **BasePlugin.CONFIG,
-  'AI_ENGINE': ['general_detector'],
+  'AI_ENGINE': ['lowres_general_detector'],
   'OBJECT_TYPE': ['person'],
 
   'ALLOW_EMPTY_INPUTS': True,
@@ -187,6 +187,8 @@ class CVCropTrainingDataPlugin(BasePlugin):
     return
 
   def _process(self):
+    # TODO: test data gathering when other pipelines are running
+    # We should only gather from the specified streams
     # Step 1: If gathering not finished and input available, crop and save all images.
     if not self.done_collecting and self.dataapi_received_input():
       self._crop_and_save_all_images()
@@ -196,7 +198,7 @@ class CVCropTrainingDataPlugin(BasePlugin):
     # Step 2: If report period passed, generate progress payload or resend final payload
     # if the raw dataset was uploaded.
     if self.time() - self.last_payload_time >= self.cfg_report_period:
-      payload = self.final_payload if not self.done_collecting else self._generate_progress_payload()
+      payload = self.final_payload if self.done_collecting else self._generate_progress_payload()
 
     # Step 3: If no more data gathering is needed, but it was not yet finished,
     # finalise the process and send the final payload.
