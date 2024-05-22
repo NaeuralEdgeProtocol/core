@@ -96,7 +96,8 @@ class NetMon01Plugin(
     self._nmon_counter += 1      
     self._maybe_load_state()
     
-    current_nodes, new_addrs = self._add_to_history()       
+    # TODO: change to addresses later
+    current_nodes, new_nodes = self._add_to_history()       
     ranking = self._get_rankings()    
     
     str_ranking = ", ".join(["{}:{:.0f}:{:.1f}s".format(a,b,c) for a,b,c in ranking])
@@ -108,7 +109,7 @@ class NetMon01Plugin(
     current_alerted = None
     is_supervisor = False
     current_ranking = ranking
-    current_new = new_addrs
+    current_new = new_nodes
 
     if self.cfg_supervisor:
       # save status

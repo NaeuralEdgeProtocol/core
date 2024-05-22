@@ -42,7 +42,9 @@ class _NetworkMonitorMixin:
             self.P("New node {} ({}):\n{}".format(addr, eeid, self.json.dumps(nodes[addr], indent=4)))
           new_nodes.append(addr)
     self.__active_nodes.update(new_nodes)
-    return nodes, new_nodes
+    dct_nodes = {self.netmon.network_node_eeid(addr): nodes[addr] for addr in nodes}
+    lst_new_nodes = [self.netmon.network_node_eeid(addr) for addr in new_nodes]
+    return dct_nodes, lst_new_nodes
   
   
   def _supervisor_check(self):
