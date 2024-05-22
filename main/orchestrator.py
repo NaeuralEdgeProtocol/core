@@ -176,17 +176,17 @@ class Orchestrator(DecentrAIObject,
   @property
   def runs_in_docker(self):
     # this must be same as in Dockerfile
-    is_docker = str(os.environ.get('AIXP_DOCKER')).lower() in ["yes", "true"]
+    is_docker = str(os.environ.get('AINODE_DOCKER')).lower() in ["yes", "true"]
     return is_docker
   
   @property 
   def docker_env(self):
-    docker_env = os.environ.get('AIXP_ENV')
+    docker_env = os.environ.get('AINODE_ENV')
     return docker_env
 
   @property 
   def docker_source(self):
-    docker_source = os.environ.get('AIXP_DOCKER_SOURCE')
+    docker_source = os.environ.get('AINODE_DOCKER_SOURCE')
     return docker_source
   
   def _maybe_env_and_docker_setup(self):    

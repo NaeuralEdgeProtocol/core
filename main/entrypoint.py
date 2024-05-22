@@ -110,7 +110,7 @@ def get_config(config_fn):
 
 def main():
   CONFIG_FILE = 'config_startup'
-  is_docker = str(os.environ.get('AIXP_DOCKER')).lower() in ["yes", "true"]
+  is_docker = str(os.environ.get('AINODE_DOCKER')).lower() in ["yes", "true"]
   if not is_docker:
     load_dotenv()
       
@@ -148,7 +148,7 @@ def main():
 
   if is_docker:
     # post config setup
-    docker_env = os.environ.get('AIXP_ENV')
+    docker_env = os.environ.get('AINODE_ENV')
     l.P("Docker base layer environment {}".format(docker_env))
     # test GPU overwrite
   #endif docker post config
