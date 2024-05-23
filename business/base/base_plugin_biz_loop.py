@@ -486,7 +486,14 @@ class _BasePluginLoopMixin(object):
         self.__plugin_loop_errors += 1 # increase nr of errors
         self.__post_error_ok_count += 3 # increase loop error level
     #endwhile
+
     self.__cleanup()
+
+    # handle commands emitted on close 
+    commands = self.get_commands_after_exec()
+    if len(commands) > 0:
+      self.commands_deque.append(commands)
+
     self.P(ct.PLUGIN_END_PREFIX + "* * * * Business Plugin thread {} execution ended * * * *".format(self.instance_hash), color='y')
     return
 
