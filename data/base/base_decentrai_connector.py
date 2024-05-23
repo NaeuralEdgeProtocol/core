@@ -54,6 +54,7 @@ class BaseDecentraiConnectorDataCapture(DataCaptureThread):
     self.message_queue.append({
       "TYPE": "heartbeat",
       "E2ID": e2id,
+      "ADDRESS": payload["EE_SENDER"],
       "DATA": dict(payload),
     })
 
@@ -61,6 +62,7 @@ class BaseDecentraiConnectorDataCapture(DataCaptureThread):
     self.message_queue.append({
       "TYPE": "notification",
       "E2ID": e2id,
+      "ADDRESS": payload["EE_SENDER"],
       "DATA": dict(payload),
     })
 
@@ -68,6 +70,7 @@ class BaseDecentraiConnectorDataCapture(DataCaptureThread):
     self.message_queue.append({
       "TYPE": "payload",
       "E2ID": e2id,
+      "ADDRESS": payload["EE_SENDER"],
       # "SESSION": session,
       # "SIGNATURE": signature,
       # "INSTANCE_ID": instance_id,
