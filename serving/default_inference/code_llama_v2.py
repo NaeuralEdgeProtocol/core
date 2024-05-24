@@ -75,7 +75,7 @@ TODO:
 
 
 
-from core.serving.base.base_llama_serving import BaseLlmServing as BaseServingProcess
+from core.serving.base.base_llm_serving import BaseLlmServing as BaseServingProcess
 
 
 __VER__ = '0.1.0.0'
@@ -105,6 +105,6 @@ class CodeLlamaV2(BaseServingProcess):
     super(CodeLlamaV2, self).__init__(**kwargs)
     return
   
-  def _setup_llama(self):
+  def _setup_llm(self):
     # just override this method as the base class has a virtual method that raises an exception
     return  

@@ -207,7 +207,7 @@ class BaseLlmServing(
     self._load_model()
 
     # specific llama setup
-    self._setup_llama()
+    self._setup_llm()
 
     # warm up model
     self._warmup()
@@ -243,7 +243,7 @@ class BaseLlmServing(
     return
 
 
-  def _setup_llama(self):
+  def _setup_llm(self):
     raise NotImplementedError("Must be implemented in derived class")
     return
 
