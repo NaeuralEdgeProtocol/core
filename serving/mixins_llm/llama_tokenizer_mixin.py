@@ -167,7 +167,12 @@ class LlamaTokenizerMixin(object):
     """
     chat = []
     if system_info is not None:
-      chat.append({LlamaCT.ROLE_KEY: LlamaCT.SYSTEM_ROLE, LlamaCT.DATA_KEY: system_info})
+      if isinstance(self.tokenizer.chat_template, str):
+        template = self.tokenizer.chat_template
+        if '\"system\"' in template or "'system'" in template:
+          # Only add if the template actually uses the system role
+          chat.append({LlamaCT.ROLE_KEY: LlamaCT.SYSTEM_ROLE, LlamaCT.DATA_KEY: system_info})
+
     #endif create system info
 
     if history is not None and len(history) > 0:

@@ -132,8 +132,16 @@ class LlamaModelMixin(object):
     # so we should use something that is as ignorable as possible
     # embedding-wise.
     self.tokenizer.padding_side = 'right'
-    self.tokenizer.pad_token = self.tokenizer.unk_token
-    self.padding_id = self.tokenizer.unk_token_id
+    if self.tokenizer.pad_token is None:
+      self.tokenizer.pad_token = self.tokenizer.unk_token
+    if self.tokenizer.pad_token is None:
+      self.tokenizer.pad_token = self.tokenizer.eos_token
+
+    self.padding_id = self.tokenizer.pad_token_id
+    if self.padding_id is None:
+      self.padding_id = self.tokenizer.unk_token_id
+    if self.padding_id is None:
+      self.padding_id = self.tokenizer.eos_token_id
     self.P(
       'Settting padding token to {} and padding token id to {}'
       .format(
