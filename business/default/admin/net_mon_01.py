@@ -75,10 +75,14 @@ class NetMon01Plugin(
     request_options = {}
     if isinstance(data, dict):
       dct_cmd = {k.lower() : v for k,v in data.items()} # lower case instance command keys
+      target_node = dct_cmd.get('node', None)
       target_addr = dct_cmd.get('addr', None)
       request_type = dct_cmd.get('request', 'history')
       request_options = dct_cmd.get('options', {})
-          
+
+    if target_node is not None:
+      target_addr = self.netmon.network_node_addr(target_node) or target_addr
+
     if target_addr is not None:
       self.P("Network monitor on {} ({}) received request: {}".format(self.e2_addr, self.eeid, data))
       self._exec_netmon_request(
