@@ -516,6 +516,27 @@ class CentroidObjectTracker(object):
     # endfor
     return
 
+  def get_most_seen_type(self, object_id):
+    """
+    Returns the most seen type of object
+    Parameters
+    ----------
+    object_id - int, id of the specified object
+
+    Returns
+    -------
+    res - str, the most seen type of the specified object
+    """
+    type_history = self.get_object_type_history(object_id)
+    best_type, best_count = '', 0
+    for type_, count in type_history.items():
+      # Skip the total count
+      if type_ == 'total':
+        continue
+      if count > best_count:
+        best_type, best_count = type_, count
+    return best_type
+
   def get_class_count(self, object_id, class_name, return_complement=False, return_ratio=False):
     """
     Method for obtaining how many times an object was a certain type.

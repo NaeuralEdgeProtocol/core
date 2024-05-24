@@ -31,11 +31,36 @@ class _MultiClassTrackerMixin(object):
     return
 
   def __get_track_class(self, inference):
+    """
+    Returns the class of the object that will be tracked.
+    If the object has a meta_type it will be used, otherwise the type will be used.
+    In case neither is present, None will be returned.
+    Parameters
+    ----------
+    inference - dict, inference dictionary
+
+    Returns
+    -------
+    res - str, class of the object that will be tracked
+    """
     if self.const.META_TYPE in inference:
       return inference[self.const.META_TYPE]
     if self.const.TYPE in inference:
       return inference[self.const.TYPE]
     return None
+
+  def get_tracking_type(self, inf):
+    """
+    Public method for accessing the tracking type of inference
+    Parameters
+    ----------
+    inf - dict, inference dictionary
+
+    Returns
+    -------
+    res - str, tracking type of the inference
+    """
+    return self.__get_track_class(inf)
 
   def get_inference_track_tlbr(self, inference):
     """
@@ -460,6 +485,22 @@ class _MultiClassTrackerMixin(object):
       """
       tracker = self._get_tracker(object_type)
       return tracker.get_object_type_history_deque(object_id=object_id)
+
+    def trackapi_most_seen_type(self, object_id, object_type):
+      """
+      Public method for accessing the most seen type of specified object.
+      If meta-types are not used than this will just provide the object's type.
+      Parameters
+      ----------
+      object_id - int
+      object_type - str
+
+      Returns
+      -------
+      res - str, most seen type of the specified object
+      """
+      tracker = self._get_tracker(object_type)
+      return tracker.get_most_seen_type(object_id=object_id)
 
     def trackapi_class_count(self, object_id, object_type, class_name):
       """
