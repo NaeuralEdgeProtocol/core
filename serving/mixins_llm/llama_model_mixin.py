@@ -127,6 +127,9 @@ class LlamaModelMixin(object):
       use_auth_token=token,
     )
 
+    # Fix for missing system roles in transformers.
+    self._set_tokenizer_chat_template()
+
     # Use the unknown token as the padding token. It seems that at least
     # when quantized llama2 will look at the embeddings of padding tokens
     # so we should use something that is as ignorable as possible
