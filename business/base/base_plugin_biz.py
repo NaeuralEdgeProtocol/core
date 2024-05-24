@@ -35,7 +35,7 @@ from core.business.mixins_base import (
   _IntervalAggregationMixin,
   _UploadMixin, _CmdAPIMixin, _ExecutionAuditMixin,
   _GenericUtilsApiMixin, _DiskAPIMixin, _DeAPIMixin,
-  _DatasetBuilderMixin,
+  _DatasetBuilderMixin, _StateMachineAPIMixin,
 )
 
 from core.utils.mixins.code_executor import _CodeExecutorMixin
@@ -321,6 +321,7 @@ class BasePluginExecutor(
   _PoseAPIMixin,
   _BasePluginLoopMixin,
   _BasePluginAPIMixin,
+  _StateMachineAPIMixin,
 ):
   CONFIG = _CONFIG
 

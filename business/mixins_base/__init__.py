@@ -15,3 +15,4 @@ from .threading import _ThreadingAPIMixin
 from .upload_mixin import _UploadMixin
 from .utilsapi import _GenericUtilsApiMixin
 from .working_hours_mixin import _WorkingHoursMixin
+from .state_machine_api import _StateMachineAPIMixin
