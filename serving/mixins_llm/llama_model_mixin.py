@@ -1,14 +1,13 @@
 import torch as th
 
-from transformers import AutoTokenizer as LlamaTokenizer
-# from transformers import LlamaTokenizer
-from transformers import AutoModelForCausalLM as LlamaForCausalLM
+from transformers import AutoTokenizer as LlmTokenizer
+from transformers import AutoModelForCausalLM as LlmForCausalLM
 from transformers import BitsAndBytesConfig
 
 
-class LlamaModelMixin(object):
+class LlmModelMixin(object):
   def __init__(self, *args, **kwargs):
-    super(LlamaModelMixin, self).__init__(*args, **kwargs)
+    super(LlmModelMixin, self).__init__(*args, **kwargs)
     return
 
 
@@ -121,7 +120,7 @@ class LlamaModelMixin(object):
     token = self.hf_token
     model_id = self.cfg_model_name
     self.P("Loading tokenizer for {} in '{}'...".format(model_id, cache_dir))
-    self.tokenizer = LlamaTokenizer.from_pretrained(
+    self.tokenizer = LlmTokenizer.from_pretrained(
       model_id,
       cache_dir=cache_dir,
       use_auth_token=token,
@@ -176,7 +175,7 @@ class LlamaModelMixin(object):
       quantization_config = BitsAndBytesConfig(**quantization_params)
     model_params['quantization_config'] = quantization_config
 
-    self.model = LlamaForCausalLM.from_pretrained(
+    self.model = LlmForCausalLM.from_pretrained(
         model_id,
         **model_params
     )

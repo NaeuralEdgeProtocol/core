@@ -72,8 +72,8 @@ import accelerate
 
 
 
-from core.serving.mixins_llm import LlamaCT, LlamaTokenizerMixin
-from core.serving.mixins_llm import LlamaModelMixin
+from core.serving.mixins_llm import LlmCT, LlmTokenizerMixin
+from core.serving.mixins_llm import LlmModelMixin
 
 from core.serving.base import ModelServingProcess as BaseServingProcess
 
@@ -83,7 +83,6 @@ TEST_MODULES = [
   tokenizers,
   accelerate
 ]
-
 
 
 __VER__ = '0.1.0.2'
@@ -122,8 +121,8 @@ _CONFIG = {
 
 class BaseLlmServing(
   BaseServingProcess,
-  LlamaTokenizerMixin,
-  LlamaModelMixin,
+  LlmTokenizerMixin,
+  LlmModelMixin,
 ):
   CONFIG = _CONFIG
 
@@ -141,7 +140,7 @@ class BaseLlmServing(
 
   @property
   def hf_token(self):
-    return self.os_environ.get(LlamaCT.EE_HF_TOKEN, None)
+    return self.os_environ.get(LlmCT.EE_HF_TOKEN, None)
 
 
   @property
@@ -180,9 +179,9 @@ class BaseLlmServing(
   def _startup(self):
     # check some params that can be re-configured from biz plugins or
     # (lower priority) serving env in config_startup.txt.
-    self.P("Preparing Llama 2.0 serving...")
+    self.P("Preparing LLM serving...")
     if self.hf_token is None:
-      self.P("  No HuggingFace token found. Please set it in the environment variable '{}'".format(LlamaCT.EE_HF_TOKEN), color='r')
+      self.P("  No HuggingFace token found. Please set it in the environment variable '{}'".format(LlmCT.EE_HF_TOKEN), color='r')
     else:
       obfuscated = self.hf_token[:3] + '*' * (len(self.hf_token) - 6) + self.hf_token[-3:]
       self.P("  Found HuggingFace token '{}'".format(obfuscated))
@@ -218,9 +217,9 @@ class BaseLlmServing(
 
   def _warmup(self):
     warmup_request = {
-      LlamaCT.REQ : "hello",
-      LlamaCT.HIST : [],
-      LlamaCT.PRMP : "You are a useful python assistant, generate some python code"
+      LlmCT.REQ : "hello",
+      LlmCT.HIST : [],
+      LlmCT.PRMP : "You are a useful python assistant, generate some python code"
     }
     # Perform a predict with a batch of one request.
     warmup_inputs_one = {
@@ -239,7 +238,7 @@ class BaseLlmServing(
       ]
     }
     self._predict(self._pre_process(warmup_inputs_four))
-    self.P("Llama finished warmup")
+    self.P("LLM finished warmup")
 
     return
 
@@ -300,9 +299,9 @@ class BaseLlmServing(
         msg = "Each input must be a dict. Received {}: {}".format(type(inp), inputs)
         raise ValueError(msg)
       predict_kwargs = serving_params[i] if i < len(serving_params) else {}
-      request = inp.get(LlamaCT.REQ, None)
-      history = inp.get(LlamaCT.HIST, None)
-      system_info = inp.get(LlamaCT.SYS, None)
+      request = inp.get(LlmCT.REQ, None)
+      history = inp.get(LlmCT.HIST, None)
+      system_info = inp.get(LlmCT.SYS, None)
       prompt = self._get_prompt_from_template(
         request=request,
         history=history,
@@ -374,20 +373,20 @@ class BaseLlmServing(
     self.P("Model ran at {} tokens per second".format(num_tps))
 
     dct_result = {
-        LlamaCT.PRED : yhat,
-        LlamaCT.PRMP : prompt_lst,
-        LlamaCT.TKNS : batch_tokens,
-        LlamaCT.TPS  : num_tps
+        LlmCT.PRED : yhat,
+        LlmCT.PRMP : prompt_lst,
+        LlmCT.TKNS : batch_tokens,
+        LlmCT.TPS  : num_tps
     }
     return dct_result
 
 
   def _post_process(self, preds_batch):
     result = []
-    yhat = preds_batch[LlamaCT.PRED]
-    prompts = preds_batch[LlamaCT.PRMP]
-    tokens = preds_batch[LlamaCT.TKNS]
-    tps = preds_batch[LlamaCT.TPS]
+    yhat = preds_batch[LlmCT.PRED]
+    prompts = preds_batch[LlmCT.PRMP]
+    tokens = preds_batch[LlmCT.TKNS]
+    tps = preds_batch[LlmCT.TPS]
 
     # Decode each output in the batch, omitting the input tokens.
     text_lst = self.tokenizer.batch_decode(
@@ -399,11 +398,11 @@ class BaseLlmServing(
 
     for i, decoded in enumerate(text_lst):
       dct_result = {
-        LlamaCT.PRED : yhat[i].tolist(),
-        LlamaCT.PRMP : prompts[i],
-        LlamaCT.TEXT : decoded,
-        LlamaCT.TKNS : tokens[i].tolist(),
-        LlamaCT.TPS  : tps
+        LlmCT.PRED : yhat[i].tolist(),
+        LlmCT.PRMP : prompts[i],
+        LlmCT.TEXT : decoded,
+        LlmCT.TKNS : tokens[i].tolist(),
+        LlmCT.TPS  : tps
       }
       result.append(dct_result)
     return result

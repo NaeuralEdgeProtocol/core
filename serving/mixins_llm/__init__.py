@@ -1,2 +1,2 @@
-from .llama_model_mixin import LlamaModelMixin
-from .llama_tokenizer_mixin import LlamaTokenizerMixin, LlamaCT
+from .llama_model_mixin import LlmModelMixin
+from .llama_tokenizer_mixin import LlmTokenizerMixin, LlmCT
