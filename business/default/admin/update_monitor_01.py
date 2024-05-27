@@ -147,7 +147,7 @@ class UpdateMonitor01Plugin(BasePluginExecutor):
     str_input : str, 
     decompress=True,
   ):
-    """Saves the config_startup.json file from a base64 encoded string or straigth json"""
+    """Saves the config_startup.json file from a base64 encoded string or straight json"""
     config_file = self.log.config_file
     self.P("Saving received config in {}".format(config_file))
     if str_input.startswith('{'):
@@ -159,6 +159,32 @@ class UpdateMonitor01Plugin(BasePluginExecutor):
       is_ok = True
     except:
       is_ok = False
+
+    # now validate that the received config contains the required fields
+    if is_ok:
+      mandatory_keys = self.ct.CONFIG_STARTUP_MANDATORY_KEYS
+      for k in mandatory_keys:
+        if k not in dct_config:
+          is_ok = False
+          break
+        elif isinstance(dct_config[k], list):
+          if len(dct_config[k]) == 0:
+            is_ok = False
+            break
+        elif isinstance(dct_config[k], dict):
+          if len(dct_config[k]) == 0:
+            is_ok = False
+            break
+        elif isinstance(dct_config[k], str):
+          if len(dct_config[k]) == 0:
+            is_ok = False
+            break
+        elif dct_config[k] is None:
+          is_ok = False
+          break
+      # endfor mandatory keys
+    # endif validation
+
     if is_ok:
       with open(config_file, 'w') as f:
         f.write(str_json)
