@@ -142,6 +142,19 @@ class UpdateMonitor01Plugin(BasePluginExecutor):
     return
   
   
+  def __validate_config(self, dct_config):
+    """Validates the config_startup.json file"""
+    is_ok = True
+    mandatory_keys = self.ct.CONFIG_STARTUP_MANDATORY_KEYS
+    for k in mandatory_keys:
+      if (k not in dct_config) or (dct_config[k] is None):
+        is_ok = False        
+      elif isinstance(dct_config[k], (list, str, dict)) and len(dct_config[k]) == 0:
+        is_ok = False
+    # endfor mandatory keys
+    return is_ok
+  
+  
   def __save_config_startup(
     self, 
     str_input : str, 
@@ -162,27 +175,7 @@ class UpdateMonitor01Plugin(BasePluginExecutor):
 
     # now validate that the received config contains the required fields
     if is_ok:
-      mandatory_keys = self.ct.CONFIG_STARTUP_MANDATORY_KEYS
-      for k in mandatory_keys:
-        if k not in dct_config:
-          is_ok = False
-          break
-        elif isinstance(dct_config[k], list):
-          if len(dct_config[k]) == 0:
-            is_ok = False
-            break
-        elif isinstance(dct_config[k], dict):
-          if len(dct_config[k]) == 0:
-            is_ok = False
-            break
-        elif isinstance(dct_config[k], str):
-          if len(dct_config[k]) == 0:
-            is_ok = False
-            break
-        elif dct_config[k] is None:
-          is_ok = False
-          break
-      # endfor mandatory keys
+      is_ok = self.__validate_config(dct_config)
     # endif validation
 
     if is_ok:
