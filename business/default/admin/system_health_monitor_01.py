@@ -18,6 +18,16 @@ _CONFIG = {
   },
 }
 
+class MonCT:
+  HOOK_PREFIX = '_monitor'
+  # The following constants should really be defined externally
+  # since they are part of plugin_base_utils
+  TEMP_DATA_TEMP = 'temperatures'
+  TEMP_DATA_MSG = 'message'
+  TEMP_DATA_CURRENT = 'current'
+  TEMP_DATA_HIGH = 'high'
+  TEMP_DATA_CRITICAL = 'critical'
+
 class SystemHealthMonitor01Plugin(BasePluginExecutor):
   """
   Monitors kernel logs for errors via dmesg.
@@ -32,7 +42,7 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
     self.monitor_hooks = []
     predicate = self.inspect.ismethod
     for name, method in self.inspect.getmembers(self, predicate=predicate):
-      if name.startswith('_monitor'):
+      if name.startswith(MonCT.HOOK_PREFIX):
         self.P(f"Added {name} as a monitor hook!")
         self.monitor_hooks.append(method)
     #endfor all methods
@@ -117,19 +127,19 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
     str: all kernel errors since the last run
     """
     temperature_info = self.get_temperature_sensors(as_dict=True)
-    temps = temperature_info['temperatures']
+    temps = temperature_info[MonCT.TEMP_DATA_TEMP]
     if temps in [None, {}]:
-      self.P(temperature_info['message'], color='r')
+      self.P(temperature_info[MonCT.TEMP_DATA_MSG], color='r')
       return ""
     #endif no sensor data
 
     msg = ""
     for sensor, status in temps.items():
-      current = status['current']
-      temp_threshold = status['high']
+      current = status[MonCT.TEMP_DATA_CURRENT]
+      temp_threshold = status[MonCT.TEMP_DATA_HIGH]
       if self.cfg_max_temperature is not None:
         temp_threshold = self.cfg_max_temperature
-      if status['current'] >= temp_threshold:
+      if status[MonCT.TEMP_DATA_CURRENT] >= temp_threshold:
         sensor_str = f"{sensor} at {current}°C CRITICAL!"
         msg += f"High temperature detected: {sensor_str}\n"
       #endif high temp
