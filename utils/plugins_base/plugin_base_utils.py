@@ -14,6 +14,13 @@ import base64
 import yaml
 import zlib
 
+try:
+  # Temporarily guard the bs4 import until we can be sure
+  # that it's available in all environments.
+  import bs4
+except ImportError as _:
+  bs4 = None
+
 
 from collections import OrderedDict, defaultdict, deque
 from io import BytesIO
@@ -1248,15 +1255,37 @@ class _UtilsBaseMixin(
     """
     return self.log.get_temperatures(as_dict=as_dict)
 
+  @property
+  def bs4(self):
+    """
+    Provides access to the bs4 library
+
+    Returns
+    -------
+      package
+
+
+    Example
+    -------
+      ```
+
+      response = self.requests.get(url)
+      soup = self.bs4.BeautifulSoup(response.text, "html.parser")
+      ```
+
+    """
+    return bs4
+
+
 if __name__ == '__main__':
   from core import Logger
   from copy import deepcopy
-  
+
   log = Logger("UTL", base_folder='.', app_folder='_local_cache')
-  
+
   e = _UtilsBaseMixin()
   e.log = log
-  
+
   d1 = e.DefaultDotDict(str)
   d1.a = "test"
   print(d1.a)
@@ -1307,6 +1336,5 @@ if __name__ == '__main__':
   _ = d4.test3.test4  # Access to create
   assert len(d4.test3) != 0 and len(d4.test3.test4) == 0, "Nested auto-creation failed."
   
-  print("All tests passed.")  
-  
-  
+  print("All tests passed.")
+
