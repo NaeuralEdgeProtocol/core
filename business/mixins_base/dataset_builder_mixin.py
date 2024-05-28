@@ -212,6 +212,8 @@ class _DatasetBuilderMixin(object):
     @property
     def get_dataset_builder_params(self):
       ds_builder_params = self.cfg_dataset_builder
+      if ds_builder_params is None:
+        ds_builder_params = {}
       return {
         **DEFAULT_DATASET_BUILDER_PARAMS,
         **self.get_plugin_default_dataset_builder_params,

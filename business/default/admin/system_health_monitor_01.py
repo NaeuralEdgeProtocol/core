@@ -26,6 +26,17 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
   CONFIG = _CONFIG
 
   def on_init(self):
+    # Initialize the set of monitor hooks. Each monitor hook is a method
+    # starting with _monitor, should have only self as the argument as
+    # should return a string.
+    self.monitor_hooks = []
+    predicate = self.inspect.ismethod
+    for name, method in self.inspect.getmembers(self, predicate=predicate):
+      if name.startswith('_monitor'):
+        self.P(f"Added {name} as a monitor hook!")
+        self.monitor_hooks.append(method)
+    #endfor all methods
+
     self.last_exec_time = self.time()
     return
 
@@ -66,7 +77,7 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
     out = out.decode().strip()
     return out
 
-  def monitor_kernel_logs(self) -> str:
+  def _monitor_kernel_logs(self) -> str:
     """
     Get the last error log lines since the last run.
 
@@ -93,7 +104,7 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
 
     return msg
 
-  def monitor_temperatures(self) -> str:
+  def _monitor_temperatures(self) -> str:
     """
     Get a string listing all temperature issues found on the device.
 
@@ -132,16 +143,10 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
   def process(self):
     current_time = self.time()
 
-    # A list with all the monitor hooks so we can easily add more if needed.
-    monitor_hooks = [
-      self.monitor_kernel_logs,
-      self.monitor_temperatures
-    ]
-
     # Run all monitoring hooks. We concatenate any interesting messages
     # and raise an alert if there are any such messages.
     msg = ""
-    for hook in monitor_hooks:
+    for hook in self.monitor_hooks:
       msg += hook()
     #endfor all hooks
     msg = msg.rstrip()
