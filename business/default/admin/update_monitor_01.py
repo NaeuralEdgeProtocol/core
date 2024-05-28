@@ -68,6 +68,7 @@ _CONFIG = {
   "WORKING_HOURS"       : [["08:30", "09:30"]],    
   
   "FORCE_RESTART_AFTER" : 3600 * 24 * 1,  # days restart time
+  "REBOOT_ON_RESTART"   : False,
   
   "BUILD_DELAY"         : 30 * 60,
 
@@ -462,8 +463,8 @@ class UpdateMonitor01Plugin(BasePluginExecutor):
       #endif working hours if around the clock
       
       if not skip or self.needs_forced_restart():
-        use_restart = True
-        if use_restart:
+        use_reboot = self.cfg_reboot_on_restart
+        if use_reboot:
           self.cmdapi_restart_current_box()
         else:
           self.cmdapi_stop_current_box()

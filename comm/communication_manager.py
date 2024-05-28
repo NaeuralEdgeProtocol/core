@@ -423,11 +423,17 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
           initiator_id, verify_msg.sender, json_msg, verify_msg.message
         )
         failed = False
+      #endif failed or not
+      notif_code=ct.NOTIFICATION_CODES.COMM_RECEIVED_BAD_COMMAND if failed else None
+      # TODO: in future maybe we should NOT send notifications for invalid received commands
+      #       just ignore them and ze zee zeet
       self.P(msg, color='error')
       self._create_notification(
         notif=ct.STATUS_TYPE.STATUS_ABNORMAL_FUNCTIONING,
         msg=msg,
-        displayed=True,
+        session_id=session_id,
+        notif_code=notif_code,
+        displayed=False,
       )
     else:
       msg = "* * * *  Command from {}({}) is VALIDATED.".format(
