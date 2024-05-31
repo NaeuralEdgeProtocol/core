@@ -28,23 +28,43 @@ class _NetworkMonitorMixin:
   def all_nodes(self):
     return self.netmon.all_nodes
 
+  def _convert_dct_from_addr_to_eeid_index(self, dct_addr_nodes):
+    dct_eeid_lst_addrs = {}
+    
+    for addr in dct_addr_nodes:
+      eeid = self.netmon.network_node_eeid(addr=addr)
+      if eeid not in dct_eeid_lst_addrs:
+        dct_eeid_lst_addrs[eeid] = []
+      dct_eeid_lst_addrs[eeid].append(dct_addr_nodes[addr])
+    
+    dct_eeid_nodes = {}
+    for eeid in dct_eeid_lst_addrs:
+      latest_info = sorted(dct_eeid_lst_addrs[eeid], key=lambda x:x['last_seen_sec'])[0]
+      dct_eeid_nodes[eeid] = latest_info
+
+    return dct_eeid_nodes
   
   def _add_to_history(self):
     nodes = self.netmon.network_nodes_status()
     new_nodes = []
+    new_nodes_addr = []
     self.__history.append(nodes) 
-    current_nodes = list(nodes.keys())
-    for addr in current_nodes:
+
+    eeid_nodes = self._convert_dct_from_addr_to_eeid_index(nodes)
+    current_nodes = list(eeid_nodes.keys())
+
+    for eeid in current_nodes:
+      addr = eeid_nodes[eeid]['address']
       if addr not in self.__active_nodes:
-        if nodes[addr]['last_seen_sec'] < self.cfg_supervisor_alert_time:
+        if eeid_nodes[eeid]['last_seen_sec'] < self.cfg_supervisor_alert_time:
           if self.cfg_log_info:
-            eeid = self.netmon.network_node_eeid(addr=addr)
-            self.P("New node {} ({}):\n{}".format(addr, eeid, self.json.dumps(nodes[addr], indent=4)))
-          new_nodes.append(addr)
-    self.__active_nodes.update(new_nodes)
-    dct_nodes = {self.netmon.network_node_eeid(addr): nodes[addr] for addr in nodes}
-    lst_new_nodes = [self.netmon.network_node_eeid(addr) for addr in new_nodes]
-    return dct_nodes, lst_new_nodes
+            eeid = self.netmon.network_node_eeid(addr=eeid)
+            self.P("New node {} ({}):\n{}".format(eeid, eeid, self.json.dumps(nodes[eeid], indent=4)))
+          new_nodes.append(eeid)
+          new_nodes_addr.append(addr)
+    self.__active_nodes.update(new_nodes_addr)
+
+    return eeid_nodes, new_nodes
   
   
   def _supervisor_check(self):
@@ -70,10 +90,11 @@ class _NetworkMonitorMixin:
         #endif debug
         uptime_sec = self.netmon.network_node_uptime(addr=addr, as_str=True)
         is_alert = True
-        nodes[addr] = {
+        eeid = self.netmon.network_node_eeid(addr=addr)
+        nodes[eeid] = {
             'last_seen_sec' : round(last_seen_ago, 1),
             'uptime_sec' : uptime_sec,
-        }        
+        }
         self.__lost_nodes[addr] += 1
       else:
         if addr in self.__lost_nodes:

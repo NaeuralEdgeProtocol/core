@@ -542,8 +542,8 @@ class NetworkMonitor(DecentrAIObject):
       return self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
     
     def register_heartbeat(self, addr, data):
-      self.epoch_manager.register_data(addr, data)
       self.__register_heartbeat(addr, data)
+      self.epoch_manager.register_data(addr, data)
       return
         
     def network_nodes_status(self):
@@ -1058,11 +1058,20 @@ class NetworkMonitor(DecentrAIObject):
       return res
 
     def network_node_addr(self, eeid):
+      candidates = []
       for addr in self.__network_heartbeats:
         hb = self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
         if hb.get(ct.EE_ID) == eeid:
-          return addr
-      return None
+          candidates.append(addr)
+      if len(candidates) == 0:
+        return None
+      if len(candidates) == 1:
+        return candidates[0]
+
+      # if there are multiple candidates, we will return the one with the most recent heartbeat
+      lst_last_seen = [(addr, self.network_node_last_seen(addr=addr, as_sec=True)) for addr in candidates]
+
+      return min(lst_last_seen, key=lambda x: x[1])[0]
 
     def network_node_eeid(self, addr):
       hb = self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
