@@ -14,8 +14,8 @@ _CONFIG = {
   "MSPN_URL": "minio:MSPN/ThYoloMSPN_bs1.ths",
   "MSPN_FILENAME": "ThYoloMSPN_bs1.ths",
 
-  "MSPN_ONNX_URL" : None,
-  "MSPN_ONNX_FILENAME" : None,
+  "MSPN_ONNX_URL" : "minio:MSPN/20240430_ThYoloMSPN_bs1.onnx",
+  "MSPN_ONNX_FILENAME" : "20240430_ThYoloMSPN_bs1.onnx",
   "MSPN_BACKEND" : None,
 
   "MSPN_IMG_SHAPE": (256, 192),
