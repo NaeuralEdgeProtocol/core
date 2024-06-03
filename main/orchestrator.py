@@ -210,7 +210,8 @@ class Orchestrator(DecentrAIObject,
 
     self._network_monitor = NetworkMonitor(
       node_name=self.cfg_eeid, node_addr=self.e2_address,
-      log=self.log, DEBUG=self.DEBUG
+      log=self.log, DEBUG=self.DEBUG,
+      blockchain_manager=self._blockchain_manager,
     )
     
     self._app_shmem['network_monitor'] = self._network_monitor

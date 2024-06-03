@@ -117,7 +117,9 @@ class _NetworkMonitorMixin:
     nodes = self.__history[-1]
     if self.cfg_exclude_self:
       nodes = {k:v for k,v in nodes.items() if k != self.e2_addr}
-    ranking = [(addr, nodes[addr]['SCORE'], nodes[addr]['last_seen_sec']) for addr in nodes]
+    # TODO: change to addresses later
+    eeid_nodes = self._convert_dct_from_addr_to_eeid_index(nodes)
+    ranking = [(eeid, eeid_nodes[eeid]['SCORE'], eeid_nodes[eeid]['last_seen_sec']) for eeid in eeid_nodes]
     ranking = sorted(ranking, key=lambda x:x[1], reverse=True)
     return ranking  
   

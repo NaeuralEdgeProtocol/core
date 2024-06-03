@@ -12,6 +12,7 @@ from collections import deque, OrderedDict
 from datetime import datetime as dt
 from core import DecentrAIObject
 from core import constants as ct
+from core.bc import DefaultBlockEngine
 
 from .epochs_manager import EpochsManager
 
@@ -53,12 +54,13 @@ class NetworkMonitor(DecentrAIObject):
   
 
 
-  def __init__(self, log, node_name, node_addr, epoch_manager=None, **kwargs):
+  def __init__(self, log, node_name, node_addr, epoch_manager=None, blockchain_manager=None, **kwargs):
     self.node_name = node_name
     self.node_addr = node_addr
     self.__network_heartbeats = {}
     self.network_hashinfo = {}
     self.__epoch_manager = epoch_manager
+    self.__blockchain_manager = blockchain_manager
     super(NetworkMonitor, self).__init__(log=log, prefix_log='[NMON]', **kwargs)    
     return
 
@@ -83,6 +85,14 @@ class NetworkMonitor(DecentrAIObject):
     self.P(f"Initializing Network Monitor on {self.node_addr}", boxed=True)
     if self.__epoch_manager is None:
       self.__epoch_manager = EpochsManager(log=self.log, owner=self)
+    
+    if self.__blockchain_manager is None:
+      self.P("Blockchain manager not available", color='r')
+      self.__blockchain_manager = DefaultBlockEngine(
+        log=self.log,
+        name=self.node_name,
+        config={}, # use default blockchain config
+      )
     return
 
   
@@ -96,6 +106,8 @@ class NetworkMonitor(DecentrAIObject):
       self.P("Error setting network heartbeats. Invalid type: {}".format(type(network_heartbeats)), color='r')
     return 
   
+  def __remove_address_prefix(self, addr):
+    return self.__blockchain_manager._remove_prefix(addr)
   
   def __register_heartbeat(self, addr, data):
     # first check if data is encoded (as it always should be)
@@ -107,21 +119,25 @@ class NetworkMonitor(DecentrAIObject):
         **dct_hb,
       }
     #endif encoded data
+
     __eeid = data.get(ct.EE_ID, MISSING_ID)
-    if addr not in self.__network_heartbeats:
-      self.P("Box alive: {}:{}.".format(addr, __eeid), color='y')
-      self.__network_heartbeats[addr] = deque(maxlen=self.HB_HISTORY)
-    #endif
+    __addr_no_prefix = self.__remove_address_prefix(addr) 
+
     # begin mutexed section
     self.log.lock_resource(NETMON_MUTEX)
-    self.__network_heartbeats[addr].append(data)
+    if __addr_no_prefix not in self.__network_heartbeats:
+      self.P("Box alive: {}:{}.".format(addr, __eeid), color='y')
+      self.__network_heartbeats[__addr_no_prefix] = deque(maxlen=self.HB_HISTORY)
+    #endif
+    self.__network_heartbeats[__addr_no_prefix].append(data)
     self.log.unlock_resource(NETMON_MUTEX)
     # end mutexed section
     return
-    
-  
+
+
   def get_box_heartbeats(self, addr):
-    box_heartbeats = deque(self.all_heartbeats[addr], maxlen=self.HB_HISTORY)
+    __addr_no_prefix = self.__remove_address_prefix(addr) 
+    box_heartbeats = deque(self.all_heartbeats[__addr_no_prefix], maxlen=self.HB_HISTORY)
     return box_heartbeats
 
 
@@ -130,7 +146,19 @@ class NetworkMonitor(DecentrAIObject):
     def __network_nodes_list(self):
       if self.all_heartbeats is None:
         return []
-      return list(self.all_heartbeats.keys())
+
+      history_keys = list(self.all_heartbeats.keys())
+
+      known_nodes = []
+
+      for key in history_keys:
+        hb = self.all_heartbeats[key][-1]
+        addr = hb.get(ct.HB.EE_ADDR, None)
+        if addr is not None:
+          known_nodes.append(addr)
+      # end for
+
+      return known_nodes
 
     def __network_node_past_hearbeats_by_number(self, addr, nr=1, reverse_order=True):
       if addr not in self.__network_nodes_list():
@@ -176,7 +204,8 @@ class NetworkMonitor(DecentrAIObject):
           self.P(msg, color='r')
           return {}
         #endif raise or return
-      return self.all_heartbeats[addr][-1]
+      __addr_no_prefix = self.__remove_address_prefix(addr) 
+      return self.all_heartbeats[__addr_no_prefix][-1]
 
     def __network_node_last_valid_heartbeat(self, addr, minutes=3):
       past_heartbeats = self.__network_node_past_heartbeats_by_interval(addr=addr, minutes=minutes, )
@@ -543,7 +572,7 @@ class NetworkMonitor(DecentrAIObject):
     
     def register_heartbeat(self, addr, data):
       self.__register_heartbeat(addr, data)
-      self.epoch_manager.register_data(addr, data)
+      self.epoch_manager.register_data(addr, data) # TODO: change this?
       return
         
     def network_nodes_status(self):
