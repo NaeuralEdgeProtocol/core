@@ -35,19 +35,36 @@ def maybe_replace_txt(fn):
     os.remove(fn)
     result = fn_dest
   return result
-    
+
+def running_with_hostname(config_file):
+  result = None
+  is_hostname_env = os.environ.get('EE_ID', '') in ['HOSTNAME'] # if explicitly set to HOSTNAME in environment
+  with open(config_file, 'r') as fh:
+    config_data = json.load(fh)
+    is_hostname_config = config_data.get(ct.CONFIG_STARTUP_v2.K_EE_ID, '').upper().replace('X','') in ['HOSTNAME', ''] # if explicitly set to HOSTNAME in config or first run with no config
+  #endwith config
+  if is_hostname_env or is_hostname_config:
+    result = os.environ.get('HOSTNAME', '')
+  return result
   
 def get_id(log):
   config_box_id = log.config_data.get(ct.CONFIG_STARTUP_v2.K_EE_ID, '')
   log.P("Found EE_ID '{}'".format(config_box_id))
-  if config_box_id.upper().replace('X','') == '':
+  if config_box_id.upper().replace('X','').upper() in ['', 'HOSTNAME']:
     config_box_id_env = os.environ.get('EE_ID')
-    log.P("Changing found default config id '{}'...".format(config_box_id))  
+    log.P("Changing default node id '{}'...".format(config_box_id))  
     if config_box_id_env is not None and config_box_id != config_box_id_env:
       log.P("E2 configured from env '{}'".format(config_box_id_env), color='m')
-      if config_box_id_env == 'E2dkr': # same as in Dockerfile
-        config_box_id_env += '-' + log.get_uid(size=4)
-      config_box_id = config_box_id_env
+      if config_box_id_env.upper() in ['E2DKR','HOSTNAME']: # same as in Dockerfile
+        hostname = os.environ.get('HOSTNAME', '') 
+        if hostname:
+          config_box_id = hostname
+        else:
+          config_box_id = config_box_id_env + '-' + log.get_uid(size=4)
+        #endif hostname
+      else:
+        config_box_id = config_box_id_env
+      #endif E2dkr
     else:
       config_box_id = 'ee-' + log.get_uid(size=4)
       log.P("E2 is not manually configured nor from env. Assuming a random id '{}'".format(config_box_id), color='r')
@@ -115,11 +132,19 @@ def main():
     load_dotenv()
       
   config_file = get_config(config_fn=CONFIG_FILE)
+  hostname = running_with_hostname(config_file)
+  
+  if hostname is not None:
+    base_folder = '_local_cache'
+    app_folder = hostname
+  else:
+    base_folder = '.'
+    app_folder = ct.LOCAL_CACHE
 
   l = Logger(
     lib_name='EE',
-    base_folder='.',
-    app_folder=ct.LOCAL_CACHE,
+    base_folder=base_folder,
+    app_folder=app_folder,
     config_file=config_file,
     max_lines=1000, 
     TF_KERAS=False
@@ -151,7 +176,7 @@ def main():
     docker_env = os.environ.get('AINODE_ENV')
     l.P("Docker base layer environment {}".format(docker_env))
     # test GPU overwrite
-  #endif docker post config
+  #endif docker post config  
   
   config_box_id = get_id(log=l)
   
