@@ -871,13 +871,18 @@ class NetworkMonitor(DecentrAIObject):
         lst_nodes
       ))
 
+      lst_allowed_nodes = list(filter(
+        lambda _addr:  self.node_addr in self.network_node_whitelist(addr=_addr) or _addr == self.node_addr or not self.network_node_is_secured(addr=_addr),
+        lst_available_nodes
+      ))
+
       lst_capabilities = []
       dct_individual_capabilities = {}
       dct_device_id = {}
       min_gpu_used, max_gpu_used = 20, 90
       min_prc_allocated_mem, max_prc_allocated_mem = 20, 90
       min_gpu_mem_gb, max_gpu_mem_gb = 4, 40
-      for _addr in lst_available_nodes:
+      for _addr in lst_allowed_nodes:
         dct_gpu_capability = self.network_node_default_gpu_capability(
           addr=_addr,
           min_gpu_used=min_gpu_used, max_gpu_used=max_gpu_used,
@@ -892,7 +897,7 @@ class NetworkMonitor(DecentrAIObject):
 
       np_capabilities_ranking = np.argsort(lst_capabilities)[::-1]
 
-      np_nodes_sorted = np.array(lst_available_nodes)[np_capabilities_ranking]
+      np_nodes_sorted = np.array(lst_allowed_nodes)[np_capabilities_ranking]
       np_capabilities_sorted = np.array(lst_capabilities)[np_capabilities_ranking]
 
       good_indexes = np.where(np_capabilities_sorted >= min_gpu_capability)[0]
