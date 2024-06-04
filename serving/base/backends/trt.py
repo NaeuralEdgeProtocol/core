@@ -716,9 +716,15 @@ class TensorRTModel(ModelBackendWrapper):
     # Write built engine to disk.
     timer_build_id = "trt_engine_build"
     log.start_timer(timer_build_id)
-    with builder.build_engine(network, config) as engine, open(path, 'wb') as t:
-      # Write the serialized TensorRT engine.
-      t.write(engine.serialize())
+    if not hasattr(builder, 'build_engine'):
+      # This is the TensorRT 10.0 API case where we don't have a build_engine
+      with builder.build_serialized_network(network, config) as engine, open(path, "wb") as t:
+        f.write(engine)
+    else:
+      # This is the base case for TensorRT 8.6.1
+      with builder.build_engine(network, config) as engine, open(path, 'wb') as t:
+        # Write the serialized TensorRT engine.
+        t.write(engine.serialize())
     log.stop_timer(timer_build_id)
     log.P("TensorRT model build took {}".format(log.get_timer_mean(timer_build_id)))
 
