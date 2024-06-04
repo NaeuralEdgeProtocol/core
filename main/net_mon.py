@@ -12,7 +12,7 @@ from collections import deque, OrderedDict
 from datetime import datetime as dt
 from core import DecentrAIObject
 from core import constants as ct
-from core.bc import DefaultBlockEngine
+from core.bc import DefaultBlockEngine, BCct
 
 from .epochs_manager import EpochsManager
 
@@ -97,13 +97,32 @@ class NetworkMonitor(DecentrAIObject):
 
   
   def _set_network_heartbeats(self, network_heartbeats):
+    # begin mutexed section
+    self.log.lock_resource(NETMON_MUTEX)
+
+    new_network_heartbeats = {}
+
     if isinstance(network_heartbeats, dict):
       for addr in network_heartbeats:
-        # make sure that the heartbeats are deques
-        network_heartbeats[addr] = deque(network_heartbeats[addr], maxlen=self.HB_HISTORY)
-      self.__network_heartbeats = network_heartbeats
+        __addr_no_prefix = self.__remove_address_prefix(addr) 
+
+        if __addr_no_prefix not in new_network_heartbeats:
+          new_network_heartbeats[__addr_no_prefix] = deque(maxlen=self.HB_HISTORY)
+        new_network_heartbeats[__addr_no_prefix].extend(network_heartbeats[addr])
+
+      for addr_no_prefix in new_network_heartbeats:
+        # sort the heartbeats by sent time
+        new_network_heartbeats[addr_no_prefix] = sorted(
+          new_network_heartbeats[addr_no_prefix], 
+          key=lambda x: x[ct.HB.CURRENT_TIME],
+        )
+
+      self.__network_heartbeats = new_network_heartbeats
     else:
       self.P("Error setting network heartbeats. Invalid type: {}".format(type(network_heartbeats)), color='r')
+
+    self.log.unlock_resource(NETMON_MUTEX)
+    # end mutexed section
     return 
   
   def __remove_address_prefix(self, addr):
@@ -946,15 +965,21 @@ class NetworkMonitor(DecentrAIObject):
           # will be appended after the loaded ones 
           current_heartbeats = self.__network_heartbeats # save current heartbeats maybe already received
           self._set_network_heartbeats(__network_heartbeats)
-          nr_loaded = len(__network_heartbeats)
+          nr_loaded = len(self.__network_heartbeats)
           nr_received = len(current_heartbeats)
-          previous_keys = set(__network_heartbeats.keys())
+          previous_keys = set(self.__network_heartbeats.keys())
           current_keys = set(current_heartbeats.keys())
           not_present_keys = previous_keys - current_keys
+          
+          # keys are without prefix, so we add it
+          not_present_addrs = [self.__network_heartbeats[x][-1].get(ct.HB.EE_ADDR, None) for x in not_present_keys]
+          not_present_addrs = [x for x in not_present_addrs if x is not None]
+          not_present_eeids = [self.__network_node_last_heartbeat(x).get(ct.EE_ID) for x in not_present_addrs]
+          not_present_nodes = [f"{node_id}: {node_addr}" for node_id, node_addr in zip(not_present_eeids, not_present_addrs)]
           self.P("Current network of {} nodes inited with {} previous nodes".format(
             nr_received, nr_loaded), boxed=True
           )
-          self.P("Nodes not present in current network: {}".format(not_present_keys), color='r')
+          self.P("Nodes not present in current network: {}".format(not_present_nodes), color='r')
           # lock the NETMON_MUTEX
           for addr in current_heartbeats:
             for data in current_heartbeats[addr]:
