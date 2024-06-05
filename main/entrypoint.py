@@ -139,7 +139,8 @@ def get_config(config_fn):
 
 
 def main():
-  print("Core Edge Node v{} starting...".format(__VER__), flush=True)
+  app_base_folder = os.getcwd()
+  print("Core Edge Node v{} starting in {}".format(__VER__, app_base_folder), flush=True)
   
   CONFIG_FILE = 'config_startup'
   is_docker = str(os.environ.get('AINODE_DOCKER')).lower() in ["yes", "true"]
