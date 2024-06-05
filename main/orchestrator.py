@@ -174,6 +174,11 @@ class Orchestrator(DecentrAIObject,
   
   
   @property
+  def cfg_system_temperature_check(self):
+    return self.config_data.get('SYSTEM_TEMPERATURE_CHECK', True)
+  
+  
+  @property
   def runs_in_docker(self):
     # this must be same as in Dockerfile
     is_docker = str(os.environ.get('AINODE_DOCKER')).lower() in ["yes", "true"]

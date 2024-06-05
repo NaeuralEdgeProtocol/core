@@ -61,6 +61,12 @@ class ApplicationMonitor(DecentrAIObject):
     self.sys_mon = SystemMonitor(log=self.log, monitored_prefix=ct.THREADS_PREFIX, name='S_SysMon')
     if self.owner.cfg_system_monitor:
       self.sys_mon.start()
+    
+    if self.owner.cfg_system_temperature_check:
+      self.P("INFO: System temperatures strict checking enabled...", color='r')
+    else:
+      self.P("WARNING: System temperatures checking disabled...", color='r')
+      
     return
   
   
@@ -71,7 +77,7 @@ class ApplicationMonitor(DecentrAIObject):
     max_temp = None
     critical_temp = False
     max_val = 0
-    if temps in [None, {}]:
+    if temps in [None, {}] and self.owner.cfg_system_temperature_check:
       self.P(msg, color='r')
       temps = None
     else:
