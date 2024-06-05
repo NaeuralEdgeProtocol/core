@@ -728,7 +728,8 @@ class NetworkMonitor(DecentrAIObject):
       ok_device_status = self.network_node_is_ok_device_status(addr=addr)
       ok_uptime = self.network_node_is_ok_uptime(addr=addr, min_uptime=60)
 
-      ok_node = ok_loops_timings and ok_avail_disk and ok_avail_mem and ok_cpu_used and ok_device_status and ok_uptime
+      # TODO: add uptime back
+      ok_node = ok_loops_timings and ok_avail_disk and ok_avail_mem and ok_cpu_used and ok_device_status # and ok_uptime
       return ok_node
     
     def network_node_gpu_capability(self, addr, device_id,
@@ -872,7 +873,7 @@ class NetworkMonitor(DecentrAIObject):
       ))
 
       lst_allowed_nodes = list(filter(
-        lambda _addr:  self.node_addr in self.network_node_whitelist(addr=_addr) or _addr == self.node_addr or not self.network_node_is_secured(addr=_addr),
+        lambda _addr:  self.__remove_address_prefix(self.node_addr) in self.network_node_whitelist(addr=_addr) or _addr == self.node_addr or not self.network_node_is_secured(addr=_addr),
         lst_available_nodes
       ))
 

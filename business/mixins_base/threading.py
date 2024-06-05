@@ -13,7 +13,7 @@ class _ThreadingAPIMixin():
       n_threads = 1
     if n_threads > os.cpu_count() // 4:
       self.P("Warning: n_threads is too high, setting to 1/4 of available CPUs", color='y')
-      n_threads = os.cpu_count() // 4
+      n_threads = max(os.cpu_count() // 4, 1)
     return n_threads
   
   def __wrapper_func_run(self, func: callable, lst_results: list, thread_id: int, n_threads: int):
