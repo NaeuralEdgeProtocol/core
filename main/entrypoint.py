@@ -14,6 +14,8 @@ from core import constants as ct
 from core.main.orchestrator import Orchestrator
 from core import Logger
 
+from core.main.ver import __VER__
+
 # TODO: change to `from PyE2 import`
 from PyE2.utils import load_dotenv
 
@@ -38,10 +40,14 @@ def maybe_replace_txt(fn):
 
 def running_with_hostname(config_file):
   result = None
-  is_hostname_env = os.environ.get('EE_ID', '') in ['HOSTNAME'] # if explicitly set to HOSTNAME in environment
+  ee_id = os.environ.get(ct.CONFIG_STARTUP_v2.K_EE_ID, '')
+  print("Found EE_ID: '{}'".format(ee_id), flush=True)
+  is_hostname_env = ee_id in ['HOSTNAME'] # if explicitly set to HOSTNAME in environment
   with open(config_file, 'r') as fh:
     config_data = json.load(fh)
-    is_hostname_config = config_data.get(ct.CONFIG_STARTUP_v2.K_EE_ID, '').upper().replace('X','') in ['HOSTNAME', ''] # if explicitly set to HOSTNAME in config or first run with no config
+    config_ee_id = config_data.get(ct.CONFIG_STARTUP_v2.K_EE_ID, '')
+    print("Found EE_ID in config: '{}'".format(config_ee_id), flush=True)
+    is_hostname_config = config_ee_id.upper().replace('X','') in ['HOSTNAME', ''] # if explicitly set to HOSTNAME in config or first run with no config
   #endwith config
   if is_hostname_env or is_hostname_config:
     result = os.environ.get('HOSTNAME', '')
@@ -82,9 +88,16 @@ def get_config(config_fn):
   for loc in ['.', ct.LOCAL_CACHE]:
     for ext in extensions:
       test_fn = os.path.join(loc, config_fn + ext)
+      print("Checking '{}'...".format(test_fn), flush=True)     
       if os.path.isfile(test_fn):
         fn = maybe_replace_txt(test_fn)
         break
+      #endif file exists
+    #endfor extensions
+    if fn is not None:
+      break
+    #endif found
+  #endfor locations
   
   if fn is not None:
     print("Found '{}' as base startup config file.".format(fn), flush=True)
@@ -126,6 +139,8 @@ def get_config(config_fn):
 
 
 def main():
+  print("Core Edge Node v{} starting...".format(__VER__), flush=True)
+  
   CONFIG_FILE = 'config_startup'
   is_docker = str(os.environ.get('AINODE_DOCKER')).lower() in ["yes", "true"]
   if not is_docker:
