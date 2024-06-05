@@ -150,6 +150,7 @@ def main():
   hostname = running_with_hostname(config_file)
   
   if hostname is not None:
+    print("Hostname is '{}' - changing to ./_local_cache/{}/ cache structure".format(hostname, hostname), flush=True)
     base_folder = '_local_cache'
     app_folder = hostname
   else:
