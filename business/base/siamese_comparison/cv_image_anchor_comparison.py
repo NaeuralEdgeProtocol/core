@@ -32,9 +32,9 @@ _CONFIG = {
   #############################
 
   # User config
-  "ANCHOR_MAX_SUM_PERSON_AREA": 10,  # percent
+  "ANCHOR_MAX_SUM_PERSON_AREA": -1,  # percent
   "ANALYSIS_IGNORE_MAX_PERSON_AREA": 70,  # percent
-  "ANALYSIS_IGNORE_MIN_PERSON_AREA": 10,  # percent
+  "ANALYSIS_IGNORE_MIN_PERSON_AREA": 0.5,  # percent
 
   "DEMO_MODE": False,
   "ANCHOR_RELOAD_PERIOD": 10 * 60,  # second
