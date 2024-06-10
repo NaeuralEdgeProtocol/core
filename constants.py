@@ -47,7 +47,7 @@ ADMIN_PIPELINE = {
     "WORKING_HOURS": [["08:30", "09:30"]],
     "VERSION_TOKEN": None,
     "RESTART_ON_BEHIND": True,
-    "VERSION_URL": "https://raw.githubusercontent.com/DecentrAI/core/main/ver.py"
+    "VERSION_URL": "https://raw.githubusercontent.com/NaeuralEdgeProtocol/edge_node/ver.py"
   },
   
   "K8S_MONITOR_01": {
