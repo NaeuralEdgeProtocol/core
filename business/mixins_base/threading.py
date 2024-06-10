@@ -11,7 +11,7 @@ class _ThreadingAPIMixin():
   def __get_n_threads(self, n_threads):
     if n_threads is None:
       n_threads = 1
-    if n_threads > os.cpu_count() // 4:
+    if n_threads > os.cpu_count() // 4 and n_threads > 1:
       self.P("Warning: n_threads is too high, setting to 1/4 of available CPUs", color='y')
       n_threads = max(os.cpu_count() // 4, 1)
     return n_threads
