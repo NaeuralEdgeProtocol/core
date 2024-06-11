@@ -149,7 +149,7 @@ class UpdateMonitor01Plugin(BasePluginExecutor):
     mandatory_keys = self.ct.CONFIG_STARTUP_MANDATORY_KEYS
     for k in mandatory_keys:
       if (k not in dct_config) or (dct_config[k] is None):
-        is_ok = False        
+        is_ok = False
       elif isinstance(dct_config[k], (list, str, dict)) and len(dct_config[k]) == 0:
         is_ok = False
     # endfor mandatory keys
@@ -164,6 +164,10 @@ class UpdateMonitor01Plugin(BasePluginExecutor):
     """Saves the config_startup.json file from a base64 encoded string or straight json"""
     config_file = self.log.config_file
     self.P("Saving received config in {}".format(config_file))
+
+    is_ok = True
+    fail_reason = None
+
     if str_input.startswith('{'):
       str_json = str_input
     else:
@@ -171,18 +175,23 @@ class UpdateMonitor01Plugin(BasePluginExecutor):
     try:
       dct_config = self.json_loads(str_json)
       is_ok = True
-    except:
+    except Exception as e:
       is_ok = False
+      fail_reason = str(e)
 
     # now validate that the received config contains the required fields
     if is_ok:
       is_ok = self.__validate_config(dct_config)
+      if not is_ok:
+        fail_reason = "Validation failed! Missing mandatory keys or wrong value types."
     # endif validation
 
     if is_ok:
       with open(config_file, 'w') as f:
         f.write(str_json)
       self.P("Node config saved OK!", boxed=True, box_char='*')
+    else:
+      self.P("Node config save failed: {}".format(fail_reason), color='r')
     return
   
   def _process_config_payload(self, data):
