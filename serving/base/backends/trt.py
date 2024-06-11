@@ -160,9 +160,9 @@ class TensorRTModel(ModelBackendWrapper):
     """
     self._current_batch_size = batch_size
     shape_info, _ = self._batch_runtime_info[batch_size]
-    for idx, shape in shape_info:
+    for idx, name, shape in shape_info:
       # Update all batch-dependent tensor with their new shape.
-      if not self._context.set_binding_shape(idx, shape):
+      if not self._context.set_input_shape(name, shape):
         raise ValueError("Unable to set dynamic shape")
 
     return
@@ -202,7 +202,7 @@ class TensorRTModel(ModelBackendWrapper):
     for i, name in enumerate(self._input_names + self._output_names):
       th_arg_positions[name] = i
 
-    num_bindings = self._model.num_bindings
+    num_bindings = self._model.num_io_tensors
     return [
       th_arg_positions[self._model.get_tensor_name(i)]
       for i in range(num_bindings)
@@ -236,7 +236,7 @@ class TensorRTModel(ModelBackendWrapper):
       if shape[0] != -1:
         continue
       shape = trt.Dims([batch_size] + list(shape[1:]))
-      dynamic_shapes.append((i, shape))
+      dynamic_shapes.append((i, name, shape))
       #endfor all batch sizes
     #endfor all bindings
 
@@ -537,7 +537,7 @@ class TensorRTModel(ModelBackendWrapper):
     # and TensorRT.
     parameter_addrs = [
       int(args_list[self._trt_to_th_idx[i]].data_ptr())
-      for i in range(self._model.num_bindings)
+      for i in range(self._model.num_io_tensors)
     ]
 
     if not self._context.execute_v2(parameter_addrs):
@@ -719,7 +719,7 @@ class TensorRTModel(ModelBackendWrapper):
     if not hasattr(builder, 'build_engine'):
       # This is the TensorRT 10.0 API case where we don't have a build_engine
       with builder.build_serialized_network(network, config) as engine, open(path, "wb") as t:
-        f.write(engine)
+        t.write(engine)
     else:
       # This is the base case for TensorRT 8.6.1
       with builder.build_engine(network, config) as engine, open(path, 'wb') as t:
