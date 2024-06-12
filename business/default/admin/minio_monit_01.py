@@ -53,6 +53,10 @@ class MinioMonit01Plugin(BasePluginExecutor):
 
   
   def on_init(self):
+    if self.is_supervisor_node:
+      self.P("MinioMonit01Plugin initializing on SUPERVISOR node...")
+    else:
+      self.P("MinioMonit01Plugin initializing on simple worker node...")
     self.__global_iter = 0
     self.__last_display = 0
     self.__default_host = None
@@ -93,7 +97,8 @@ class MinioMonit01Plugin(BasePluginExecutor):
     secret_key = self.cfg_minio_secret_key or self.__default_secret_key
     secured = self.cfg_minio_secure or self.__default_secure
     return host, access_key, secret_key, secured
-    
+  
+      
 
   def __get_next_bucket(self):
     if len(self.__buckets_list) == 0:
@@ -106,9 +111,11 @@ class MinioMonit01Plugin(BasePluginExecutor):
           'objects': 0,
         }        
       str_buckets = ", ".join(map(lambda x: x.name, self.__buckets_list))    
-      if (self.time() - self.__last_display) > 1300:
+      DISPLAY_EVERY = 15 * 60 
+      if (self.time() - self.__last_display) > DISPLAY_EVERY:
         self.__last_display = self.time()
-        self.P("Iterating through {} buckets: {}".format(
+        self.P("Analysing {} (secured: {}). Iterating through {} buckets: {}".format(
+          self.__host, self.__secured,
           len(self.__buckets_list), 
           str_buckets,
           )
@@ -134,7 +141,9 @@ class MinioMonit01Plugin(BasePluginExecutor):
 
 
   def __maybe_create_client_connection(self):
-    host, access_key, secret_key, secured = self.__get_connection_config()
+    host, access_key, secret_key, secured = self.__get_connection_config()    
+    self.__host = host
+    self.__secured = secured
     if (
       self.__minio_client is None and
       host is not None and
@@ -149,6 +158,9 @@ class MinioMonit01Plugin(BasePluginExecutor):
           secret_key=secret_key,
           secure=secured,
         )
+    else:
+      if self.__minio_client is None and self.__global_iter < 2:
+        self.P(f"Missing Minio connection parameters (is_supervisor_node: {self.is_supervisor_node}, host: {host}, access_key: {access_key}, secret_key: {secret_key}, secure: {secured})", color='r')
 
 
   def __process_iter_files(self):

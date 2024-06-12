@@ -55,6 +55,7 @@ class NetMon01Plugin(
     return
   
   def on_init(self):
+    # convert supervisor to bool if needed
     is_supervisor = self.cfg_supervisor
     if isinstance(is_supervisor, str):
       self.P("Found string value for SUPERVISOR: {}. Converting to bool".format(is_supervisor))
