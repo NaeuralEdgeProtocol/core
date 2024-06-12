@@ -151,7 +151,7 @@ class MinioMonit01Plugin(BasePluginExecutor):
       secret_key is not None and
       secured is not None
       ):
-        self.P("Creating Minio client connection to {}...".format(self.cfg_minio_host))
+        self.P("Creating Minio client connection at iteration {} to {}...".format(self.__global_iter, self.cfg_minio_host))
         self.__minio_client = Minio(
           endpoint=host,
           access_key=access_key,

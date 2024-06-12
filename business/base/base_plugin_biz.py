@@ -479,6 +479,11 @@ class BasePluginExecutor(
 
   @property
   def is_supervisor_node(self):
+    """
+    Returns `True` if the plugin is running on the supervisor node and `False` otherwise.
+    Warning: This property is not safe/trusted while the plugin is initializing due to the 
+    fact that the supervisor node may not be set yet within the NET_MON plugin.
+    """
     return self.global_shmem.get('is_supervisor_node', False)
 
   def __repr__(self):
