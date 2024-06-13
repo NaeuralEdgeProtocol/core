@@ -228,6 +228,8 @@ class BaseCommThread(
       self.start_timer('bc_sign')
       # if inplace=True, it will modify the original data and SAVE deepcopy time
       prepared_data = self.log.replace_nan(data, inplace=True)
+      # TODO: should serialize sets
+      # prepared_data = self.log.serialize_sets(prepared_data)
       signature = self.bc_engine.sign(prepared_data, add_data=True, use_digest=True)
       self._process_signature(signature=signature, payload=prepared_data)
       self.end_timer('bc_sign')      
@@ -406,7 +408,7 @@ class BaseCommThread(
         is_ok = 1 # we return 1 to signal that the message was dropped and should not be preserved
     except Exception as exc:
       self.has_send_conn = False
-      msg = "`send_wrapper` error on payload {} -> {}: {}".format(
+      msg = "`send_wrapper` error on payload {} -> {}".format(
         data.get(ct.PAYLOAD_DATA.EE_PAYLOAD_PATH, "<Unknown path>"), exc
       )
       self.P(msg, color='r')
