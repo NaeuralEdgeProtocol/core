@@ -23,6 +23,7 @@ _CONFIG = {
   "ALERT_MODE"                    : 'mean',
   "ALERT_MODE_LOWER"              : 'max',
   
+  "DEBUG_EPOCHS"                  : False,
   
   
   # debug stuff
@@ -48,6 +49,7 @@ class NetMon01Plugin(
     self._nmon_counter = 0
     self.__supervisor_log_time = 0
     self.__state_loaded = False
+    self.__last_epoch_debug_time = 0
     return
 
   def startup(self):
@@ -95,6 +97,36 @@ class NetMon01Plugin(
       self.P("Network monitor on {} ({}) received invalid request: {}".format(self.e2_addr, self.eeid, data), color='r')
     return
   
+  def _maybe_save_debug_epoch(self):
+    if self.cfg_debug_epochs and self.time() - self.__last_epoch_debug_time > 3600: # 1 hour
+      self.__last_epoch_debug_time = self.time()
+      epoch_manager = self.netmon.epoch_manager
+      epoch_node_list = epoch_manager.get_node_list()
+      epoch_node_states = [epoch_manager.get_node_state(node) for node in epoch_node_list]
+      epoch_node_states = self.deepcopy(epoch_node_states)
+      for entry in epoch_node_states:
+        entry['current_epoch']['hb_dates'] = sorted(entry['current_epoch']['hb_dates'])
+      epoch_node_epochs = [epoch_manager.get_node_epochs(node) for node in epoch_node_list]
+      epoch_node_previous_epoch = [epoch_manager.get_node_previous_epoch(node) for node in epoch_node_list]
+      epoch_node_last_epoch = [epoch_manager.get_node_last_epoch(node) for node in epoch_node_list]
+      epoch_node_first_epoch = [epoch_manager.get_node_first_epoch(node) for node in epoch_node_list]
+      epoch_stats = epoch_manager.get_stats()
+      debug_epoch={
+        "node_list": epoch_node_list,
+        "node_states": epoch_node_states,
+        "node_epochs": epoch_node_epochs,
+        "node_previous_epoch": epoch_node_previous_epoch,
+        "node_last_epoch": epoch_node_last_epoch,
+        "node_first_epoch": epoch_node_first_epoch,
+        "stats": epoch_stats,
+      }
+      self.log.save_output_json(
+        data_json=debug_epoch,
+        fname="{}.json".format(self.now_str(short=True)),
+        subfolder_path="debug_epoch",
+        indent=True,
+      )
+    return
 
   def _process(self):
     payload = None
@@ -136,6 +168,8 @@ class NetMon01Plugin(
       #endif supervisor log time       
     #endif supervisor or not
     
+    self._maybe_save_debug_epoch()
+
     if self.cfg_supervisor or self.cfg_send_if_not_supervisor:
       message="" if len(current_alerted) == 0 else "Missing/lost processing nodes: {}".format(list(current_alerted.keys()))
       # for this plugin only ALERTS should be used in UI/BE

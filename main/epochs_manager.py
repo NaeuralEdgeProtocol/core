@@ -90,6 +90,9 @@ class EpochsManager(Singleton):
     self.__data = {}
     self.__debug = debug
     self._set_dbg_date(debug_date)
+
+    self._load_status()
+
     self.P("Started EpochsManager v{}, epoch #{}, genesis on {} (debug={}, debug_date={})".format(
       EPOCH_MANAGER_VERSION, 
       self.get_current_epoch(),
