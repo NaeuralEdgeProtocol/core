@@ -46,7 +46,7 @@ def get_client_manager(port, auth):
 
 class UvicornPluginComms:
   """
-  Communicator for Uvicorn/FastAPI with an instance of the ngrok plugin.
+  Communicator for Uvicorn/FastAPI with an instance of the fastapi plugin.
   Since this is meant to be used on the web server side, it's methods
   are asynchronous and will use the FastAPI even loop to deliver
   messages.

@@ -6,7 +6,7 @@ import tempfile
 import shutil
 from jinja2 import Environment, FileSystemLoader
 
-from core.utils.ngrok_ipc_manager import get_server_manager
+from core.utils.fastapi_ipc_manager import get_server_manager
 
 from core.business.base import BasePluginExecutor
 
@@ -24,7 +24,7 @@ _CONFIG = {
   },
 }
 
-class NgrokCT:
+class FastapiCT:
   NG_TOKEN = 'EE_NGROK_AUTH_TOKEN'
   NG_DOMAIN = 'EE_NGROK_DOMAIN'
   NG_EDGE_LABEL = 'EE_NGROK_EDGE_LABEL'
@@ -32,7 +32,7 @@ class NgrokCT:
   HTTP_PUT = 'put'
   HTTP_POST = 'post'
 
-class BaseNgrokPlugin(BasePluginExecutor):
+class BaseFastapiPlugin(BasePluginExecutor):
   """
   A plugin which exposes all of its methods marked with @endpoint through
   fastapi as http endpoints, and further tunnels traffic to this interface
@@ -47,23 +47,23 @@ class BaseNgrokPlugin(BasePluginExecutor):
   def __init__(self, **kwargs):
     self.ngrok_process = None
     self.uvicorn_process = None
-    super(BaseNgrokPlugin, self).__init__(**kwargs)
+    super(BaseFastapiPlugin, self).__init__(**kwargs)
     return
 
   @property
   def ng_token(self):
-    return self.os_environ.get(NgrokCT.NG_TOKEN, None)
+    return self.os_environ.get(FastapiCT.NG_TOKEN, None)
 
   @property
   def ng_domain(self):
-    return self.os_environ.get(NgrokCT.NG_DOMAIN, None)
+    return self.os_environ.get(FastapiCT.NG_DOMAIN, None)
 
   @property
   def ng_edge(self):
-    return self.os_environ.get(NgrokCT.NG_EDGE_LABEL, None)
+    return self.os_environ.get(FastapiCT.NG_EDGE_LABEL, None)
 
   @staticmethod
-  def endpoint(func, method=NgrokCT.HTTP_GET):
+  def endpoint(func, method=FastapiCT.HTTP_GET):
     """
     Decorator, marks the method as being exposed as an endpoint.
     """
@@ -130,7 +130,7 @@ class BaseNgrokPlugin(BasePluginExecutor):
 
     if self.cfg_template is not None:
       # Finally render main.py
-      template_dir = os.path.join('core', 'business', 'base', 'ngrok_templates')
+      template_dir = os.path.join('core', 'business', 'base', 'fastapi_templates')
       app_template = os.path.join(template_dir, f'{self.cfg_template}.jinja')
       app_template = env.get_template(app_template)
       rendered_content = app_template.render(jinja_args)
@@ -205,7 +205,7 @@ class BaseNgrokPlugin(BasePluginExecutor):
 
   def on_init(self):
     port = self.cfg_ngrok_port
-    super(BaseNgrokPlugin, self).on_init()
+    super(BaseFastapiPlugin, self).on_init()
 
     # Register all endpoint methods.
     self._init_endpoints()
@@ -274,7 +274,7 @@ class BaseNgrokPlugin(BasePluginExecutor):
     script_path = os.path.join(script_temp_dir, 'main.py')
     self.P("Using script at {}".format(script_path))
 
-    src_dir = os.path.join('plugins', 'business', 'ngrok', self.cfg_assets)
+    src_dir = os.path.join('plugins', 'business', 'fastapi', self.cfg_assets)
 
     jinja_args = {
       **self.get_jinja_template_args(),

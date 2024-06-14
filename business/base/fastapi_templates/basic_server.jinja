@@ -3,7 +3,7 @@ import fastapi
 from fastapi.responses import FileResponse
 from os import path as file_path
 
-from core.utils.ngrok_ipc_manager import UvicornPluginComms
+from core.utils.fastapi_ipc_manager import UvicornPluginComms
 eng = UvicornPluginComms(port={{ manager_port }}, auth={{ manager_auth }})
 app = fastapi.FastAPI()
 
