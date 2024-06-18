@@ -73,7 +73,7 @@ class NetworkMonitor(DecentrAIObject):
 
   @property
   def all_nodes(self):
-    return list(self.__network_heartbeats.keys())
+    return self.__network_nodes_list()
 
 
   @property
@@ -1155,7 +1155,7 @@ class NetworkMonitor(DecentrAIObject):
 
     def network_node_addr(self, eeid):
       candidates = []
-      for addr in self.__network_heartbeats:
+      for addr in self.all_nodes():
         hb = self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
         if hb.get(ct.EE_ID) == eeid:
           candidates.append(addr)
@@ -1346,7 +1346,7 @@ class NetworkMonitor(DecentrAIObject):
         reverse_order=True,
       )
       temperatures = temp_hist['all_sensors'] # this is unused for the moment and show ALL sensors
-      max_temperature = temp_hist['max_temps'] # get pre-processed max temperatures
+      max_temperature = temp_hist['max_temp'] # get pre-processed max temperatures
       max_temp_sensor = temp_hist['max_temp_sensor'] # get last max-temp sensor
       
       if HIST_DEBUG: # debug / sanity-checks
