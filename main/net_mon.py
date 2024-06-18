@@ -1157,7 +1157,7 @@ class NetworkMonitor(DecentrAIObject):
 
     def network_node_addr(self, eeid):
       candidates = []
-      for addr in self.all_nodes():
+      for addr in self.all_nodes:
         hb = self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
         if hb.get(ct.EE_ID) == eeid:
           candidates.append(addr)
