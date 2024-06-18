@@ -1375,6 +1375,9 @@ class NetworkMonitor(DecentrAIObject):
       mem_avail_hist = mem_avail_hist[::hb_step]
       gpu_load_hist = gpu_load_hist[::hb_step]
       gpu_mem_avail_hist = gpu_mem_avail_hist[::hb_step]
+      temperatures = temperatures[::hb_step]
+      max_temperature = max_temperature[::hb_step]
+      gpu_temp_hist = gpu_temp_hist[::hb_step]
       
       
       if not reverse_order:
@@ -1383,6 +1386,9 @@ class NetworkMonitor(DecentrAIObject):
         mem_avail_hist = list(reversed(mem_avail_hist))
         gpu_load_hist = list(reversed(gpu_load_hist))
         gpu_mem_avail_hist = list(reversed(gpu_mem_avail_hist))
+        temperatures = list(reversed(temperatures))
+        max_temperature = list(reversed(max_temperature))
+        gpu_temp_hist = list(reversed(gpu_temp_hist))
       
       dct_result = OrderedDict(dict(
         total_disk=total_disk,
