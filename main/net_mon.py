@@ -561,6 +561,8 @@ class NetworkMonitor(DecentrAIObject):
         ct.COMMS.COMMUNICATION_NOTIFICATIONS : "NTIF",
       }
       for k,v in dct_stats.items():
+        if k not in mapping:
+          continue
         report = mapping[k]
         remote_error_time = v.get("ERRTM", None)
         local_error_time = remote_error_time
