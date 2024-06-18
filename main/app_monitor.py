@@ -43,6 +43,7 @@ class ApplicationMonitor(DecentrAIObject):
     self.__first_ram_alert_raised_time = 0
     self._done_first_smi_error = False
     self.dct_curr_nr = defaultdict(lambda:0)
+    self.__last_temperature_info = None
     super(ApplicationMonitor, self).__init__(log=log, prefix_log='[AMON]', **kwargs)
     return
   
@@ -64,19 +65,21 @@ class ApplicationMonitor(DecentrAIObject):
     
     if self.owner.cfg_system_temperature_check:
       self.P("INFO: System temperatures strict checking enabled...", color='r')
+      self.get_temperature_status()
     else:
-      self.P("WARNING: System temperatures checking disabled...", color='r')
-      
+      self.P("WARNING: System temperatures checking disabled...", color='r')    
     return
   
   
   def get_temperature_status(self, return_max=True):
     temperature_info = self.log.get_temperatures(as_dict=True)
+    self.__last_temperature_info = temperature_info
     temps = temperature_info['temperatures']
     msg = temperature_info['message']
     max_temp = None
     critical_temp = False
     max_val = 0
+    max_sensor = ''
     if temps in [None, {}] and self.owner.cfg_system_temperature_check:
       self.P(msg, color='r')
       temps = None
@@ -87,15 +90,18 @@ class ApplicationMonitor(DecentrAIObject):
         if max_val < current or critical_temp:
           max_val = current
           max_temp = "{} at {}°C".format(sensor, current)
+          max_sensor = sensor
           if critical_temp:
             self.P("ALERT: High temperature detected: {}".format(max_temp), color='r')
             max_temp += ' ERROR/CRITICAL!'
             break
           #endif high temp
         #endfor values
-    #endif temps    
-    if return_max:
-      return max_temp
+    #endif temps
+    self.__last_temperature_info['max_temp'] = max_val
+    self.__last_temperature_info['max_temp_sensor'] = max_sensor
+    if return_max:      
+      return max_temp    
     else:        
       return temps
   
@@ -570,6 +576,8 @@ class ApplicationMonitor(DecentrAIObject):
       ct.HB.AVAILABLE_DISK    : avail_disk,
       ct.HB.ACTIVE_PLUGINS    : active_business_plugins,
       ct.HB.STOP_LOG          : self.owner.main_loop_stop_log,
+      
+      ct.HB.TEMPERATURE_INFO  : self.__last_temperature_info,
       
       ct.HB.GIT_BRANCH        : str_git_branch,
       ct.HB.CONDA_ENV         : str_conda_branch,      

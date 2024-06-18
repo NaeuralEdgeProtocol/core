@@ -1048,6 +1048,42 @@ class NetworkMonitor(DecentrAIObject):
       else:
         return dt_remote_to_local
     
+    def network_node_past_temperatures_history(
+      self, addr, minutes=60, dt_now=None, 
+      reverse_order=True, return_timestamps=False
+    ):
+      """
+      Returns the temperature history of a remote node in the last `minutes` minutes.
+
+      Parameters
+      ----------
+      
+      addr : str
+          address of the node
+      minutes : int, optional
+          minutes to look back, by default 60
+      dt_now : datetime, optional
+          override the now-time, by default None
+      reverse_order : bool, optional  
+          return the list in reverse order, by default True
+              
+      """
+      result = None
+      device_id = self.__network_node_default_cuda(addr=addr)
+      if device_id is not None:
+        lst_heartbeats = self.__network_node_past_heartbeats_by_interval(
+          addr=addr, minutes=minutes, dt_now=dt_now, reverse_order=reverse_order,
+        )
+        temperatures = [x[ct.HB.TEMPERATURE_INFO] for x in lst_heartbeats]
+        max_temps = [x['max_temp'] for x in temperatures]
+        temps = [x['temperatures'] for x in temperatures]
+        result = {
+          'all_sensors' : temperatures,
+          'max_temp'   : max_temps,
+          'max_temp_sensor' :  temperatures[-1]['max_temp_sensor'],
+        }
+      return result
+      
       
     def network_node_default_gpu_history(
       self, addr, minutes=60, dt_now=None, 
@@ -1302,7 +1338,16 @@ class NetworkMonitor(DecentrAIObject):
       gpu_hist = self.network_node_default_gpu_history(
         addr=addr, minutes=minutes, dt_now=dt_now, return_timestamps=HIST_DEBUG,        
         reverse_order=True, 
-      )      
+      )
+      
+      # Temperature history analysis
+      temp_hist = self.network_node_past_temperatures_history(
+        addr=addr, minutes=minutes, dt_now=dt_now,
+        reverse_order=True,
+      )
+      temperatures = temp_hist['all_sensors'] # this is unused for the moment and show ALL sensors
+      max_temperature = temp_hist['max_temps'] # get pre-processed max temperatures
+      max_temp_sensor = temp_hist['max_temp_sensor'] # get last max-temp sensor
       
       if HIST_DEBUG: # debug / sanity-checks
         cpu_hist, cpu_timestamps = cpu_hist
@@ -1314,6 +1359,9 @@ class NetworkMonitor(DecentrAIObject):
 
       gpu_load_hist = [x['GPU_USED'] for x in gpu_hist]
       gpu_mem_avail_hist = [x['FREE_MEM'] for x in gpu_hist]
+      
+      gpu_temp_hist = [x['GPU_TEMP'] for x in gpu_hist]
+      gpu_temp_max_allowed = gpu_hist[-1]['GPU_TEMP_MAX'] if len(gpu_hist) > 0 else None
       
       total_disk=hb[ct.HB.TOTAL_DISK]
       total_mem=hb[ct.HB.MACHINE_MEMORY]
@@ -1342,6 +1390,10 @@ class NetworkMonitor(DecentrAIObject):
         gpu_mem_total=gpu_mem_total,
         gpu_load_hist=gpu_load_hist,
         gpu_mem_avail_hist=gpu_mem_avail_hist,
+        gpu_temp_hist=gpu_temp_hist,
+        gpu_temp_max_allowed=gpu_temp_max_allowed,
+        max_temperature=max_temperature,
+        max_temp_sensor=max_temp_sensor,
         timestamps=timestamps,
       ))
       
