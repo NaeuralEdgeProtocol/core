@@ -92,7 +92,8 @@ class NetMon01Plugin(
         target_addr=target_addr,
         request_type=request_type,
         request_options=request_options,
-      )    
+        data=data,
+      )
     else:
       self.P("Network monitor on {} ({}) received invalid request: {}".format(self.e2_addr, self.eeid, data), color='r')
     return

@@ -124,7 +124,7 @@ class _NetworkMonitorMixin:
     return ranking  
   
   
-  def _exec_netmon_request(self, target_addr, request_type, request_options={}):
+  def _exec_netmon_request(self, target_addr, request_type, request_options={}, data={}):
     if not isinstance(request_options, dict):
       request_options = {}
     payload_params = {}
@@ -173,6 +173,7 @@ class _NetworkMonitorMixin:
     self.P("  Network monitor sending <{}> response to <{}>".format(request_type, target_addr))
     self.add_payload_by_fields(
       call_history_time=elapsed_t,
+      command_params=data,
       **payload_params,
-    )        
+    )
     return
