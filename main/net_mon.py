@@ -159,6 +159,11 @@ class NetworkMonitor(DecentrAIObject):
     box_heartbeats = deque(self.all_heartbeats[__addr_no_prefix], maxlen=self.HB_HISTORY)
     return box_heartbeats
 
+  def start_timer(self, tmr_id):
+    return self.log.start_timer(tmr_id, section="NetworkMonitor")
+  
+  def end_timer(self, tmr_id):
+    return self.log.end_timer(tmr_id, section="NetworkMonitor")
 
   # Helper protected methods section
   if True:
@@ -1331,7 +1336,7 @@ class NetworkMonitor(DecentrAIObject):
             
       mem_avail_hist = self.__network_node_past_available_memory_by_interval(
         addr=addr, minutes=minutes, 
-        reverse_order=True,
+        reverse_order=True, norm=False,
         # dt_now=dt_now, # must implement
       )
 
@@ -1340,6 +1345,10 @@ class NetworkMonitor(DecentrAIObject):
         reverse_order=True, 
       )
       
+      current_disk = self.__network_node_last_available_disk(
+        addr=addr, norm=False
+      )
+
       # Temperature history analysis
       temp_hist = self.network_node_past_temperatures_history(
         addr=addr, minutes=minutes, dt_now=dt_now,
@@ -1390,6 +1399,7 @@ class NetworkMonitor(DecentrAIObject):
       
       dct_result = OrderedDict(dict(
         total_disk=total_disk,
+        current_disk=current_disk,
         total_mem=total_mem,
         mem_avail_hist=mem_avail_hist,
         cpu_hist=cpu_hist,
