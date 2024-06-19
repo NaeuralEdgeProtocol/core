@@ -290,6 +290,8 @@ class NetworkMonitor(DecentrAIObject):
       dict
           The dictionary with the network heartbeats with the address as the key
       """
+      if network_heartbeats is None:
+        return {}
       if any([not self.__looks_like_an_address(key) for key in network_heartbeats.keys()]):
         self.log.save_pickle_to_data(network_heartbeats, 'network_heartbeats_old.pkl', subfolder_path=NETMON_DB_SUBFOLDER)
         return self.__convert_node_id_address(network_heartbeats)
@@ -933,20 +935,16 @@ class NetworkMonitor(DecentrAIObject):
       self.P("Saving network map status...")
       # begin mutexed section
       self.log.lock_resource(NETMON_MUTEX)
-      try:
-        start_copy = time()
-        _data_copy = deepcopy(self.__network_heartbeats)
-        elapsed = time() - start_copy
-        self.P("  Copy done in {:.2f}s".format(elapsed))
-      except:
-        pass
-      self.log.unlock_resource(NETMON_MUTEX)
-      # end mutexed section
+
+      self.start_timer("network_save_status")
       self.log.save_pickle_to_data(
-        data=_data_copy, 
+        data=self.__network_heartbeats, 
         fn='db.pkl',
         subfolder_path='network_monitor'
       )
+      self.end_timer("network_save_status")
+      # end mutexed section
+      self.log.unlock_resource(NETMON_MUTEX)
       return
     
     

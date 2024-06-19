@@ -1224,6 +1224,9 @@ class BasePluginExecutor(
     # check if is just a command
     if upstream_config.get('INSTANCE_COMMAND') not in [None, '', [], {}]:
       # if the command is not empty then we just set the command and return
+      # TODO(FIXME): when a plugin instance `process` method takes some time,
+      # this text will be spammed in the logs. also, there is the risk of 
+      # a new command overwriting the previous one before it is processed. 
       self.P("Command '{}' received for plugin {}".format(upstream_config['INSTANCE_COMMAND'], self))
       self.config_data['INSTANCE_COMMAND'] = upstream_config['INSTANCE_COMMAND']
       # reset the command for the upstream config

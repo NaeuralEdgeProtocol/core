@@ -75,6 +75,9 @@ class NetMon01Plugin(
   def _on_command(self, data, **kwargs):
     super(NetMon01Plugin, self)._on_command(data)
     request_type = 'history' #default to history
+    target_node = None
+    target_addr = None
+    request_type = 'history'
     request_options = {}
     if isinstance(data, dict):
       dct_cmd = {k.lower() : v for k,v in data.items()} # lower case instance command keys
@@ -84,10 +87,11 @@ class NetMon01Plugin(
       request_options = dct_cmd.get('options', {})
 
     if target_node is not None:
-      target_addr = self.netmon.network_node_addr(target_node) or target_addr
+      target_addr = target_addr or self.netmon.network_node_addr(target_node)
 
     if target_addr is not None:
-      self.P("Network monitor on {} ({}) received request: {}".format(self.e2_addr, self.eeid, data))
+      self.P("Network monitor on {} ({}) received request for {} ({}): {}".format(
+        self.e2_addr, self.eeid, target_addr, target_node, data))
       self._exec_netmon_request(
         target_addr=target_addr,
         request_type=request_type,
@@ -95,7 +99,8 @@ class NetMon01Plugin(
         data=data,
       )
     else:
-      self.P("Network monitor on {} ({}) received invalid request: {}".format(self.e2_addr, self.eeid, data), color='r')
+      self.P("Network monitor on {} ({}) received invalid request for {} ({}): {}".format(
+        self.e2_addr, self.eeid, target_addr, target_node, data), color='r')
     return
   
   def _maybe_save_debug_epoch(self):
