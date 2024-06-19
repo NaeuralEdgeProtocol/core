@@ -32,7 +32,7 @@ _CONFIG = {
   #############################
 
   # User config
-  "ANCHOR_MAX_SUM_PERSON_AREA": -1,  # percent
+  "ANCHOR_MAX_SUM_PERSON_AREA": 0,  # percent
   "ANALYSIS_IGNORE_MAX_PERSON_AREA": 70,  # percent
   "ANALYSIS_IGNORE_MIN_PERSON_AREA": 0.5,  # percent
 
@@ -478,6 +478,14 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     return
 
+  def _print_alert_status_changed(self, current_alerter_status):
+    if current_alerter_status not in ["OK", "Alert"]:
+      color = None
+      if current_alerter_status in ["Raised", "Re-Raised", "Forced Lower"]:
+        color = "r"
+      self.P("Alerter status changed to: {}".format(current_alerter_status), color=color)
+    return
+
   def _process(self):
     payload = None
 
@@ -516,6 +524,8 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     alerter_status_changed, current_alerter_status = self._custom_alerter_status_changed()
 
     if alerter_status_changed or self.cfg_demo_mode:
+
+      self._print_alert_status_changed(current_alerter_status)
 
       payload = self._get_payload(
         alerter_status=current_alerter_status,
