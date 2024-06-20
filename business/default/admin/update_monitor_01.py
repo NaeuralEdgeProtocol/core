@@ -379,8 +379,8 @@ class UpdateMonitor01Plugin(BasePluginExecutor):
     needs_restart = False
     self._update_monitor_count += 1
     
-    self.P("Running git ver check and validation {} at {} running time. Forced restart required: {}".format(
-      self._update_monitor_count, self.get_node_running_time_str(), self.needs_forced_restart()
+    self.P("Running git ver check and validation {} at {} running time. Forced restart required: {}. Parsing a yaml file: {}".format(
+      self._update_monitor_count, self.get_node_running_time_str(), self.needs_forced_restart(), self.cfg_use_yaml
     ))
     server_ver = self.get_git_server_version()
     self.P("  Received: {}".format(server_ver))
