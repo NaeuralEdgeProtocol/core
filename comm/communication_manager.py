@@ -72,10 +72,10 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
     return False  
 
 
-  def _verify_command_signature(self, cmd) -> VerifyMessage:
+  def _verify_command_signature(self, cmd, verify_allowed=False) -> VerifyMessage:
     result = None
     if self.blockchain_manager is not None:
-      result = self.blockchain_manager.verify(cmd, return_full_info=True, verify_allowed=False)
+      result = self.blockchain_manager.verify(cmd, return_full_info=True, verify_allowed=verify_allowed)
       if not result.valid:
         self.P("Command received from sender addr <{}> verification failed: {}".format(
           result.sender, result.message
@@ -441,8 +441,10 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
       self.P('  Message is not for the current device {} != {}'.format(device_id, self._device_id), color='y')
       failed = True
       
-    ### signature verification
-    verify_msg = self._verify_command_signature(json_msg)
+    ### signature verification    
+    # allowed list will be checked later due to the fact that we will do one shot allowed check and 
+    # command-whitelist check conditioned by the decryption of the command itsels (to check for potential whitelist)
+    verify_msg = self._verify_command_signature(json_msg, verify_allowed=False) 
     if not verify_msg.valid:
       if self.is_secured:
         msg = "Received invalid command from {}({}):{} due to '{}'. Command will be DROPPED.".format(
@@ -498,6 +500,8 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
       if not is_encrypted and not self._environment_variables.get("ACCEPT_UNENCRYPTED_COMMANDS", True):
         self.P("  Message is not encrypted. Message dropped because `ACCEPT_UNENCRYPTED_COMMANDS=False`.", color='r')
       else:
+        # now that the message is decrypted, we can check if it is allowed or not as well
+        # as if it is whitelisted or not
         allowed, allowed_msg = self._verify_command_allowed(json_msg)
         self.P("  Command allowed: {}. Reason: {}".format(allowed, allowed_msg), color=None if allowed else 'r')
         if allowed:
