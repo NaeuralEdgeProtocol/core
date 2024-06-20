@@ -16,6 +16,23 @@ from PyE2.const import (
 
 BLOCKCHAIN_MANAGER = 'BLOCKCHAIN_MANAGER'
 
+WHITELIST_COMMANDS_FILE = 'whitelist_commands.json'
+TEMPLATE_WHITELIST_COMMANDS = [
+  # TODO: add other commands
+  # NetMon commands
+  {
+    "ACTION": "UPDATE_PIPELINE_INSTANCE",
+    "PAYLOAD": {
+      "SIGNATURE": "NET_MON_01",
+      "INSTANCE_ID": "NET_MON_01_INST",
+      "INSTANCE_CONFIG": {
+        "INSTANCE_COMMAND": {
+        }
+      }
+    }
+  },
+]
+
 ADMIN_PIPELINE = {
   "MINIO_MONIT_01": {
     "PROCESS_DELAY": 20,

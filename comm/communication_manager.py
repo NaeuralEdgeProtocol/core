@@ -4,15 +4,16 @@ IMPORTANT:
 """
 
 import json
-from core import Logger
-from core.local_libraries import _ConfigHandlerMixin
-from core.manager import Manager
+import os
 from time import time
-from core import constants as ct
-
-from core.bc import VerifyMessage, DefaultBlockEngine
 
 import numpy as np
+
+from core import Logger
+from core import constants as ct
+from core.bc import DefaultBlockEngine, VerifyMessage
+from core.local_libraries import _ConfigHandlerMixin
+from core.manager import Manager
 
 
 class CommunicationManager(Manager, _ConfigHandlerMixin):
@@ -74,7 +75,7 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
   def _verify_command_signature(self, cmd) -> VerifyMessage:
     result = None
     if self.blockchain_manager is not None:
-      result = self.blockchain_manager.verify(cmd, return_full_info=True, verify_allowed=True)
+      result = self.blockchain_manager.verify(cmd, return_full_info=True, verify_allowed=False)
       if not result.valid:
         self.P("Command received from sender addr <{}> verification failed: {}".format(
           result.sender, result.message
@@ -85,13 +86,43 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
     else:
       raise ValueError("Blockchain Manager is unavailable for verifying the incoming command data")
     return result
-    
+
+  def _load_whitelist_commands(self):
+    whitelist_commands_path = os.path.join(self.log.base_folder, ct.WHITELIST_COMMANDS_FILE)
+    whitelist_commands = self.log.load_json(whitelist_commands_path)
+
+    if whitelist_commands is None:
+      self.P("Creating default whitelist commands file.", verbosity=1)
+      self.log.save_json(ct.TEMPLATE_WHITELIST_COMMANDS, whitelist_commands_path)
+      whitelist_commands = ct.TEMPLATE_WHITELIST_COMMANDS
+    # endif whitelist_commands is None
+
+    return whitelist_commands
+
+  def _verify_whitelist_command(self, cmd):
+    template_whitelist_command: list[dict] = self._load_whitelist_commands()
+    return any([self.log.match_template(cmd, template) for template in template_whitelist_command])
+
+  def _verify_command_allowed(self, cmd):
+    is_authorized = self.blockchain_manager.is_allowed(cmd.get(ct.COMMS.COMM_RECV_MESSAGE.K_SENDER_ADDR, None))
+    is_whitelisted = self._verify_whitelist_command(cmd)
+
+    result = is_authorized or is_whitelisted
+    result_message = ""
+
+    if is_authorized:
+      result_message = "Sender is authorized."
+    elif is_whitelisted:
+      result_message = "Sender is not authorized but command is allowed due to WHITELIST."
+    else:
+      result_message = "Sender is not authorized."
+
+    return result, result_message
 
   def _empty_commands(self):
     return {
       x: [] for x in self._predefined_commands
     }
-
 
   def get_received_commands(self):
     # When someone from outside wants to get the received commands, they are automatically refreshed
@@ -458,6 +489,7 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
             dict_data = json.loads(str_data)
             action = dict_data.get(ct.COMMS.COMM_RECV_MESSAGE.K_ACTION, None)
             payload = dict_data.get(ct.COMMS.COMM_RECV_MESSAGE.K_PAYLOAD, None)
+            json_msg.update(dict_data)
           except Exception as e:
             self.P("Error while decrypting message: {}\n{}".format(str_data, e), color='r')
       # endif is_encrypted
@@ -466,15 +498,18 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
       if not is_encrypted and not self._environment_variables.get("ACCEPT_UNENCRYPTED_COMMANDS", True):
         self.P("  Message is not encrypted. Message dropped because `ACCEPT_UNENCRYPTED_COMMANDS=False`.", color='r')
       else:
-        self.process_decrypted_command(
-          action=action,
-          payload=payload,
-          sender_addr=sender_addr,
-          initiator_id=initiator_id,
-          session_id=session_id,
-          validated_command=validated_command,
-          json_msg=json_msg
-        )
+        allowed, allowed_msg = self._verify_command_allowed(json_msg)
+        self.P("  Command allowed: {}. Reason: {}".format(allowed, allowed_msg), color=None if allowed else 'r')
+        if allowed:
+          self.process_decrypted_command(
+            action=action,
+            payload=payload,
+            sender_addr=sender_addr,
+            initiator_id=initiator_id,
+            session_id=session_id,
+            validated_command=validated_command,
+            json_msg=json_msg
+          )
     return
 
   def validate_macro(self):
