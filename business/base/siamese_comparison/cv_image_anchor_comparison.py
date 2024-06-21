@@ -104,6 +104,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     valid, reason = self._validate_image_as_anchor(image, object_detection_inferences)
     if valid:
+      self.P("Saving new anchor. Reason: {}".format(reason))
       self._anchor = image
       self._anchor_last_save_time = self.time()
       self._force_save_anchor = False
@@ -448,7 +449,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     debug_info = [
       {'value': self.__people_areas_prc(img, object_detector_inferences)},
-      {'value': f"Last Anchor Time: {human_readable_last_anchor_time}"},
+      {'value': f"Last Anchor Time: {human_readable_last_anchor_time}   Anchor Save Period (s): {self.serving_anchor_reload_period}"},
     ]
     if self.cfg_demo_mode:
       if self.cfg_forced_lower:
@@ -495,7 +496,10 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     object_detector_inferences = self._intersect_tlbrs_with_target_zone(object_detector_inferences)
 
-    self._maybe_save_anchor(self.__last_capture_image, object_detector_inferences)
+    # save the anchor if just started (anchor is None) or if we are forced to save it (force_save_anchor is True)
+    # otherwise save a new anchor after comparison
+    if self._anchor is None or self._force_save_anchor:
+      self._maybe_save_anchor(self.__last_capture_image, object_detector_inferences)
     if self._anchor is None and not self.cfg_allow_comparison_with_no_anchor:
       # if we do not have an anchor, we wait for it
       return
@@ -517,6 +521,12 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
       # we have people in the image, and they do not occupy the whole image,
       # so we do not process it further
       self.alerter_add_observation(result)
+
+      # save the anchor if we successfully compared the current image with the previous anchor
+      # we do this because we want images that do not generate alerts
+      # if we do not save the anchor here, we can risk saving an image for which
+      # changes cannot be computed (when `result is None`)
+      self._maybe_save_anchor(self.__last_capture_image, object_detector_inferences)
     else:
       # we keep the alerter in the middle until we have valid images to make a good decision
       middle_value = (self.cfg_alert_raise_value + self.cfg_alert_lower_value) / 2
