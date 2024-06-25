@@ -1,42 +1,34 @@
-import copy
-import subprocess
-import time
 import os
-import tempfile
 import shutil
+import subprocess
+import tempfile
+
 from jinja2 import Environment, FileSystemLoader
 
-from core.utils.fastapi_ipc_manager import get_server_manager
-
-from core.business.base import BasePluginExecutor
+from core.business.base.web_app.base_web_app_plugin import BaseWebAppPlugin as BasePlugin
+from core.utils.uvicorn_fast_api_ipc_manager import get_server_manager
 
 __VER__ = '0.0.0.0'
 
 _CONFIG = {
-  'NGROK_PORT' : 8080,
+  'USE_NGROK' : False,
   'NGROK_DOMAIN' : None,
+
+  'PORT' : 8080,
+
   'ASSETS' : None,
   'JINJA_ARGS' : {},
   'TEMPLATE' : 'basic_server',
-  **BasePluginExecutor.CONFIG,
+  **BasePlugin.CONFIG,
   'VALIDATION_RULES': {
-    **BasePluginExecutor.CONFIG['VALIDATION_RULES']
+    **BasePlugin.CONFIG['VALIDATION_RULES']
   },
 }
 
-class FastapiCT:
-  NG_TOKEN = 'EE_NGROK_AUTH_TOKEN'
-  NG_DOMAIN = 'EE_NGROK_DOMAIN'
-  NG_EDGE_LABEL = 'EE_NGROK_EDGE_LABEL'
-  HTTP_GET = 'get'
-  HTTP_PUT = 'put'
-  HTTP_POST = 'post'
-
-class BaseFastapiPlugin(BasePluginExecutor):
+class FastApiWebAppPlugin(BasePlugin):
   """
   A plugin which exposes all of its methods marked with @endpoint through
-  fastapi as http endpoints, and further tunnels traffic to this interface
-  via ngrok.
+  fastapi as http endpoints.
 
   The @endpoint methods can be triggered via http requests on the web server
   and will be processed as part of the business plugin loop.
@@ -45,25 +37,12 @@ class BaseFastapiPlugin(BasePluginExecutor):
   CONFIG = _CONFIG
 
   def __init__(self, **kwargs):
-    self.ngrok_process = None
     self.uvicorn_process = None
-    super(BaseFastapiPlugin, self).__init__(**kwargs)
+    super(FastApiWebAppPlugin, self).__init__(**kwargs)
     return
 
-  @property
-  def ng_token(self):
-    return self.os_environ.get(FastapiCT.NG_TOKEN, None)
-
-  @property
-  def ng_domain(self):
-    return self.os_environ.get(FastapiCT.NG_DOMAIN, None)
-
-  @property
-  def ng_edge(self):
-    return self.os_environ.get(FastapiCT.NG_EDGE_LABEL, None)
-
   @staticmethod
-  def endpoint(func, method=FastapiCT.HTTP_GET):
+  def endpoint(func, method="get"):
     """
     Decorator, marks the method as being exposed as an endpoint.
     """
@@ -98,18 +77,18 @@ class BaseFastapiPlugin(BasePluginExecutor):
     # Walk through the source directory.
     for root, _, files in os.walk(src_dir):
       for file in files:
-        src_file_path = os.path.join(root, file)
-        dst_file_path = os.path.join(
+        src_file_path = self.os_path.join(root, file)
+        dst_file_path = self.os_path.join(
           dst_dir,
-          os.path.relpath(src_file_path, src_dir)
+          self.os_path.relpath(src_file_path, src_dir)
         )
 
         # If we have a symlink don't do anything.
-        if os.path.islink(src_file_path):
+        if self.os_path.islink(src_file_path):
           continue
 
         # Make sure the destination directory exists.
-        os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
+        os.makedirs(self.os_path.dirname(dst_file_path), exist_ok=True)
 
         # If this file is a jinja template render it to a file with the
         # .jinja suffix removed.
@@ -130,12 +109,12 @@ class BaseFastapiPlugin(BasePluginExecutor):
 
     if self.cfg_template is not None:
       # Finally render main.py
-      template_dir = os.path.join('core', 'business', 'base', 'fastapi_templates')
-      app_template = os.path.join(template_dir, f'{self.cfg_template}.jinja')
+      template_dir = self.os_path.join('core', 'business', 'base', 'uvicorn_templates')
+      app_template = self.os_path.join(template_dir, f'{self.cfg_template}.jinja')
       app_template = env.get_template(app_template)
       rendered_content = app_template.render(jinja_args)
 
-      with open(os.path.join(dst_dir, 'main.py'), 'w') as f:
+      with open(self.os_path.join(dst_dir, 'main.py'), 'w') as f:
         f.write(rendered_content)
     #endif render main.py
 
@@ -204,17 +183,9 @@ class BaseFastapiPlugin(BasePluginExecutor):
     return
 
   def on_init(self):
-    port = self.cfg_ngrok_port
-    super(BaseFastapiPlugin, self).on_init()
-
+    super(FastApiWebAppPlugin, self).on_init()
     # Register all endpoint methods.
     self._init_endpoints()
-
-    # Check the config as we're going to use it to start processes.
-    if not isinstance(port, int):
-      raise ValueError("Ngrok port not an int")
-    if port < 0 or port > 65535:
-      raise ValueError("Invalid port value {}".format(port))
 
     # FIXME: move to setup_manager method
     manager_auth = b'abc'
@@ -223,58 +194,13 @@ class BaseFastapiPlugin(BasePluginExecutor):
     self.P("manager address: {}",format(self._manager.address))
     _, manager_port = self._manager.address
 
-    ngrok_auth_args = ['ngrok', 'authtoken', self.ng_token]
-    self.P('Trying to authenticate ngrok')
-    auth_process = subprocess.Popen(ngrok_auth_args, stdout=subprocess.DEVNULL)
-
-    # Wait for the process to finish and get the exit code
-    if auth_process.wait(timeout=10) != 0:
-      raise RuntimeError('Could not authenticate ngrok')
-    self.P('Successfully authenticated ngrok.', color='g')
-
-    # Start ngrok in the background.
-    self.P('Starting ngrok on port {} with domain {}'.format(port, self.ng_domain))
-    if self.ng_edge is not None:
-      # A domain was specified in the env, just start on that domain.
-      edge_label = self.ng_edge
-      ngrok_start_args = [
-        'ngrok',
-        'tunnel',
-        str(port),
-        '--label',
-        f'edge={edge_label}'
-      ]
-    elif self.ng_domain is not None:
-      ngrok_start_args = [
-        'ngrok',
-        'http',
-        str(port),
-        '--domain=' + self.ng_domain
-      ]
-    else:
-      raise RuntimeError("No domain/edge specified")
-    #endif
-
-    self.ngrok_process = subprocess.Popen(ngrok_start_args, stdout=subprocess.DEVNULL)
-    #FIXME: this returns the pid, but what happens in case of error?
-    self.P('ngrok started with PID {}'.format(self.ngrok_process.pid), color='g')
-
-    # Wait until ngrok has started.
-    self.P('Waiting for ngrok to start...', color='b')
-    time.sleep(10)
-
-    # FIXME: does this assumes linux (even if we run with docker)?
-    if not os.path.exists('/proc/' + str(self.ngrok_process.pid)):
-      raise RuntimeError('Failed to start ngrok')
-    self.P('ngrok started successfully."', color='g')
-
     # Start the FastAPI app
     self.P('Starting FastAPI app...')
     script_temp_dir = tempfile.mkdtemp()
-    script_path = os.path.join(script_temp_dir, 'main.py')
+    script_path = self.os_path.join(script_temp_dir, 'main.py')
     self.P("Using script at {}".format(script_path))
 
-    src_dir = os.path.join('plugins', 'business', 'fastapi', self.cfg_assets)
+    src_dir = self.os_path.join('plugins', 'business', 'fastapi', self.cfg_assets)
 
     jinja_args = {
       **self.get_jinja_template_args(),
@@ -295,9 +221,9 @@ class BaseFastapiPlugin(BasePluginExecutor):
       '--host',
       '0.0.0.0',
       '--port',
-      str(port)
+      str(self.cfg_port)
     ]
-    env = copy.deepcopy(os.environ)
+    env = self.deepcopy(os.environ)
     env['PYTHONPATH'] = '.:' + os.getcwd() + ':' + env.get('PYTHONPATH', '')
     env['PWD'] = script_temp_dir
     self.uvicorn_process = subprocess.Popen(
@@ -340,16 +266,11 @@ class BaseFastapiPlugin(BasePluginExecutor):
     except Exception as _:
       self.P('Could not kill uvicorn server')
 
-    # Teardown ngrok
-    try:
-      self.P('Killing ngrok..')
-      self.ngrok_process.kill()
-      self.P('Killed ngrok')
-    except Exception as _:
-      self.P('Could not kill ngrok server')
 
     # Teardown communicator
     self._manager.shutdown()
     # TODO remove temporary folder. For now it's useful
     # to keep around for debugging purposes.
+
+    super(FastApiWebAppPlugin, self).on_close()
     return
