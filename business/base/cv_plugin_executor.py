@@ -715,7 +715,7 @@ class CVPluginExecutor(BasePluginExecutor,
     def __get_instance_debug_info(self, img_witness):
       dct_input_metadata = self.dataapi_input_metadata() or {}
       dct_stream_metadata = self.dataapi_stream_metadata() or {}
-      cap_time = dct_stream_metadata.get('cap_time')
+      cap_time = dct_stream_metadata.get('cap_time', "????-??-?? ??:??:??.??????")
       # nod - pipeline - plug - inst, ver, fps:{}, cap:{}, proc:{}
       instance_info = "{}:{}:{}:{}, {}, fps:{} S:{}x{}, W:{}x{}, cap:{}, proc:{}, tz:{}".format(
         self._device_id,

@@ -474,7 +474,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     debug_info.append({'value': debug_results})
     return debug_info
 
-  def _update_cached_witness_image(self, img, debug_info, result, debug_results):
+  def _update_cache_witness_image(self, img, debug_info, result, debug_results):
     self.update_witness_kwargs(
       witness_args={
         'debug_info': debug_info,
@@ -486,16 +486,38 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     )
     return
 
-  def _save_last_witness_image(self, img, debug_info, object_detector_inferences, debug_results):   
-    for dct_debug_info in debug_info:
-      self.add_debug_info(**dct_debug_info)
-
-    self.__last_witness_image = self._create_witness_image(
-      original_image=img,
-      debug_results=debug_results,
-      object_detector_inferences=object_detector_inferences,
+  def _update_cache_last_witness_image(self, img, debug_info, object_detector_inferences, debug_results):   
+    self.update_witness_kwargs(
+      witness_args={
+        'debug_info': debug_info,
+        'inferences': self.dataapi_inferences(),
+        'debug_results': debug_results,
+        'original_image': img,
+      },
+      alerter="__last_witness_cache__",
+      pos=0
     )
     return
+  
+  def get_last_witness_image(self):
+    cache_witness = self.get_current_witness_kwargs(pos=0, alerter="__last_witness_cache__")
+    cache_witness_debug_info = cache_witness['debug_info']
+    cache_witness_original_image = cache_witness['original_image']
+    cache_witness_inferences = cache_witness['inferences']
+    cache_witness_debug_results = cache_witness['debug_results']
+
+    object_detector_inferences = cache_witness_inferences[self._get_detector_ai_engine()][0]
+
+    for dct_debug_info in cache_witness_debug_info:
+      self.add_debug_info(**dct_debug_info)
+
+    last_witness_image = self._create_witness_image(
+      original_image=cache_witness_original_image,
+      debug_results=cache_witness_debug_results,
+      object_detector_inferences=object_detector_inferences,
+    )
+
+    return last_witness_image
 
   def _print_alert_status_changed(self, current_alerter_status):
     if current_alerter_status not in ["OK", "Alert"]:
@@ -518,6 +540,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     # otherwise save a new anchor after comparison
     if self._anchor is None or self._force_save_anchor:
       self._maybe_save_anchor(self.__last_capture_image, object_detector_inferences)
+
     if self._anchor is None and not self.cfg_allow_comparison_with_no_anchor:
       # if we do not have an anchor, we wait for it
       return
@@ -533,7 +556,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     )
 
     # prepare the witness image used for the GET_LAST_WITNESS command
-    self._save_last_witness_image(
+    self._update_cache_last_witness_image(
       img=self.__last_capture_image,
       object_detector_inferences=object_detector_inferences,
       debug_info=debug_info,
@@ -542,7 +565,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     if result is not None or self.cfg_demo_mode:
       # save results in the cache -- this will be used for the witness image when the alerter status changes
-      self._update_cached_witness_image(
+      self._update_cache_witness_image(
         img=self.__last_capture_image,
         result=result,
         debug_info=debug_info,
@@ -579,8 +602,9 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
   def _on_command(self, data, get_last_witness=None, reset_anchor=None, **kwargs):
     if (isinstance(data, str) and data.upper() == 'GET_LAST_WITNESS') or get_last_witness:
+      last_witness = self.get_last_witness_image()
       self.add_payload_by_fields(
-        img=[self.__last_witness_image, self.__last_capture_image, self._anchor],
+        img=[last_witness, self.__last_capture_image, self._anchor],
         on_command_request=data,
       )
     if (isinstance(data, str) and data.upper() == 'RESET_ANCHOR') or reset_anchor:
