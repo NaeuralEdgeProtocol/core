@@ -166,6 +166,7 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
     plugin_name = self.config["TYPE"]
     config_instance = self.config["PARAMS"]
     config_instance[ct.EE_ID] = self._device_id
+    config_instance[ct.EE_ADDR] = self.blockchain_manager.address
 
     _class_def, _default_config = self._get_plugin_class(plugin_name)
     id_comm = 0
