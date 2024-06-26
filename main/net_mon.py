@@ -1156,6 +1156,8 @@ class NetworkMonitor(DecentrAIObject):
       res = hb.get(ct.HB.EE_IS_SUPER, False)
       if res is None:
         res = False
+      if isinstance(res, str):
+        res = res.lower() == 'true'
       return res
 
     def network_node_addr(self, eeid):
