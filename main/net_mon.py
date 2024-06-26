@@ -599,6 +599,9 @@ class NetworkMonitor(DecentrAIObject):
       return self.__network_node_last_heartbeat(addr=addr, return_empty_dict=True)
     
     def register_heartbeat(self, addr, data):
+      # save the timestamp when received the heartbeat,
+      # helpful to know when computing the availability score
+      data[ct.HB.RECEIVED_TIME] = dt.now().strftime(ct.HB.TIMESTAMP_FORMAT)
       self.__register_heartbeat(addr, data)
       self.epoch_manager.register_data(addr, data) # TODO: change this?
       return
