@@ -11,6 +11,8 @@ from core.utils.sys_mon import SystemMonitor
 
 MAX_LOG_SIZE = 10_000
 
+MAX_LOCAL_HISTORY = int(30 * 60 / 10) # 30 minutes
+
 BASE_INCREMENT_MB = 250
 
 
@@ -44,6 +46,19 @@ class ApplicationMonitor(DecentrAIObject):
     self._done_first_smi_error = False
     self.dct_curr_nr = defaultdict(lambda:0)
     self.__last_temperature_info = None
+    self.__local_data_history = {
+      'cpu_load'            : deque(maxlen=MAX_LOCAL_HISTORY),
+      'cpu_temp'            : deque(maxlen=MAX_LOCAL_HISTORY),
+      'total_memory'        : deque(maxlen=MAX_LOCAL_HISTORY),
+      'occupied_memory'     : deque(maxlen=MAX_LOCAL_HISTORY),
+
+      'gpu_load'            : deque(maxlen=MAX_LOCAL_HISTORY),
+      'gpu_temp'            : deque(maxlen=MAX_LOCAL_HISTORY),
+      'gpu_occupied_memory' : deque(maxlen=MAX_LOCAL_HISTORY),
+      'gpu_total_memory'    : deque(maxlen=MAX_LOCAL_HISTORY),
+      
+      'timestamps'          : deque(maxlen=MAX_LOCAL_HISTORY),      
+    }
     super(ApplicationMonitor, self).__init__(log=log, prefix_log='[AMON]', **kwargs)
     return
   
@@ -80,8 +95,9 @@ class ApplicationMonitor(DecentrAIObject):
     critical_temp = False
     max_val = 0
     max_sensor = ''
-    if temps in [None, {}] and self.owner.cfg_system_temperature_check:
-      self.P(msg, color='r')
+    if temps in [None, {}]:
+      if self.owner.cfg_system_temperature_check:
+        self.P(msg, color='r')
       temps = None
     else:
       for sensor, status in temps.items():
@@ -326,6 +342,7 @@ class ApplicationMonitor(DecentrAIObject):
     pc_occupied_mem = round(self.log.total_memory - self.avail_memory_log[-1], 1)
     pc_total_mem = round(self.log.total_memory, 1)
 
+    gpu_load, gpu_mem_load, gpu_temp = None, None, None
 
     for i, dct_gpu in self.gpu_log.items():
       gpu_load_mean = round(np.mean(list(dct_gpu[ct.GPU_INFO.GPU_USED])[-last_n:]), 1)
@@ -337,6 +354,11 @@ class ApplicationMonitor(DecentrAIObject):
         round(dct_gpu[ct.GPU_INFO.GPU_TEMP][-1], 1),
       )
       gpu_info_list.append(str_gpu_info)
+      if gpu_load is None:
+        gpu_load = round(dct_gpu[ct.GPU_INFO.GPU_USED][-1], 1)
+        gpu_total_mem = round(dct_gpu[ct.GPU_INFO.TOTAL_MEM], 1)
+        gpu_occupied_memory = round(dct_gpu[ct.GPU_INFO.ALLOCATED_MEM][-1], 1)
+        gpu_temp = round(dct_gpu[ct.GPU_INFO.GPU_TEMP][-1], 1)
 
     str_gpu_info_list = ", ".join(gpu_info_list) if len(gpu_info_list) > 0 else "no gpu"
 
@@ -348,8 +370,22 @@ class ApplicationMonitor(DecentrAIObject):
     )
     
     temp = self.get_temperature_status(return_max=True)
+    cpu_temp = None
     if temp is not None:
       str_info += ", {}".format(temp)
+      cpu_temp = self.__last_temperature_info['max_temp']
+
+    self.add_local_history_and_save(
+      cpu_load=cpu_mean,
+      cpu_temp=cpu_temp,
+      total_memory=pc_total_mem,
+      occupied_memory=pc_occupied_mem,
+      gpu_load=gpu_load,
+      gpu_temp=gpu_temp,
+      gpu_occupied_memory=gpu_occupied_memory,
+      gpu_total_memory=gpu_total_mem,
+      timestamps=self.log.now_str(nice_print=True, short=False),
+    )
 
     return str_info
 
@@ -379,6 +415,20 @@ class ApplicationMonitor(DecentrAIObject):
     if isinstance(info, list):
       self._add_gpu_data(info)
     return info
+  
+  
+  def add_local_history_and_save(self, **kwargs):
+    dct_to_save = {}
+    for k,v in kwargs.items():
+      if k in self.__local_data_history:
+        self.__local_data_history[k].append(v)
+        dct_to_save[k] = list(self.__local_data_history[k])
+    
+    
+    self.log.save_json_to_data(dct_to_save, 'local_history.json')
+    
+    return
+  
 
   def get_status(self, status=None, full=True, send_log=False):
     machine_ip = self.log.get_localhost_ip()
@@ -536,6 +586,8 @@ class ApplicationMonitor(DecentrAIObject):
     is_supervisor = self.owner.is_supervisor_node
     
     whitelist = self.owner.whitelist
+    
+    
 
     dct_status = {
       #mandatory
