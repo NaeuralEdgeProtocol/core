@@ -273,6 +273,14 @@ class Orchestrator(DecentrAIObject,
       "Node is SECURE" if self.is_secured else "Node is NOT SECURE",
     )
     self.log.P(msg, color='g' if self.is_secured else 'r')
+    self.save_local_address()
+    return
+  
+  def save_local_address(self):
+    folder = self.log.get_data_folder()
+    addr_file = os.path.join(folder, 'local_address.txt')
+    with open(addr_file, 'w') as f:
+      f.write("{}  {}".format(self.e2_address, self.e2_id))
     return
   
   def __get_admin_pipeline_config(self):
