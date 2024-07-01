@@ -53,7 +53,6 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
   def startup(self):
     super(CvImageAnchorComparisonPlugin, self).startup()
     self.__last_capture_image = None
-    self.__last_witness_image = None
     self._anchor_last_save_time = 0
     self._force_save_anchor = False
     self._anchor = None
@@ -62,6 +61,8 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     self._alerter_re_raised = False
     self._alerter_forced_lower = False
+
+    self.alerter_maybe_create("__last_witness_cache__")
 
     if self.cfg_forced_lower:
       assert self.cfg_re_raise_time is not None, "Forced lower cannot be configured with no re raise time!"
@@ -88,8 +89,9 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     is_alert = self.alerter_is_alert()
     last_alert_value = self.alerter_get_last_value()
 
-    # the alerter should be lowered and the last value in the alerter should not be higher than the raise value
-    alerter_ok = not is_alert and (last_alert_value is None or last_alert_value < self.cfg_alert_raise_value)
+    # the alerter should be lowered and the last value in the alerter should not be higher than the lower value
+    # if we compare with the raise value, we might hit a situation where the alerter can be potentially raised in the future
+    alerter_ok = not is_alert and (last_alert_value is None or last_alert_value < self.cfg_alert_lower_value)
 
     if self.serving_anchor_reload_period is None:
       # we will never reload the anchor
@@ -219,7 +221,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     total_area = sum(people_areas) * 100
 
-    return total_area < self.cfg_anchor_max_sum_person_area, "Total people area occupied in scene {}".format(total_area)
+    return total_area <= self.cfg_anchor_max_sum_person_area, "Total people area occupied in scene {}".format(total_area)
 
   def _maybe_force_lower(self):
     """
@@ -575,8 +577,8 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     # decide if we keep it or not,
     # based on the presence of people in the image
     if result is not None and self._validate_image_for_analysis(self.__last_capture_image, object_detector_inferences):
-      # we have people in the image, and they do not occupy the whole image,
-      # so we do not process it further
+      # we don't have people in the image, or they occupy the whole image,
+      # so we consider this observation
       self.alerter_add_observation(result)
 
       # save the anchor if we successfully compared the current image with the previous anchor
