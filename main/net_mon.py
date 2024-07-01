@@ -107,7 +107,7 @@ class NetworkMonitor(DecentrAIObject):
         __addr_no_prefix = self.__remove_address_prefix(addr) 
 
         if __addr_no_prefix not in new_network_heartbeats:
-          new_network_heartbeats[__addr_no_prefix] = deque(maxlen=self.HB_HISTORY)
+          new_network_heartbeats[__addr_no_prefix] = []
         new_network_heartbeats[__addr_no_prefix].extend(network_heartbeats[addr])
 
       for addr_no_prefix in new_network_heartbeats:
@@ -116,7 +116,9 @@ class NetworkMonitor(DecentrAIObject):
           new_network_heartbeats[addr_no_prefix], 
           key=lambda x: x[ct.HB.CURRENT_TIME],
         )
-
+        for hb in new_network_heartbeats[addr_no_prefix][:-1]:
+          self.__pop_repeating_info_from_heartbeat(hb)
+        new_network_heartbeats[addr_no_prefix] = deque(new_network_heartbeats[addr_no_prefix], maxlen=self.HB_HISTORY)
       self.__network_heartbeats = new_network_heartbeats
     else:
       self.P("Error setting network heartbeats. Invalid type: {}".format(type(network_heartbeats)), color='r')
@@ -127,7 +129,29 @@ class NetworkMonitor(DecentrAIObject):
   
   def __remove_address_prefix(self, addr):
     return self.__blockchain_manager._remove_prefix(addr)
-  
+
+  def __pop_repeating_info_from_heartbeat(self, hb):
+    hb.pop(ct.HB.ACTIVE_PLUGINS, None)
+    hb.pop(ct.HB.CONFIG_STREAMS, None)
+    hb.pop(ct.HB.DCT_STATS, None)
+    hb.pop(ct.HB.COMM_STATS, None)
+
+    hb.pop(ct.HB.EE_WHITELIST, None)
+    hb.pop(ct.PAYLOAD_DATA.EE_PAYLOAD_PATH, None)
+
+    hb.pop(ct.HB.TIMERS, None)
+    hb.pop(ct.HB.DEVICE_LOG, None)
+    hb.pop(ct.HB.ERROR_LOG, None)
+    return
+
+  def __pop_repeating_info_from_previous_heartbeat(self, addr):
+    __addr_no_prefix = self.__remove_address_prefix(addr)
+    hb_deque = self.__network_heartbeats[__addr_no_prefix]
+    if len(hb_deque) < 2:
+      return
+    self.__pop_repeating_info_from_heartbeat(hb_deque[-2])
+    return
+
   def __register_heartbeat(self, addr, data):
     # first check if data is encoded (as it always should be)
     if ct.HB.ENCODED_DATA in data:
@@ -149,6 +173,7 @@ class NetworkMonitor(DecentrAIObject):
       self.__network_heartbeats[__addr_no_prefix] = deque(maxlen=self.HB_HISTORY)
     #endif
     self.__network_heartbeats[__addr_no_prefix].append(data)
+    self.__pop_repeating_info_from_previous_heartbeat(addr)
     self.log.unlock_resource(NETMON_MUTEX)
     # end mutexed section
     return
