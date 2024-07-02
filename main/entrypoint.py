@@ -7,6 +7,8 @@ import sys
 import traceback
 import warnings
 
+from uuid import uuid4
+
 warnings.filterwarnings("ignore")
 
 #local dependencies
@@ -40,17 +42,27 @@ def maybe_replace_txt(fn):
 
 def running_with_hostname(config_file):
   result = None
+  custom_ee_id = False
   ee_id = os.environ.get(ct.CONFIG_STARTUP_v2.K_EE_ID, '')
-  print("Found EE_ID: '{}'".format(ee_id), flush=True)
+  if len(ee_id) > 0:
+    custom_ee_id = ee_id.upper().replace('X','') not in ['HOSTNAME', '']
+    print("Found {} in env EE_ID: '{}' ".format("custom" if custom_ee_id else "default", ee_id), flush=True)    
+  else:
+    print("No EE_ID found in env", flush=True)
+  is_hostname_config = False
   is_hostname_env = ee_id in ['HOSTNAME'] # if explicitly set to HOSTNAME in environment
   with open(config_file, 'r') as fh:
     config_data = json.load(fh)
     config_ee_id = config_data.get(ct.CONFIG_STARTUP_v2.K_EE_ID, '')
     print("Found EE_ID in config: '{}'".format(config_ee_id), flush=True)
-    is_hostname_config = config_ee_id.upper().replace('X','') in ['HOSTNAME', ''] # if explicitly set to HOSTNAME in config or first run with no config
+    str_simple = config_ee_id.upper().replace('X','')
+    is_hostname_config = str_simple in ['HOSTNAME', ''] # if explicitly set to HOSTNAME in config or first run with no config
+    if str_simple == 'HOSTNAME':
+      custom_ee_id = False # if config is set to HOSTNAME, then we ignore the env EE_ID
   #endwith config
-  if is_hostname_env or is_hostname_config:
-    result = os.environ.get('HOSTNAME', '')
+  if (is_hostname_env or is_hostname_config) and not custom_ee_id:
+    default_uuid = str(uuid4())[:8]
+    result = os.environ.get('HOSTNAME', default_uuid)
   return result
   
 def get_id(log):
