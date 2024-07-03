@@ -342,7 +342,7 @@ class ApplicationMonitor(DecentrAIObject):
     pc_occupied_mem = round(self.log.total_memory - self.avail_memory_log[-1], 1)
     pc_total_mem = round(self.log.total_memory, 1)
 
-    gpu_load, gpu_mem_load, gpu_temp = None, None, None
+    gpu_load, gpu_total_mem, gpu_occupied_memory, gpu_temp = None, None, None, None
 
     for i, dct_gpu in self.gpu_log.items():
       gpu_load_mean = round(np.mean(list(dct_gpu[ct.GPU_INFO.GPU_USED])[-last_n:]), 1)
