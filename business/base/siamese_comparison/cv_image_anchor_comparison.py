@@ -108,6 +108,9 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     valid, reason = self._validate_image_as_anchor(image, object_detection_inferences)
     if valid:
       self.P("Saving new anchor. Reason: {}".format(reason))
+      if self._force_save_anchor:
+        self.P("Forced save anchor. Resetting alerter too.")
+        self.alerter_hard_reset()
       self._anchor = image
       self._anchor_last_save_time = self.time()
       self._force_save_anchor = False
@@ -402,7 +405,6 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     if alerter_status == "Forced Lower":
       self._force_save_anchor = True
       self._maybe_save_anchor(original_image, object_detector_inferences)
-      self.alerter_hard_reset()
       self._alerter_re_raised = False
       self._alerter_forced_lower = False
 
@@ -610,6 +612,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
         on_command_request=data,
       )
     if (isinstance(data, str) and data.upper() == 'RESET_ANCHOR') or reset_anchor:
+      self.P("Received command to reset anchor. This will also reset the alerter.")
       self._anchor = None
       self._anchor_last_save_time = 0
       self._force_save_anchor = True
