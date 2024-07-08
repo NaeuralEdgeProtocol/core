@@ -25,7 +25,7 @@ except ImportError as _:
 from collections import OrderedDict, defaultdict, deque
 from io import BytesIO
 from time import sleep, time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from copy import deepcopy
 from xml.etree import ElementTree
 from urllib.parse import urlparse, urlunparse
@@ -622,6 +622,25 @@ class _UtilsBaseMixin(
 
     """
     return datetime
+
+  @property
+  def timezone(self):
+    """
+    Proxy for the `datetime.timezone`
+
+    Returns
+    -------
+      timezone : timezone object
+      
+      
+    Example
+    -------
+      ```
+      utc = self.timezone.utc
+      ```
+
+    """
+    return timezone
 
   @property
   def deepcopy(self):
