@@ -83,6 +83,20 @@ def _get_node_template(name):
 class EpochsManager(Singleton):
   
   def build(self, owner, debug_date=None, debug=False):
+    """
+    self.__data = {
+      node_addr: {
+        current_epoch: {
+          timestamps: set(datetime),
+          id: int
+        },
+        epochs: list(int),
+        name: str,
+        first_seen: None | str datetime,
+        last_seen: None | str datetime,
+      }
+    }
+    """
     self.__genesis_date = self.log.str_to_date(GENESYS_EPOCH_DATE).replace(tzinfo=timezone.utc)
 
     self.owner = owner
@@ -280,7 +294,7 @@ class EpochsManager(Singleton):
       self.__reset_timestamps(node_addr)
     return
   
-  
+  # FIXME: this method does not work as expected
   def __calculate_avail_seconds(self, timestamps, time_between_heartbeats=10):
     """
     This method calculates the availability of a node in the current epoch based on the timestamps.
@@ -356,8 +370,6 @@ class EpochsManager(Singleton):
         self.P(str(e), color='r')
     return prc_available
     
-    
-    
   def recalculate_current_epoch_for_all(self):
     """
     This method recalculates the current epoch availability for all nodes using the recorded 
@@ -367,12 +379,27 @@ class EpochsManager(Singleton):
     self.P("Recalculating epoch {} availability for all nodes during epoch {}...".format(
       self.__current_epoch, self.get_time_epoch()
     ))
-    self.start_timer('recalc_all_nodes_epoch')
-    for node_addr in self.__data:
-      self.start_timer('recalc_node_epoch')
-      self.__recalculate_current_epoch_for_node(node_addr)
-      self.stop_timer('recalc_node_epoch')
-    self.stop_timer('recalc_all_nodes_epoch')
+
+    # if current node was not 100% available, do not compute availability for other nodes
+    self.start_timer('recalc_node_epoch')
+    self.__recalculate_current_epoch_for_node(self.owner.node_addr)
+    self.stop_timer('recalc_node_epoch')
+    record_value = self.__data[self.owner.node_addr][EPCT.EPOCHS][current_epoch]
+    was_current_node_up_throughout_current_epoch = record_value < EPOCH_MAX_VALUE
+
+    if not was_current_node_up_throughout_current_epoch:
+      msg = "Current node was not 100% available in epoch {} and so cannot compute " \
+            "availability scores for other nodes".format(self.__current_epoch)
+      self.P(msg, color='r')
+    else:
+      self.start_timer('recalc_all_nodes_epoch')
+      for node_addr in self.__data:
+        self.start_timer('recalc_node_epoch')
+        self.__recalculate_current_epoch_for_node(node_addr)
+        self.stop_timer('recalc_node_epoch')
+      self.stop_timer('recalc_all_nodes_epoch')
+    # endif current node was not 100% available
+
     self.log.unlock_resource(EPOCHMON_MUTEX)
     return
 
