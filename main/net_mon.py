@@ -101,6 +101,7 @@ class NetworkMonitor(DecentrAIObject):
     self.log.lock_resource(NETMON_MUTEX)
 
     new_network_heartbeats = {}
+    need_sorting = []
 
     if isinstance(network_heartbeats, dict):
       for addr in network_heartbeats:
@@ -108,25 +109,34 @@ class NetworkMonitor(DecentrAIObject):
 
         if __addr_no_prefix not in new_network_heartbeats:
           new_network_heartbeats[__addr_no_prefix] = []
+        else:
+          self.P("Found multiple entries for address with no prefix: {}. This entry will require sorting".format(__addr_no_prefix), color='r')
+          need_sorting.append(__addr_no_prefix)
         new_network_heartbeats[__addr_no_prefix].extend(network_heartbeats[addr])
+      # endfor loop through network heartbeats entries
 
-      for addr_no_prefix in new_network_heartbeats:
+      for addr_no_prefix in need_sorting:
         # sort the heartbeats by sent time
         new_network_heartbeats[addr_no_prefix] = sorted(
           new_network_heartbeats[addr_no_prefix], 
           key=lambda x: x[ct.HB.CURRENT_TIME],
         )
+      # end for sort required entries
+
+      for addr_no_prefix in new_network_heartbeats:
         for hb in new_network_heartbeats[addr_no_prefix][:-1]:
           self.__pop_repeating_info_from_heartbeat(hb)
         new_network_heartbeats[addr_no_prefix] = deque(new_network_heartbeats[addr_no_prefix], maxlen=self.HB_HISTORY)
+      # endfor pop repeating info
+
       self.__network_heartbeats = new_network_heartbeats
     else:
       self.P("Error setting network heartbeats. Invalid type: {}".format(type(network_heartbeats)), color='r')
 
-    self.log.unlock_resource(NETMON_MUTEX)
     # end mutexed section
+    self.log.unlock_resource(NETMON_MUTEX)
     return 
-  
+
   def __remove_address_prefix(self, addr):
     return self.__blockchain_manager._remove_prefix(addr)
 
@@ -279,17 +289,34 @@ class NetworkMonitor(DecentrAIObject):
           The dictionary with the network heartbeats with the address as the key
       """
       new_network_heartbeats = {}
+      needs_sorting = []
+
       for node_id, data in network_heartbeats.items():
         addr = data[-1].get(ct.HB.EE_ADDR)
         if addr is None:
           self.P(f"Node ID {node_id} has no address. Skipping...", color='r')
           continue
-        new_network_heartbeats[addr] = data
+        if addr not in new_network_heartbeats:
+          new_network_heartbeats[addr] = []
+        else:
+          self.P("WARNING: Found multiple node ids with the same address {}.".format(addr), color='r')
+          needs_sorting.append(addr)
+        new_network_heartbeats[addr].extend(data)
+      # end for convert entries from node id to address
+
+      for addr in needs_sorting:
+        new_network_heartbeats[addr] = sorted(
+          new_network_heartbeats[addr], 
+          key=lambda x: x[ct.HB.CURRENT_TIME],
+        )
+      # end for sort required entries (one address, multiple node ids)
       return new_network_heartbeats
 
     def __looks_like_an_address(self, string):
       if not isinstance(string, str):
         return False
+      if len(string) == 44:
+        return True
       if len(string) != 49:
         return False
       if string[:5] == '0xai_':
@@ -323,6 +350,7 @@ class NetworkMonitor(DecentrAIObject):
       if network_heartbeats is None:
         return {}
       if any([not self.__looks_like_an_address(key) for key in network_heartbeats.keys()]):
+        self.P("WARNING: Found old format net_mon database. Converting to new format", color='r')
         self.log.save_pickle_to_data(network_heartbeats, 'network_heartbeats_old.pkl', subfolder_path=NETMON_DB_SUBFOLDER)
         return self.__convert_node_id_address(network_heartbeats)
       
