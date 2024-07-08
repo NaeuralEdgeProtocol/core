@@ -112,6 +112,8 @@ class FastApiWebAppPlugin(BasePlugin):
       # Finally render main.py
       template_dir = self.os_path.join('core', 'business', 'base', 'uvicorn_templates')
       app_template = self.os_path.join(template_dir, f'{self.cfg_template}.jinja')
+      # env.get_template expects forward slashes, even on Windows.
+      app_template = app_template.replace(os.sep, '/')
       app_template = env.get_template(app_template)
       rendered_content = app_template.render(jinja_args)
 
