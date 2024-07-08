@@ -152,6 +152,28 @@ class NetworkMonitor(DecentrAIObject):
     hb.pop(ct.HB.TIMERS, None)
     hb.pop(ct.HB.DEVICE_LOG, None)
     hb.pop(ct.HB.ERROR_LOG, None)
+
+    hb.pop(ct.PAYLOAD_DATA.EE_VERSION, None)
+    hb.pop(ct.HB.LOGGER_VERSION, None)
+    hb.pop(ct.HB.VERSION, None)
+    hb.pop(ct.HB.PY_VER, None)
+    hb.pop(ct.HB.HEARTBEAT_VERSION, None)
+
+    hb.pop(ct.HB.GIT_BRANCH, None)
+    hb.pop(ct.HB.CONDA_ENV, None)
+    hb.pop(ct.HB.CPU, None)
+    hb.pop(ct.HB.DEFAULT_CUDA, None)
+    hb.pop(ct.HB.GPU_INFO, None)
+    hb.pop(ct.HB.MACHINE_IP, None)
+    hb.pop(ct.HB.SECURED, None)
+    hb.pop(ct.HB.EE_IS_SUPER, None)
+
+    hb.pop(ct.PAYLOAD_DATA.EE_ID, None)
+    hb.pop(ct.PAYLOAD_DATA.INITIATOR_ID, None)
+    hb.pop(ct.PAYLOAD_DATA.EE_IS_ENCRYPTED, None)
+    hb.pop(ct.PAYLOAD_DATA.EE_EVENT_TYPE, None)
+    hb.pop(ct.PAYLOAD_DATA.EE_FORMATTER, None)
+    
     return
 
   def __pop_repeating_info_from_previous_heartbeat(self, addr):
