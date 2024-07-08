@@ -315,16 +315,31 @@ class EpochsManager(Singleton):
     avail_seconds = 0
     nr_timestamps = len(timestamps)
     
-    if nr_timestamps > 1:      
-      for i in range(1, nr_timestamps):
-        delta = (timestamps[i] - timestamps[i - 1]).seconds
-        if delta <= (time_between_heartbeats + 5) and delta > (time_between_heartbeats / 2):
-          # the delta between timestamps is less than the max heartbeat interval
-          # while being more than half the heartbeat interval (ignore same heartbeat)
-          avail_seconds += time_between_heartbeats
-        #endif delta between timestamps is less than the max heartbeat interval
-      #endfor each hb timestamp
-    #endif there are more than 1 timestamps
+    # need at least 2 hb timestamps to compute an interval 
+    if nr_timestamps <= 1:
+      return 0
+
+    start_timestamp = timestamps[0]
+    end_timestamp = timestamps[0]
+    for i in range(1, nr_timestamps):
+      delta = (timestamps[i] - timestamps[i - 1]).seconds
+      # the delta between timestamps is bigger than the max heartbeat interval
+      # or less than half the heartbeat interval (ignore same heartbeat)
+      # TODO(AID): how can a heartbeat be sent more than once?
+      # TODO: detect fraud mechanism (someone spams with heartbeats)
+      if delta > (time_between_heartbeats + 5): # or delta < (time_between_heartbeats / 2)
+        # the delta is too big. we compute the current interval length
+        # then reset the interval
+        avail_seconds += (end_timestamp - start_timestamp).seconds
+        start_timestamp = timestamps[i]
+      # endif delta
+
+      # change the end of the current interval
+      end_timestamp = timestamps[i]
+    #endfor each hb timestamp
+
+    # add the last interval length
+    avail_seconds += (end_timestamp - start_timestamp).seconds
     return avail_seconds    
 
 
