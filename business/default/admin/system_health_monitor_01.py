@@ -19,7 +19,7 @@ _CONFIG = {
 }
 
 class MonCT:
-  HOOK_PREFIX = '_monitor'
+  HOOK_PREFIX = '_system_health_monitor'
   # The following constants should really be defined externally
   # since they are part of plugin_base_utils
   TEMP_DATA_TEMP = 'temperatures'
@@ -37,7 +37,7 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
 
   def on_init(self):
     # Initialize the set of monitor hooks. Each monitor hook is a method
-    # starting with _monitor, should have only self as the argument as
+    # starting with _system_health_monitor, should have only self as the argument as
     # should return a string.
     self.monitor_hooks = []
     predicate = self.inspect.ismethod
@@ -87,7 +87,7 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
     out = out.decode().strip()
     return out
 
-  def _monitor_kernel_logs(self) -> str:
+  def _system_health_monitor_kernel_logs(self) -> str:
     """
     Get the last error log lines since the last run.
 
@@ -114,7 +114,7 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
 
     return msg
 
-  def _monitor_temperatures(self) -> str:
+  def _system_health_monitor_temperatures(self) -> str:
     """
     Get a string listing all temperature issues found on the device.
 
