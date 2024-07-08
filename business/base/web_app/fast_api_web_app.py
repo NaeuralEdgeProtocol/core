@@ -11,6 +11,7 @@ from core.utils.uvicorn_fast_api_ipc_manager import get_server_manager
 __VER__ = '0.0.0.0'
 
 _CONFIG = {
+  **BasePlugin.CONFIG,
   'USE_NGROK' : False,
   'NGROK_DOMAIN' : None,
 
@@ -19,7 +20,7 @@ _CONFIG = {
   'ASSETS' : None,
   'JINJA_ARGS' : {},
   'TEMPLATE' : 'basic_server',
-  **BasePlugin.CONFIG,
+
   'VALIDATION_RULES': {
     **BasePlugin.CONFIG['VALIDATION_RULES']
   },

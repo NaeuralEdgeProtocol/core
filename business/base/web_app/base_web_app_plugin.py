@@ -4,12 +4,16 @@ from core.business.mixins_libs.ngrok_mixin import _NgrokMixinPlugin
 __VER__ = '0.0.0.0'
 
 _CONFIG = {
+  **BasePluginExecutor.CONFIG,
+  'ALLOW_EMPTY_INPUTS': True,
+  'RUN_WITHOUT_IMAGE': True,
+  'PROCESS_DELAY': 0.01,
+
   'USE_NGROK' : False,
   'NGROK_DOMAIN' : None,
 
   'PORT' : 8080,
 
-  **BasePluginExecutor.CONFIG,
   'VALIDATION_RULES': {
     **BasePluginExecutor.CONFIG['VALIDATION_RULES']
   },
