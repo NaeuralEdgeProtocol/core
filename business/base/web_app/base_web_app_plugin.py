@@ -11,6 +11,7 @@ _CONFIG = {
 
   'USE_NGROK' : False,
   'NGROK_DOMAIN' : None,
+  'NGROK_EDGE_LABEL' : None,
 
   'PORT' : 8080,
 
