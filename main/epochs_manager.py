@@ -341,6 +341,29 @@ class EpochsManager(Singleton):
     # add the last interval length
     avail_seconds += (end_timestamp - start_timestamp).seconds
     return avail_seconds    
+  
+  def __calc_node_avail_seconds(self, node_addr, time_between_heartbeats=10, return_timestamps=False):
+    node_data = self.__data[node_addr]
+    current_epoch_data = node_data[EPCT.CURRENT_EPOCH]
+    timestamps = current_epoch_data[EPCT.HB_TIMESTAMPS]
+    current_epoch = current_epoch_data[EPCT.ID]
+    lst_timestamps = sorted(list(timestamps))
+    avail_seconds = self.__calculate_avail_seconds(
+      lst_timestamps, time_between_heartbeats=time_between_heartbeats
+    )
+    if return_timestamps:
+      return avail_seconds, lst_timestamps
+    return avail_seconds
+  
+  
+  def get_current_epoch_availability(self, node_addr=None, time_between_heartbeats=10):
+    if node_addr is None:
+      node_addr = self.owner.node_addr
+    avail_seconds = self.__calc_node_avail_seconds(node_addr, time_between_heartbeats=time_between_heartbeats)
+    # max is number of seconds from midnight to now    
+    max_possible_from_midnight = (self.get_current_date() - self.get_current_date().replace(hour=0, minute=0, second=0)).seconds
+    prc_available = round(avail_seconds / max_possible_from_midnight, 4)
+    return prc_available
 
 
   def __recalculate_current_epoch_for_node(self, node_addr, time_between_heartbeats=10):
@@ -353,14 +376,9 @@ class EpochsManager(Singleton):
     node_addr : str
       The node address.
     """
-    node_data = self.__data[node_addr]
-    current_epoch_data = node_data[EPCT.CURRENT_EPOCH]
-    timestamps = current_epoch_data[EPCT.HB_TIMESTAMPS]
-    current_epoch = current_epoch_data[EPCT.ID]
-    # now the actual calculation
-    lst_timestamps = sorted(list(timestamps))
-    avail_seconds = self.__calculate_avail_seconds(
-      lst_timestamps, time_between_heartbeats=time_between_heartbeats
+    avail_seconds, lst_timestamps = self.__calc_node_avail_seconds(
+      node_addr, time_between_heartbeats=time_between_heartbeats,
+      return_timestamps=True
     )
     max_possible = EPOCH_INTERVALS * EPOCH_INTERVAL_SECONDS
     prc_available = round(avail_seconds / max_possible, 4)

@@ -424,7 +424,9 @@ class ApplicationMonitor(DecentrAIObject):
         self.__local_data_history[k].append(v)
         dct_to_save[k] = list(self.__local_data_history[k])
     
-    
+    dct_to_save['epoch'] = self.owner._network_monitor.epoch_manager.get_current_epoch()
+    dct_to_save['epoch_avail'] = self.owner._network_monitor.epoch_manager.get_current_epoch_availability()
+    dct_to_save['uptime'] = self.owner.running_time
     self.log.save_json_to_data(dct_to_save, 'local_history.json')
     
     return
