@@ -359,6 +359,9 @@ class EpochsManager(Singleton):
   def get_current_epoch_availability(self, node_addr=None, time_between_heartbeats=10):
     if node_addr is None:
       node_addr = self.owner.node_addr
+    # if node not seen yet, return None
+    if node_addr not in self.__data:
+      return None
     avail_seconds = self.__calc_node_avail_seconds(node_addr, time_between_heartbeats=time_between_heartbeats)
     # max is number of seconds from midnight to now    
     max_possible_from_midnight = (self.get_current_date() - self.get_current_date().replace(hour=0, minute=0, second=0)).seconds
