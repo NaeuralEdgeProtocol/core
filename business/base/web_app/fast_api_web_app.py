@@ -52,7 +52,7 @@ class FastApiWebAppPlugin(BasePlugin):
     func.__http_method__ = method
     return func
 
-  def get_assets_path(self):
+  def get_web_server_path(self):
     return self._script_temp_dir
 
   def _initialize_assets(self, src_dir, dst_dir, jinja_args):
@@ -111,6 +111,9 @@ class FastApiWebAppPlugin(BasePlugin):
         shutil.copy2(src_file_path, dst_file_path)
       #endfor all files
     #endfor os.walk
+
+    # make sure assets folder exists
+    os.makedirs(self.os_path.join(dst_dir, 'assets'), exist_ok=True)
 
     if self.cfg_template is not None:
       # Finally render main.py
