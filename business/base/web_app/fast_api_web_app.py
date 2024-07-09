@@ -52,6 +52,9 @@ class FastApiWebAppPlugin(BasePlugin):
     func.__http_method__ = method
     return func
 
+  def get_assets_path(self):
+    return self._script_temp_dir
+
   def _initialize_assets(self, src_dir, dst_dir, jinja_args):
     """
     Initialize and copy fastapi assets, expanding any jinja templates.
@@ -200,8 +203,8 @@ class FastApiWebAppPlugin(BasePlugin):
 
     # Start the FastAPI app
     self.P('Starting FastAPI app...')
-    script_temp_dir = tempfile.mkdtemp()
-    script_path = self.os_path.join(script_temp_dir, 'main.py')
+    self._script_temp_dir = tempfile.mkdtemp()
+    script_path = self.os_path.join(self._script_temp_dir, 'main.py')
     self.P("Using script at {}".format(script_path))
 
     src_dir = self.os_path.join('plugins', 'business', 'fastapi', self.cfg_assets)
@@ -212,7 +215,7 @@ class FastApiWebAppPlugin(BasePlugin):
       'manager_auth' : manager_auth,
       **self._node_comms_jinja_args
     }
-    self._initialize_assets(src_dir, script_temp_dir, jinja_args)
+    self._initialize_assets(src_dir, self._script_temp_dir, jinja_args)
 
     # Set up the uvicorn environment and process. We want it to have access to
     # our class definitions so we need to set PYTHONPATH. Additionally we set
@@ -220,7 +223,7 @@ class FastApiWebAppPlugin(BasePlugin):
     uvicorn_args = [
       'uvicorn',
       '--app-dir',
-      script_temp_dir,
+      self._script_temp_dir,
       'main:app',
       '--host',
       '0.0.0.0',
@@ -229,11 +232,11 @@ class FastApiWebAppPlugin(BasePlugin):
     ]
     env = self.deepcopy(os.environ)
     env['PYTHONPATH'] = '.:' + os.getcwd() + ':' + env.get('PYTHONPATH', '')
-    env['PWD'] = script_temp_dir
+    env['PWD'] = self._script_temp_dir
     self.uvicorn_process = subprocess.Popen(
       uvicorn_args,
       env=env,
-      cwd=script_temp_dir
+      cwd=self._script_temp_dir
     )
     return
 
