@@ -343,6 +343,10 @@ class EpochsManager(Singleton):
     return avail_seconds    
   
   def __calc_node_avail_seconds(self, node_addr, time_between_heartbeats=10, return_timestamps=False):
+    if node_addr not in self.__data:
+      self.__initialize_new_node(node_addr)
+    # endif
+
     node_data = self.__data[node_addr]
     current_epoch_data = node_data[EPCT.CURRENT_EPOCH]
     timestamps = current_epoch_data[EPCT.HB_TIMESTAMPS]
@@ -352,7 +356,7 @@ class EpochsManager(Singleton):
       lst_timestamps, time_between_heartbeats=time_between_heartbeats
     )
     if return_timestamps:
-      return avail_seconds, lst_timestamps
+      return avail_seconds, lst_timestamps, current_epoch
     return avail_seconds
   
   
@@ -379,7 +383,7 @@ class EpochsManager(Singleton):
     node_addr : str
       The node address.
     """
-    avail_seconds, lst_timestamps = self.__calc_node_avail_seconds(
+    avail_seconds, lst_timestamps, current_epoch = self.__calc_node_avail_seconds(
       node_addr, time_between_heartbeats=time_between_heartbeats,
       return_timestamps=True
     )
@@ -404,7 +408,7 @@ class EpochsManager(Singleton):
       except Exception as e:
         self.P("Error calculating availability for node: {}".format(node_addr), color='r')
         self.P(str(e), color='r')
-    return prc_available
+    return prc_available, current_epoch
     
   def recalculate_current_epoch_for_all(self):
     """
@@ -418,14 +422,14 @@ class EpochsManager(Singleton):
 
     # if current node was not 100% available, do not compute availability for other nodes
     self.start_timer('recalc_node_epoch')
-    self.__recalculate_current_epoch_for_node(self.owner.node_addr)
+    _, current_epoch = self.__recalculate_current_epoch_for_node(self.owner.node_addr)
     self.stop_timer('recalc_node_epoch')
     record_value = self.__data[self.owner.node_addr][EPCT.EPOCHS][current_epoch]
     was_current_node_up_throughout_current_epoch = record_value < EPOCH_MAX_VALUE
 
     if not was_current_node_up_throughout_current_epoch:
       msg = "Current node was not 100% available in epoch {} and so cannot compute " \
-            "availability scores for other nodes".format(self.__current_epoch)
+            "availability scores for other nodes".format(current_epoch)
       self.P(msg, color='r')
     else:
       self.start_timer('recalc_all_nodes_epoch')
@@ -467,6 +471,14 @@ class EpochsManager(Singleton):
     #endif current epoch is not None
     return result
   
+  def __initialize_new_node(self, node_addr):
+    name = self.get_node_name(node_addr)
+    name = name[:8]
+    node_name = self.get_node_name(node_addr)
+    self.__data[node_addr] = _get_node_template(node_name)
+    self.__reset_timestamps(node_addr)
+    self.P("New node {:<8} <{}> added to db".format(name, node_addr))
+    return
 
   def register_data(self, node_addr, hb):
     """
@@ -486,12 +498,7 @@ class EpochsManager(Singleton):
     local_epoch = self.get_time_epoch()   
     # maybe first epoch for node_addr
     if node_addr not in self.__data:
-      name = self.get_node_name(node_addr)
-      name = name[:8]
-      node_name = self.get_node_name(node_addr)
-      self.__data[node_addr] = _get_node_template(node_name)
-      self.__reset_timestamps(node_addr)
-      self.P("New node {:<8} <{}> added to db".format(name, node_addr))
+      self.__initialize_new_node(node_addr)
     #endif node not in data
     dt_remote_utc = self.get_hb_utc(hb)
     str_date = self.date_to_str(dt_remote_utc)
@@ -641,12 +648,15 @@ class EpochsManager(Singleton):
     Returns the overall statistics for all nodes.
     """
     stats = {}
+    max_val = 0
+    nr_eps = 0
     for node_addr in self.data:
       node_name = self.get_node_name(node_addr)
       epochs = self.get_node_epochs(node_addr, as_list=True, autocomplete=True)
       score = sum(epochs)
-      max_val = EPOCH_MAX_VALUE * len(epochs)
-      avail = round(score / max_val, 4)
+      current_val = EPOCH_MAX_VALUE * len(epochs)
+      max_val = max(max_val, current_val)
+      avail = round(score / current_val, 4)
       non_zero = len([x for x in epochs if x > 0])
       nr_eps = len(epochs)
       prev_epoch = self.get_time_epoch() - 1
@@ -682,23 +692,21 @@ if __name__ == '__main__':
   from core.core_logging import Logger
   from core.main.net_mon import NetworkMonitor
   
-  FN_NETWORK = 'c:/Dropbox (Personal)/_DATA/netmon_db.pkl'
+  FN_NETWORK = r"_local_cache\_data\network_monitor\db.pkl"
   
   l = Logger('EPOCH', base_folder='.', app_folder='_local_cache')
   
   DATES = [
-    '2024-03-21 12:00:00',
-    '2024-03-22 12:00:01',
-    '2024-03-23 12:00:01',
-    '2024-03-24 12:00:01',
-    '2024-03-25 12:00:01',
-    
-    '2024-03-26 00:00:01',
+    '2024-07-08 12:00:00',
+    '2024-07-07 12:00:00',
+    '2024-07-08 12:00:00',
+    '2024-07-09 12:00:00',
+    '2024-07-10 12:00:00',
   ]
   
   NODES = [
-    'aixp_AyWzxm5uGFWPWGVHrZQt2TgH3xXrJzMw3Go55X4JB86Z',
-    'aixp_Al257avizJeY8f0Xg3UR9fs_11rLNKOhBw9sOVW_sjF2',
+    '0xai_AkyWQ91tdk0QdJfH70nmRG6euFjxwYf1FSC7mBdtIbTh',
+    '0xai_AgNxIxNN6RsDqBa0d5l2ZQpy7y-5bnbP55xej4OvcitO',
   ]
   
   # make sure you have a recent (today) save network status
@@ -709,12 +717,12 @@ if __name__ == '__main__':
   
   if True:
     netmon = NetworkMonitor(
-      log=l, node_name='aid_hpc', node_addr='0xai_A_VwF0hrQjqPXGbOVJqSDqvkwmVwWBBVQV3KXscvyXHC',
+      log=l, node_name='aid_hpc', node_addr='0xai_AgNxIxNN6RsDqBa0d5l2ZQpy7y-5bnbP55xej4OvcitO',
       epoch_manager=eng
     )
   else:
     netmon = NetworkMonitor(
-      log=l, node_name='aid_hpc', node_addr='0xai_A_VwF0hrQjqPXGbOVJqSDqvkwmVwWBBVQV3KXscvyXHC'
+      log=l, node_name='aid_hpc', node_addr='0xai_AgNxIxNN6RsDqBa0d5l2ZQpy7y-5bnbP55xej4OvcitO'
     )
     
   eng.owner = netmon
@@ -731,7 +739,7 @@ if __name__ == '__main__':
     dct_hb = {}
     
     # now check the nodes for some usable data
-    current_epoch = eng.get_time_epoch()
+    _current_epoch = eng.get_time_epoch()
     for node_addr in nodes:
       hbs = netmon.get_box_heartbeats(node_addr)
       idx = -1
@@ -739,7 +747,7 @@ if __name__ == '__main__':
       good_hbs = defaultdict(list)
       for hb in hbs:
         ep = eng.get_epoch_id(hb[ct.PAYLOAD_DATA.EE_TIMESTAMP])
-        if ep >= current_epoch:
+        if ep >= _current_epoch:
           good_hbs[ep].append(hb)
       if len(good_hbs) > 0:
         dct_hb[node_addr] = good_hbs
