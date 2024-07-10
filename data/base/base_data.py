@@ -301,6 +301,66 @@ class BaseDataCapture(DecentrAIObject, _ConfigHandlerMixin):
     return
 
 
+  def _maybe_add_mandatory_plugin_to_pipeline(self, dct_config):
+    """
+    Add default mandatory plugins to pipeline, if the plugins do not already exist
+    and if pipeline requires them.
+
+    Parameters
+    ----------
+    dct_config : dict
+      the pipeline config.
+
+    Returns
+    -------
+    None.
+
+    """
+    dct_default_signature_instances = dct_config.get(ct.CONFIG_STREAM.DEFAULT_PLUGINS, {})
+    dct_default_signature_instances = {
+      signature: [
+        {
+          **instance,
+          ct.INSTANCE_ID: instance.get(ct.INSTANCE_ID, self.log.get_short_name(signature) + '_default_' + str(i))
+        }
+        for i, instance in enumerate(instances)
+      ]
+      for signature, instances in dct_default_signature_instances.items()
+    }
+
+    plugins = dct_config.get(ct.CONFIG_STREAM.PLUGINS, [])
+    dct_existing_signature_instances = {x[ct.SIGNATURE] : x[ct.INSTANCES] for x in plugins}
+    lst_added_signature_instance_ids = []
+
+    for default_plugin_signature, default_plugin_instances in dct_default_signature_instances.items():
+      if default_plugin_signature not in dct_existing_signature_instances:
+        dct_existing_signature_instances[default_plugin_signature] = default_plugin_instances
+        plugins.append({ ct.SIGNATURE : default_plugin_signature, ct.INSTANCES : default_plugin_instances })
+        lst_added_signature_instance_ids.extend([(default_plugin_signature, instance[ct.INSTANCE_ID]) for instance in default_plugin_instances])
+      else:
+        for default_instance_config in default_plugin_instances:
+          if default_instance_config[ct.INSTANCE_ID] not in [x[ct.INSTANCE_ID] for x in dct_existing_signature_instances[default_plugin_signature]]:
+            dct_existing_signature_instances[default_plugin_signature].append(default_instance_config)
+            lst_added_signature_instance_ids.append((default_plugin_signature, default_instance_config[ct.INSTANCE_ID]))
+          else:
+            pos, instance_config = next((pos, x) for pos, x in enumerate(dct_existing_signature_instances[default_plugin_signature]) if x[ct.INSTANCE_ID] == default_instance_config[ct.INSTANCE_ID])
+            if instance_config != {**instance_config, **default_instance_config}:
+              dct_existing_signature_instances[default_plugin_signature][pos].update(default_instance_config)
+              lst_added_signature_instance_ids.append((default_plugin_signature, default_instance_config[ct.INSTANCE_ID]))
+            # endif default config different from existing config
+          # endif instance not in default instances
+        # end for default instances
+      # endif signature not in plugins
+    # end for default plugins
+
+    if len(lst_added_signature_instance_ids) > 0:
+      self.P("Adding mandatory plugins {} to pipeline '{}'".format(
+        ", ".join("'{}:{}'".format(sig, inst) for sig, inst in lst_added_signature_instance_ids), 
+        dct_config[ct.NAME]
+      ))
+      self.__save_config(keys=[ct.CONFIG_STREAM.PLUGINS])
+    return
+
   def _update_config(self):
     # special section for PIPELINE_COMMAND
     is_pipeline_command = False 
@@ -323,12 +383,17 @@ class BaseDataCapture(DecentrAIObject, _ConfigHandlerMixin):
     # next line will create a new config basically so we need then to validate and re-create the cfg_* handlers
     # otherwise they will point to the old data
     self.config = self._merge_prepare_config(default_config=self.config)    
-    
+
     # now we set config_data, create handlers and validate
     self.setup_config_and_validate(dct_config=self.config)
+
     # now we have cfg_name and we can use it
     self.__name__ = 'DCT:' + self.log.name_abbreviation(self._signature) + '=' + self.cfg_name
     self._stream_metadata.update(**self.cfg_stream_config_metadata)
+
+    # now we add mandatory plugins to the pipeline
+    # these plugins are defined under "DEFAULT_PLUGINS"
+    self._maybe_add_mandatory_plugin_to_pipeline(dct_config=self.config)
 
     self._initial_setup_done = True
     return
