@@ -267,7 +267,7 @@ class BaseDataCapture(DecentrAIObject, _ConfigHandlerMixin):
       info = traceback.format_exc()
       self.P(msg, color='r')
 
-      self.__save_config(keys=[k for k in upstream_config.keys() if k in self.config_data])
+      self.__save_config(keys=[k for k in upstream_config.keys() if k in self.config])
 
       self._create_notification(
         notif=ct.STATUS_TYPE.STATUS_EXCEPTION, 
@@ -355,13 +355,13 @@ class BaseDataCapture(DecentrAIObject, _ConfigHandlerMixin):
     # writes the config for a set of particular keys on the local cache!
     save_config_fn = self.shmem[ct.CALLBACKS.PIPELINE_CONFIG_SAVER_CALLBACK]
     try:
-      config = {k: self.config_data[k] for k in keys}
+      config = {k: self.config[k] for k in keys}
       save_config_fn(self.cfg_name, config_data=config)
       # the save will trigger a update config when the BusinessManager will get the new config from
       # the ConfigManager and will pass it as upstream_config to the plugin
       # so we already update the upstream_config to avoid this
       for k in keys:
-        self._upstream_config[k] = self.config_data[k]
+        self._upstream_config[k] = self.config[k]
     except Exception as exc:
       self.P("Error '{}' while saving keys {}".format(exc, keys))
       raise exc
