@@ -10,6 +10,13 @@ from core.data.default.video.video_stream_ffmpeg import VideoStreamFfmpegDataCap
 _CONFIG = {
   **ParentDataCapture.CONFIG,
 
+  'DEFAULT_PLUGINS': {
+    'VIDEO_LOSS_01': [{
+      'ALERT_RAISE_VALUE': 5,
+      'ALERT_LOWER_VALUE': 0.5,        
+    }],
+  },
+
   'VALIDATION_RULES': {
     **ParentDataCapture.CONFIG['VALIDATION_RULES'],
 
