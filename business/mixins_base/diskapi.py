@@ -24,6 +24,23 @@ class _DiskAPIMixin(object):
     super(_DiskAPIMixin, self).__init__()
     return
 
+  # Utils section
+  if True:
+    def is_path_safe(self, path):
+      """
+      Method for checking if a certain path is safe(it's inside the cache directory).
+      Parameters
+      ----------
+      path - string, path to be checked
+
+      Returns
+      -------
+      bool, True if the path is safe, False otherwise
+      """
+      abs_cache_directory = os.path.abspath(self.log.get_base_folder())
+      return os.path.abspath(path).startswith(abs_cache_directory)
+  # endif Utils
+
   # Dataframe serialization section
   if True:
     def _diskapi_save_dataframe(self, df : pd.DataFrame, filename : str, folder : str,
@@ -194,7 +211,7 @@ class _DiskAPIMixin(object):
       return self._diskapi_load_dataframe(
         filename=filename, folder='output', decompress=decompress, timestamps=timestamps
       )
-  #endif
+  # endif
 
   # Pickle serialization section
   if True:
@@ -453,7 +470,7 @@ class _DiskAPIMixin(object):
       Shortcut to _diskapi_load_json.
       """
       return self._diskapi_load_json(filename=filename, folder='output', verbose=verbose)
-  #endif
+  # endif
 
   # Video serialization section
   if True:
@@ -597,7 +614,7 @@ class _DiskAPIMixin(object):
       """
       handler.write(frame)
       return
-  #endif
+  # endif
 
   # Dataset save section
   if True:
@@ -775,20 +792,6 @@ class _DiskAPIMixin(object):
 
   # Delete files/directories section
   if True:
-    def is_path_safe(self, path):
-      """
-      Method for checking if a certain path is safe(it's inside the cache directory).
-      Parameters
-      ----------
-      path - string, path to be checked
-
-      Returns
-      -------
-      bool, True if the path is safe, False otherwise
-      """
-      abs_cache_directory = os.path.abspath(self.log.get_base_folder())
-      return os.path.abspath(path).startswith(abs_cache_directory)
-
     def diskapi_delete_file(self, file_path):
       """
       Delete a file from disk if safe.
@@ -835,6 +838,36 @@ class _DiskAPIMixin(object):
       else:
         self.P(f'Provided unsafe directory path ({dir_path}) for deletion. Nothing happened.')
       # endif path is safe
+      return
+  # endif
+
+  # Copy files section
+  if True:
+    def diskapi_copy_file(self, src_path, dst_path):
+      """
+      Copy a file from src to dst if safe.
+      Parameters
+      ----------
+      src_path - string, path to the source file
+      dst_path - string, path to the destination file
+
+      Returns
+      -------
+
+      """
+      if self.is_path_safe(src_path) and self.is_path_safe(dst_path):
+        try:
+          self.P(f'Trying to copy safe file from {src_path} to {dst_path}')
+          dst_dir = os.path.dirname(dst_path)
+          os.makedirs(dst_dir, exist_ok=True)
+          shutil.copy2(src_path, dst_path)
+          self.P(f'Copied safe file from {src_path} to {dst_path}')
+        except Exception as e:
+          self.P(e)
+        # end try-except
+      else:
+        self.P(f'Provided unsafe file paths for copying. Nothing happened.')
+      # endif paths are safe
       return
   # endif
 

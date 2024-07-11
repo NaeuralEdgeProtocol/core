@@ -72,6 +72,14 @@ class BaseScripter(metaclass=abc.ABCMeta):
     gc.collect()
     return
 
+  def start_timer(self, name):
+    self.log.start_timer(name, section='tracing')
+    return
+
+  def stop_timer(self, name):
+    self.log.stop_timer(name, section='tracing')
+    return
+
   def default_predict(self, model, inputs):
     return model(inputs)
 
@@ -154,11 +162,16 @@ class BaseScripter(metaclass=abc.ABCMeta):
     self.log.P(f"  Predicting ({nr_tests} inferences)...")
     for _ in range(nr_tests):
       print('.', flush=True, end='')
-      self.log.start_timer(model_name)
+      self.start_timer(model_name)
       preds = self.__predict(model, inputs)
-      self.log.stop_timer(model_name)
+      self.stop_timer(model_name)
     print('')
     return self.log.get_timer_mean(model_name)
+
+  def maybe_numpy(self, x):
+    if isinstance(x, th.Tensor):
+      return x.detach().cpu().numpy()
+    return x
 
   def matching_callback(self, output1, output2, atol=0.0001, **kwargs):
     """
@@ -181,8 +194,11 @@ class BaseScripter(metaclass=abc.ABCMeta):
     if type(output1) != type(output2):
       self.log.P('TYPE IS DIFFERENT! {} {} '.format(type(output1), type(output2)))
       return False
-    if isinstance(output1, list):
-      return len(output1) == len(output2) and all([np.allclose(output1[i], output2[i], atol=atol) for i in range(len(output1))])
+    if isinstance(output1, (list, tuple)):
+      return len(output1) == len(output2) and all([
+        np.allclose(self.maybe_numpy(output1[i]), self.maybe_numpy(output2[i]), atol=atol)
+        for i in range(len(output1))]
+      )
     if isinstance(output1, th.Tensor):
       output1 = output1.detach().cpu().numpy()
       output2 = output2.detach().cpu().numpy()

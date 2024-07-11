@@ -509,7 +509,7 @@ class CVPluginExecutor(BasePluginExecutor,
     # endif
     return img
 
-  def _on_command(self, data, get_last_witness=None, **kwargs):
+  def on_command(self, data, get_last_witness=None, **kwargs):
     """
     Called when the instance receives new INSTANCE_COMMAND
 

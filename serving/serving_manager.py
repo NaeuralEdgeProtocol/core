@@ -354,7 +354,9 @@ class ServingManager(Manager):
   
   def _download_and_load_config(self, url, server_name, force_download=True):
     fn_custom_model_definition = server_name + '_def.txt'
-    self.log.maybe_download_model(url, fn_custom_model_definition, force_download=force_download)
+    self.log.maybe_download_model(
+      url, fn_custom_model_definition, force_download=force_download
+    )
     dct_config = self.log.load_models_json(fn_custom_model_definition)
     return dct_config
 

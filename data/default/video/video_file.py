@@ -204,7 +204,7 @@ class VideoFileDataCapture(DataCaptureThread, _VideoFileMixin, _VideoConfigMixin
     return cv2.rotate(frame, rotateCode)
 
   def _run_data_aquisition_step(self):
-    if self._cv2_cap.isOpened():
+    if self._cv2_cap is not None and self._cv2_cap.isOpened():
       self.start_timer('cv2_read')
       has_frame, frame = self._cv2_cap.read()
       self.end_timer('cv2_read')

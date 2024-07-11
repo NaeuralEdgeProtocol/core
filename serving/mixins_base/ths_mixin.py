@@ -40,13 +40,15 @@ class TorchscriptMixin:
     self.P("Preparing {} torchscript graph model {}...".format(self.server_name, self.version))
     if url is None:
       url = self.get_url
+    if url is None:
+      raise ValueError("No URL specified for model")
     if fn_model is None:
       fn_model = self.get_saved_model_fn()
     self.download(url, fn_model)
     fn_path = self.log.get_models_file(fn_model)
     model, config = None, None
     if fn_path is None:
-      raise ValueError("No torchscript file specified for model")
+      raise ValueError(f"Could not download model file from {url}. {fn_model} not found.")
 
     self.P("Loading torchscript model {} ({:.03f} MB) at `{}` using map_location: {} on python v{}...".format(
         fn_model,

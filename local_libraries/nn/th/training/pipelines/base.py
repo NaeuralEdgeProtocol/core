@@ -10,6 +10,9 @@ from typing import Any, Dict
 from time import time
 from core import DecentrAIObject
 from core import Logger
+from core.local_libraries.nn.th.image_dataset_stage_preprocesser import preprocess_to_str
+# TODO !!!! move this to non-experimental location
+from core.xperimental.torchscript.base_torch_scripter import BaseTorchScripter
 from core.local_libraries.nn.th.trainer import ModelTrainer
 from PyE2 import _PluginsManagerMixin
 from core import constants as ct
@@ -64,6 +67,7 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
 
     self.df_model_name_to_hiperparams : pd.DataFrame = None
 
+    self.export_done = False
     self._status : Dict[str, Any] = {
       'ELAPSED' : None,
       'REMAINING' : None,
@@ -79,6 +83,7 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
       'MODEL_NAME' : None,
       'FIRST_STAGE_TARGET_CLASS' : None,
       'INFERENCE_PREPROCESS_DEFINITIONS' : None,
+      'MODEL_EXPORT': None
     }
     super(BaseTrainingPipeline, self).__init__(log=log, **kwargs)
     return
@@ -331,6 +336,13 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
     return self.config.get('PRETRAINED_WEIGHTS_URL', None)
 
   @property
+  def cfg_export_model(self):
+    """
+    Property that tells the pipeline to export the model after training.
+    """
+    return self.config.get('EXPORT_MODEL', False)
+
+  @property
   def default_grid_search(self):
     dct = self._model_factory_ref[3] or {}
     return dct.get('GRID_SEARCH', {})
@@ -366,7 +378,7 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
 
       preprocess_definitions = train_data_factory.preprocess_definitions
       self._metadata['INFERENCE_PREPROCESS_DEFINITIONS'] = [
-        [x[0].__module__ + '.' + x[0].__name__, x[1]]
+        [preprocess_to_str(x[0]), x[1]]
         for x in preprocess_definitions
       ]
     #endif
@@ -378,6 +390,8 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
     grid_has_finished = False
     if self._status['NR_ALL_GRID_ITER'] is not None:
       grid_has_finished = (self._status['GRID_ITER'] == self._status['NR_ALL_GRID_ITER'])
+    if self.cfg_export_model:
+      grid_has_finished = grid_has_finished and self.export_done
     return grid_has_finished or self._grid_loop_exception
 
   def _find_data_directories(self, path_to_dataset):
@@ -660,6 +674,66 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
     # endif pretrained_weights_url is a local file
     return pretrained_weights_path
 
+  def trace_preprocess_method(self, inputs, device, preprocess_method, **kwargs):
+    inputs = [inp.to(device) for inp in inputs]
+    if preprocess_method is not None:
+      inputs = [preprocess_method(inp, **kwargs) for inp in inputs]
+    th_inputs = th.stack(inputs)
+    return th_inputs
+
+
+  def trace_best(self):
+    """
+    Method that will trace the best model.
+    Returns
+    -------
+    path : str, path to the best model if trace was successful, None otherwise
+    """
+    res_path = None
+    best_weights_path = self.status['BEST']['best_file']
+    best_model = self.model_factory_class_def(**self.status['BEST']['model_kwargs']).to(self.cfg_device_training)
+    best_model.load_state_dict(th.load(best_weights_path, map_location=self.cfg_device_training))
+    best_model.eval()
+
+    n_samples = 5
+    observations = []
+    labels = []
+    indexes = []
+    data_factory = None
+    for set_key in ['train', 'dev', 'test']:
+      if self._dct_data_factories[set_key] is not None:
+        curr_obs = self._dct_data_factories[set_key].data_loader.dataset._observations
+        if len(curr_obs) > n_samples:
+          data_factory = self._dct_data_factories[set_key]
+          observations = curr_obs[:n_samples]
+          labels = data_factory.data_loader.dataset._labels[:n_samples]
+          break
+        # endif enough samples
+      # endif existing set
+    # endfor set_key
+    if len(observations) == 0:
+      self.P("No observations found in the dataset. Cannot trace the model.")
+      return res_path
+    # endif no observations
+    if isinstance(observations[0], str):
+      # If the observations are paths to inputs, we need to load them
+      observations = [data_factory.load_x_and_y_callback(observations, labels, i)[0] for i in range(n_samples)]
+    # endif not loaded observations
+    preprocess_method = self._dct_data_factories[set_key]._before_forward_preprocess
+    if observations[0].device != self.cfg_device_training:
+      observations = [obs.to(self.cfg_device_training) for obs in observations]
+    traced_model_name = '__'.join([self.log.now_str()[:-6], self.cfg_model_name])
+    input_shape = tuple(observations[0].permute(1, 2, 0).shape)
+    tracer = BaseTorchScripter(
+      log=self.log, model=best_model, model_name=traced_model_name,
+      preprocess_method=self.trace_preprocess_method, input_shape=input_shape
+    )
+    res_path = tracer.generate(
+      inputs=observations, batch_size=1, device=self.cfg_device_training,
+      preprocess_method=preprocess_method, to_test=True, test_batch_size=n_samples
+    )
+    return res_path
+
   def run(self, start_iter=0, end_iter=None):
     self.maybe_disk_preprocess_dataset()
     self._time_start_run = time()
@@ -698,6 +772,7 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
     if end_iter is None:
       end_iter = len(all_grid_options)
     try:
+      grid_finished = False
       for i, dct_grid_option in enumerate(all_grid_options):
         if i < start_iter:
           continue
@@ -784,22 +859,38 @@ class BaseTrainingPipeline(DecentrAIObject, _PluginsManagerMixin):
         model.cpu()
         del model
       #endfor
+      grid_finished = True
+      if self.cfg_export_model:
+        trace_path = self.trace_best()
+        if trace_path is not None:
+          self._metadata['MODEL_EXPORT'] = trace_path
+        self.export_done = True
+        pass
     except ct.ForceStopException as e:
-      self.P("Grid search stopped at iteration {}/{}: {}".format(
-        iteration,
-        self._status['NR_ALL_GRID_ITER'],
-        e
-      ))
+      if not grid_finished or not self.cfg_export_model:
+        self.P(f"Grid search stopped at iteration {iteration}/{self._status['NR_ALL_GRID_ITER']}: {e}")
+      else:
+        self.P(
+          f"Force stop during model exporting after grid search finished at iteration "
+          f"{iteration}/{self._status['NR_ALL_GRID_ITER']}: {e}"
+        )
+      # endif grid_finished
     except Exception as e:
-      msg = "Grid Exception at iteration {}/{}:\n{}\n{}".format(
-        iteration,
-        self._status['NR_ALL_GRID_ITER'],
-        traceback.format_exc(),
-        self.log.get_error_info(return_err_val=True)
-      )
+      if not grid_finished or not self.cfg_export_model:
+        msg = (
+          f"Grid Exception at iteration {iteration}/{self._status['NR_ALL_GRID_ITER']}:\n{traceback.format_exc()}\n"
+          f"{self.log.get_error_info(return_err_val=True)}"
+        )
+      else:
+        msg = (
+          f"Grid Exception during model exporting after grid search finished at iteration "
+          f"{iteration}/{self._status['NR_ALL_GRID_ITER']}:\n{traceback.format_exc()}\n"
+          f"{self.log.get_error_info(return_err_val=True)}"
+        )
+      # endif grid_finished
       self.P(msg, color='r')
       self._grid_loop_exception = True
-    #end try-except
+    # end try-except
 
     self._release_data_factories()
 

@@ -89,3 +89,39 @@ class NumpyPreprocessRandomCrop:
 
     return cropped_img
 
+
+PREPROCESS_TO_STR = {
+  PreprocessResizeWithPad: 'PreprocessResizeWithPad',
+  PreprocessMinMaxNorm: 'PreprocessMinMaxNorm',
+  T.Resize: 'Resize'
+}
+STR_TO_PREPROCESS = {v: k for k, v in PREPROCESS_TO_STR.items()}
+
+
+def preprocess_to_str(preprocess):
+  """
+  Method used to convert a preprocess object to a string
+  Parameters
+  ----------
+  preprocess : object, The preprocess object to be converted to a string
+
+  Returns
+  -------
+  str, The string representation of the preprocess object
+  """
+  return PREPROCESS_TO_STR.get(preprocess, None)
+
+
+def str_to_preprocess(s=''):
+  """
+  Method used to convert a string to a preprocess object
+  Parameters
+  ----------
+  s : str, The string representation of the preprocess object
+
+  Returns
+  -------
+  object, The preprocess object
+  """
+  return STR_TO_PREPROCESS.get(s, None)
+

@@ -90,10 +90,11 @@ __VER__ = '0.1.0.0'
 DEFAULT_DATA_CONFIG = {
   'SOURCES': [],
   "CROP_PLUGIN_PARAMS": {
-    "REPORT_PERIOD": 60
+    "REPORT_PERIOD": 10
   },
   "COLLECT_UNTIL": None,
-  "CLOUD_PATH": "DATASETS/"
+  "CLOUD_PATH": "DATASETS/",
+  "TRAIN_SIZE": 0.8,
 }
 
 DEFAULT_TRAIN_CONFIG = {
@@ -168,6 +169,10 @@ class CVEndToEndTrainingPlugin(BasePlugin):
     @property
     def data_cloud_path(self):
       return self.get_data().get('CLOUD_PATH', '')
+
+    @property
+    def data_train_size(self):
+      return self.get_data().get('TRAIN_SIZE', 0.8)
   """END DATA SECTION"""
 
   """TRAINING SECTION"""
@@ -249,6 +254,15 @@ class CVEndToEndTrainingPlugin(BasePlugin):
       }
       return config
 
+    def process_data_gather_config(self, config):
+      """
+      Fill in the gaps in the data gather config
+      """
+      return {
+        **config,
+        'CAP_RESOLUTION': config.get('CAP_RESOLUTION', 1),
+      }
+
     def _configured_metastream_collect_data(self):
       if not isinstance(self.cfg_general_detector_object_type, list):
         object_type = [self.cfg_general_detector_object_type]
@@ -261,6 +275,7 @@ class CVEndToEndTrainingPlugin(BasePlugin):
         "CLOUD_PATH": self.data_cloud_path,
         "OBJECT_TYPE": object_type,
         'CLASSES': self.cfg_classes,
+        'TRAIN_SIZE': self.data_train_size,
         **self.data_crop_plugin_params,
       }
 
@@ -298,6 +313,7 @@ class CVEndToEndTrainingPlugin(BasePlugin):
                 'STARTUP_AI_ENGINE_PARAMS': {
                   'PIPELINE_SIGNATURE': self.training_pipeline_signature,
                   'PIPELINE_CONFIG': {
+                    'CLASSES': self.cfg_classes,
                     'MODEL_ARCHITECTURE': self.training_model_architecture,
                     'MODEL_NAME': self.cfg_objective_name,
                     'PRELOAD_DATA': self.training_device_load_data is not None,
@@ -320,21 +336,26 @@ class CVEndToEndTrainingPlugin(BasePlugin):
 
   def _process(self):
     if not self.__executed:
-      self.__executed = True
+      self.P(f"Starting end to end training for {self.cfg_objective_name}")
       for config in self.data_sources:
-        self.cmdapi_start_stream_by_config_on_current_box(config_stream=config)
+        processed_config = self.process_data_gather_config(config)
+        self.P(f"Starting pipeline {config['NAME']} for data acquisition")
+        self.cmdapi_start_stream_by_config_on_current_box(config_stream=processed_config)
       # endfor data sources
+      self.P(f"Starting metastream for data collection")
       self.cmdapi_start_metastream_by_config_on_current_box(config_metastream=self._configured_metastream_collect_data())
   
       if not self._one_time_commands_performed:
-        self._one_time_commands_performed = True
         training_box_addr = self.net_mon.network_node_addr(self.training_box_id)
+        self.P(f"Starting training pipeline for {self.cfg_objective_name} on {training_box_addr}")
         self._cmdapi_start_stream_by_config(config_stream=self._configured_training_pipeline(), node_address=training_box_addr)
         config_download = self._configured_download_dataset_pipeline()
-        config_upload = self._configured_upload_dataset_pipeline()
+        # config_upload = self._configured_upload_dataset_pipeline()
         now_str = self.now_str()
         self.diskapi_save_json_to_output(dct=config_download, filename=f"{now_str}_{config_download['NAME']}.json")
-        self.diskapi_save_json_to_output(dct=config_upload, filename=f"{now_str}_{config_upload['NAME']}.json")
+        # self.diskapi_save_json_to_output(dct=config_upload, filename=f"{now_str}_{config_upload['NAME']}.json")
+        self._one_time_commands_performed = True
       # endif one time commands performed
+      self.__executed = True
     # endif not executed
     return

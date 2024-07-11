@@ -29,6 +29,8 @@ DEFAULT_PIPELINE_CONFIG = {
   'DEVICE_LOAD_DATA': 'cuda:0',
   'DEVICE_TRAINING': 'cuda:0',
   'PRELOAD_DATA': True,
+  "NUM_WORKERS": 0,
+  "EXPORT_MODEL": True
 }
 
 

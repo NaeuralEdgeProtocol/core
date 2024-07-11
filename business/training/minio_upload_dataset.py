@@ -42,9 +42,12 @@ class MinioUploadDatasetPlugin(BasePlugin):
 
   def _process(self):
     if not self.__uploaded:
+      target_path = self.cfg_dataset_object_name
+      if not target_path.endswith('.zip'):
+        target_path += '.zip'
       self.upload_file(
         file_path=self.cfg_dataset_local_path,
-        target_path=self.cfg_dataset_object_name + '.zip',
+        target_path=target_path,
         force_upload=True,
       )
       self.__uploaded = True

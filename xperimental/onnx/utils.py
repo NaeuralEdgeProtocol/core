@@ -18,7 +18,8 @@ def create_from_torch(
   metadata = None
 ):
   """
-  Export a torch or torchscript model to a onnx model on disk.
+  Export a torch or torchscript(this does not work for the moment
+  because of a bug in pytorch) model to a onnx model on disk.
   Input and output names must be valid python identifiers.
 
   Parameters:
@@ -49,8 +50,7 @@ def create_from_torch(
 
   if not isinstance(args, tuple):
     args = (args,)
-  # Shuffle arguments so that we can call the forward function on
-  # the model.
+  # Split arguments into positional and keyword arguments for model forward.
   exec_args = args
   exec_kwargs = {}
   if isinstance(args, tuple):
@@ -113,6 +113,7 @@ def create_from_torch(
       model_onnx = onnx.shape_inference.infer_shapes(model_onnx, True, False, True)
       model_onnx, check = onnxsim.simplify(model_onnx) # simplify onnx model
     assert check, 'Simplified ONNX model could not be validated'
+    # Make sure the model is still valid.
     onnx.checker.check_model(model_onnx)  # check onnx model
 
     # There should be only one dynamic dimension.

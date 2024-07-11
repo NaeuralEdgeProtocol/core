@@ -468,6 +468,8 @@ class UnifiedFirstStage(
     -------
     ret - str - the path to the the downloaded model folder
     """
+    if url is None:
+      raise ValueError(f"No URL specified for model {fn_model} for backend {backend}")
     from pathlib import Path
     import os
 
@@ -479,6 +481,8 @@ class UnifiedFirstStage(
     fn_path = os.path.join(model_dir, fn_model)
     download_path = os.path.join(relative_backend_folders, fn_model)
     self.download(url, download_path)
+    if not os.path.isfile(fn_path):
+      raise ValueError(f"Could not download model file from {url}. {fn_model} not found.")
     return model_dir
 
   def prepare_model(

@@ -25,7 +25,8 @@ if __name__ == '__main__':
 
   model = YOLO('yolov8n.pt')
   model = model.model
-  path = '/tmp/yolo.onnx'
+  path = 'tmp/yolo.onnx'
+  os.makedirs('tmp', exist_ok=True)
 
   create_from_torch(
     model, device, path, half=False,
@@ -56,7 +57,7 @@ if __name__ == '__main__':
     topk=False,
     backend_type=BackendType.ONNX
   )
-  path = '/tmp/yoloy.onnx'
+  path = 'tmp/yoloy.onnx'
 
   try:
     # Make sure we always rebuild this as it is part of the test.

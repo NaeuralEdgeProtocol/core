@@ -23,12 +23,13 @@ _CONFIG = {
 class GeneralTrainingProcessPlugin(BasePlugin):
   CONFIG = _CONFIG
   def __init__(self, **kwargs):
-    self._training_output = None
-    self._performed_final = False
+    self.training_output = None
+    self.performed_final = False
 
-    self._model_uri = {'URL' : '', 'CLOUD_PATH' : ''}
-    self._training_output_uri = {'URL' : '', 'CLOUD_PATH' : ''}
-    self._inference_config_uri = {'URL' : '', 'CLOUD_PATH' : ''}
+    self.weights_uri = {'URL': '', 'CLOUD_PATH' : ''}
+    self.trace_uri = {'URL': '', 'CLOUD_PATH' : ''}
+    self.training_output_uri = {'URL': '', 'CLOUD_PATH': ''}
+    self.inference_config_uri = {'URL': '', 'CLOUD_PATH': ''}
     super(GeneralTrainingProcessPlugin, self).__init__(**kwargs)
     return
 
@@ -37,10 +38,10 @@ class GeneralTrainingProcessPlugin(BasePlugin):
     assert self.cfg_startup_ai_engine_params.get('PIPELINE_SIGNATURE', None) is not None
     assert bool(self.cfg_startup_ai_engine_params.get('PIPELINE_CONFIG', {}))
     if self.cfg_auto_deploy:
-      assert self.inspect.getsource(self._prepare_inference_plugin_config) != self.inspect.getsource(GeneralTrainingProcessPlugin._prepare_inference_plugin_config),\
+      assert self.inspect.getsource(self.prepare_inference_plugin_config) != self.inspect.getsource(GeneralTrainingProcessPlugin.prepare_inference_plugin_config),\
              "When auto deploy is configured, `_prepare_inference_plugin_config` should be defined"
 
-      assert self.inspect.getsource(self._auto_deploy) != self.inspect.getsource(GeneralTrainingProcessPlugin._auto_deploy),\
+      assert self.inspect.getsource(self.auto_deploy) != self.inspect.getsource(GeneralTrainingProcessPlugin.auto_deploy),\
              "When auto deploy is configured, `_auto_deploy` should be defined"
     #endif
 
@@ -53,6 +54,9 @@ class GeneralTrainingProcessPlugin(BasePlugin):
   @property
   def cfg_auto_deploy(self):
     return self._instance_config.get('AUTO_DEPLOY', {})
+
+  def cloud_path_to_url(self, cloud_path):
+    return f'minio:{cloud_path}'
 
   def get_instance_config(self):
     """
@@ -80,80 +84,90 @@ class GeneralTrainingProcessPlugin(BasePlugin):
 
     return current_instance_config
 
-  def _prepare_inference_plugin_config(self) -> dict:
+  def prepare_inference_plugin_config(self) -> dict:
     return {}
 
-  def _auto_deploy(self):
+  def auto_deploy(self):
     return
 
-  def _on_training_finish(self, model_id):
-    # TODO: maybe torchscript here
+  def on_training_finish(self, model_id):
     training_subdir = 'training'
     # Model
-    path_model = self._training_output['STATUS']['BEST']['best_file']
-    self._model_uri['CLOUD_PATH'] = 'TRAINING/{}/{}'.format(model_id, path_model.split(self.os_path.sep)[-1])
-    url, _ = self.upload_file(
-      file_path=path_model,
-      target_path=self._model_uri['CLOUD_PATH'],
-      force_upload=True,
-    )
-    self._model_uri['URL'] = url
-
+    best_weights = self.training_output['STATUS']['BEST']['best_file']
+    traced_model_path = self.training_output['METADATA']['MODEL_EXPORT']
+    files = {'weights': best_weights, 'trace': traced_model_path}
+    if traced_model_path is None:
+      self.P("Traced model path not found, uploading only the weights of best model", color='y')
+      files = {'weights': best_weights}
+    # endif trace not found
+    uris = {}
+    for file_id, file_path in files.items():
+      uris[file_id] = {'CLOUD_PATH': f'TRAINING/{model_id}/{file_id}/{file_path.split(self.os_path.sep)[-1]}'}
+      url, _ = self.upload_file(
+        file_path=file_path,
+        target_path=uris[file_id]['CLOUD_PATH'],
+        force_upload=True,
+      )
+      uris[file_id]['URL'] = url
+    # endfor files
+    self.weights_uri = uris['weights']
+    self.trace_uri = uris.get('trace',  {'URL': None, 'CLOUD_PATH': None})
     # Training output
     json_name = f'{model_id}_training_output.json'
     path_training_output = self.os_path.join(training_subdir, json_name)
     # First we save it, so we can upload it after
-    json_path = self.diskapi_save_json_to_output(dct=self._training_output, filename=path_training_output)
-    self._training_output_uri['CLOUD_PATH'] = 'TRAINING/{}/{}'.format(model_id, json_name)
+    json_path = self.diskapi_save_json_to_output(dct=self.training_output, filename=path_training_output)
+    self.training_output_uri['CLOUD_PATH'] = 'TRAINING/{}/{}'.format(model_id, json_name)
     url, _ = self.upload_file(
       file_path=json_path,
-      target_path=self._training_output_uri['CLOUD_PATH'],
+      target_path=self.training_output_uri['CLOUD_PATH'],
       force_upload=True
     )
-    self._training_output_uri['URL'] = url
+    self.training_output_uri['URL'] = url
 
     if bool(self.cfg_auto_deploy):
       # Inference config
-      dct_inference_config = self._prepare_inference_plugin_config()
+      dct_inference_config = self.prepare_inference_plugin_config()
       json_name = f'{model_id}_inference_config.json'
       path_inference_config = self.os_path.join(training_subdir, json_name)
       json_path = self.diskapi_save_json_to_output(dct=dct_inference_config, filename=path_inference_config)
-      self._inference_config_uri['CLOUD_PATH'] = 'TRAINING/{}/{}'.format(model_id, json_name)
+      self.inference_config_uri['CLOUD_PATH'] = 'TRAINING/{}/{}'.format(model_id, json_name)
       url, _ = self.upload_file(
         file_path=json_path,
-        target_path=self._inference_config_uri['CLOUD_PATH'],
+        target_path=self.inference_config_uri['CLOUD_PATH'],
         force_upload=True
       )
-      self._inference_config_uri['URL'] = url
+      self.inference_config_uri['URL'] = url
     #endif
 
     return
 
   def _process(self):
-    self._training_output = self.dataapi_specific_struct_data_inferences(idx=0, how='list', raise_if_error=True)
-    assert len(self._training_output) == 1
-    self._training_output = self._training_output[0]
-    assert isinstance(self._training_output, dict)
-    assert 'STATUS' in self._training_output
-    has_finished = self._training_output.get('HAS_FINISHED', False)
+    self.training_output = self.dataapi_specific_struct_data_inferences(idx=0, how='list', raise_if_error=True)
+    assert len(self.training_output) == 1
+    self.training_output = self.training_output[0]
+    assert isinstance(self.training_output, dict)
+    assert 'STATUS' in self.training_output
+    has_finished = self.training_output.get('HAS_FINISHED', False)
     payload_kwargs = {
-      **self._training_output
+      **self.training_output
     }
     save_payload_json = False
     model_id = None
-    if has_finished and not self._performed_final:
+    if has_finished and not self.performed_final:
       self.P("Training has finished", color='g')
-      model_id = '{}_{}'.format(self.log.session_id, self._training_output['METADATA']['MODEL_NAME'])
+      model_id = '{}_{}'.format(self.log.session_id, self.training_output['METADATA']['MODEL_NAME'])
       save_payload_json = True
-      self._on_training_finish(model_id=model_id)
-      payload_kwargs['MODEL_URI'] = self._model_uri
-      payload_kwargs['TRAINING_OUTPUT_URI'] = self._training_output_uri
-      payload_kwargs['INFERENCE_CONFIG_URI'] = self._inference_config_uri
+      self.on_training_finish(model_id=model_id)
+      payload_kwargs['MODEL_URI'] = self.weights_uri  #
+      payload_kwargs['TRACE_URI'] = self.trace_uri
+      payload_kwargs['TRAINING_OUTPUT_URI'] = self.training_output_uri
+      payload_kwargs['INFERENCE_CONFIG_URI'] = self.inference_config_uri
 
       if bool(self.cfg_auto_deploy):
-        self._auto_deploy()
+        self.auto_deploy()
 
-      self._performed_final = True
+      self.performed_final = True
     #endif
 
     payload = self._create_payload(**payload_kwargs)

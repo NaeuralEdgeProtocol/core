@@ -73,11 +73,6 @@ class OpenVINOModel(ModelBackendWrapper):
     # to always be on the CPU side (i.e. in a numpy array).
     device = 'CPU'
 
-    # Building the OpenVINO model from ONNX is fast so there is no
-    # issue with rebuilding on load.
-    if not OpenVINOModel.create_from_onnx(onnx_path=model_path):
-      raise RuntimeError("Error while creating OpenVINO model")
-
     # Read the metadata from the model.
     model_onnx = onnx.load(model_path)
     onnx_metadata_dict = MessageToDict(model_onnx, preserving_proto_field_name = True)['metadata_props']
@@ -101,6 +96,11 @@ class OpenVINOModel(ModelBackendWrapper):
 
     del model_onnx
     model_onnx = None
+
+    # Building the OpenVINO model from ONNX is fast so there is no
+    # issue with rebuilding on load.
+    if not OpenVINOModel.create_from_onnx(onnx_path=model_path):
+      raise RuntimeError("Error while creating OpenVINO model")
 
     core = Core()
     self._model = core.read_model(

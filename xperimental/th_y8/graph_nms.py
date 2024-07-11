@@ -387,6 +387,8 @@ class TRT_EfficientNMS(th.autograd.Function):
     score_activation=0,
     score_threshold=0.25
   ):
+    # The args have _i, _f, _s suffixes to indicate the type of the argument.
+    # boxes and scores are positional arguments so there is no need for _i, _f, _s.
     det_nums, det_boxes, det_scores, det_classes = g.op(
       "TRT::EfficientNMS_TRT",
       boxes,
@@ -406,11 +408,11 @@ class TRT_EfficientNMS(th.autograd.Function):
     # manually set the output shapes.
     # bs x 1, int32
     det_nums.setType(det_nums.type().with_dtype(th.int32).with_sizes([None, 1]))
-    # bs x 300 x 4
+    # bs x max_output_boxes x 4
     det_boxes.setType(det_boxes.type().with_sizes([None, 300, 4]))
-    # bs x 300
+    # bs x max_output_boxes
     det_scores.setType(det_scores.type().with_sizes([None, 300]))
-    # bs x 300, int32
+    # bs x max_output_boxes, int32
     det_classes.setType(det_classes.type().with_dtype(th.int32).with_sizes([None, 300]))
 
     return det_nums, det_boxes, det_scores, det_classes
@@ -484,7 +486,7 @@ def y8_nms_trt_efficient(prediction : th.Tensor):
   nmsed_classes = nmsed_classes.view(bs, 300, 1)
   nmsed_boxes = nmsed_boxes.view(bs, 300, 4)
 
-  # Shuffle the TRT NMS output data to our expected NMS output format.
+  # Reorder the TRT NMS output data to our expected NMS output format.
   th_output[:, :nmsed_boxes.shape[1], :4] = nmsed_boxes     # xyxy
   th_output[:, :nmsed_scores.shape[1], 4:5] = nmsed_scores  # confidence
   th_output[:, :nmsed_scores.shape[1], 5:6] = nmsed_classes # class
@@ -543,6 +545,8 @@ class ONNX_NMS(th.autograd.Function):
 
 def bin_count(th_x, batch_size):
   # An implementation of a one dimensional integer bincount.
+  # This is used because th.bincount will stop at the max value
+  # seen in th_x.
   i = th.arange(0, batch_size, 1, dtype=th.int32, device=th_x.device)
   th_idx = i.view(-1, 1).repeat(1, th_x.shape[0])
   return (th_idx[i, :] == th_x).sum(dim=1).view(batch_size, 1)
@@ -586,6 +590,7 @@ def y8_nms_onnx(prediction):
     th.tensor([0.25], dtype=th.float32, device=device) # score_threshold
   )
 
+  # For every detection left we get the initial batch index and the box list index.
   batch_idx, box_idx = indices[:, 0], indices[:, 2]
 
   # Sort by batch indices. Looking at the ONNXRT code
@@ -594,9 +599,9 @@ def y8_nms_onnx(prediction):
   batch_idx = batch_idx[sorted_batch_idx]
   box_idx = box_idx[sorted_batch_idx]
 
-  # We can use bincount to get the number of detections.
-  # th.bincount would be ideal here, but is not a supported onnx op.
-  # So we roll our own...
+  # We can use bin_count to get the number of detections per each batch.
+  # th.bincount would not work here because it stops at the last value
+  # for which there is a count.
   th_n_det = bin_count(batch_idx, bs)
   end_idx = th.cumsum(th_n_det, dim=0, dtype=th.int32)
   start_idx = end_idx - th_n_det
@@ -629,8 +634,12 @@ def y8_nms_onnx(prediction):
 
   # Sort outputs by confidence. Only needed for OpenVINO, however this triggers
   # an assert... Maybe it's time for scatter again?
-  #batch_idx = th.arange(bs).repeat_interleave(300).view(bs * 300)
-  #conf_idx = th.argsort(th_output[:,:,4], dim=1, descending=True).view(bs * 300)
-  #th_output = th_output[batch_idx, conf_idx, :].view(bs, 300, 6)
+  # This is not needed for now, since the sorting of the detections does not affect
+  # the plugins that use this output
+  # batch_idx = th.arange(bs).repeat_interleave(300).view(bs * 300)
+  # conf_idx = th.argsort(th_output[:,:,4], dim=1, descending=True).view(bs * 300)
+  # The following 2 lines produce the same output, but neither will work for ONNX.
+  # th_output = th_output[batch_idx, conf_idx, :].view(bs, 300, 6)
+  # th_output = th_output.view(bs * 300, 6)[batch_offsets].view(bs, 300, 6)
 
   return th_output, th_n_det.view(-1)

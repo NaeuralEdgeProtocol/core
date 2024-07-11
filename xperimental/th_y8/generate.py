@@ -87,6 +87,12 @@ def get_test_images():
     'LP3.jpg',
     'pic1_crop.jpg'
   ]
+  models_for_nms_prep = [
+    {
+      'pts': r'C:\repos\ultralytics\__personal\traces\y8x_1152x2048.torchscript',
+      'model': 'y8x_1152x2048'
+    }
+  ]
 
   # assert img is not None
   imgs = [
@@ -190,9 +196,13 @@ def get_model_config_name(file_name):
   return fn
 
 def is_valid_for_export(precision, device_str, topk, backend):
+  # TODO: maybe make all traces on precision 16 invalid because we can
+  # always cast them to 16 at the model loading.
   if device_str == 'cpu' and precision == 16:
     # FP16 will crash and burn on cpu
     return False
+  # device 'cpu' and backend 'ths' is not valid because the
+  # 'ths' trace on gpu should work on cpu too
   if device_str == 'cpu' and backend != 'onnx':
     return False
   if device_str == 'cuda' and backend not in ['ths', 'trt']:
@@ -209,7 +219,7 @@ def is_valid_for_export(precision, device_str, topk, backend):
 def get_generation_configs(log):
   models_folder = log.get_models_folder()
   files = os.listdir(models_folder)
-
+  # Maybe filter only yolo models or have only yolo models in the folder
   export_grid = {
     'topk' : [True, False],
     'device' : ['cpu', 'cuda'],
@@ -418,9 +428,9 @@ if __name__ == "__main__":
         model = Y8(y_model_arg, dev=dev, topk=topk, backend_type=backend_type)
 
       model.eval()
-      fn_model_name = model_name[model_name.find('y'):]
-      # Remove model extension
-      fn_model_name = fn_model_name[:fn_model_name.rfind('.')]
+      # fn_model_name = model_name[model_name.find('y'):]
+      # # Remove model extension
+      # fn_model_name = fn_model_name[:fn_model_name.rfind('.')]
       fn_model_name = model_name[model_name.find('y'):].split('.ths')[0]
       imgsz = model.config.get('imgsz')
       if imgsz is None:
@@ -495,7 +505,8 @@ if __name__ == "__main__":
         log.P(f"  Saving '{fn}'...")
         traced_model.save(fn, _extra_files=extra_files)
       elif export_type == 'trt' or export_type == 'onnx':
-        from core.serving.base.backends.trt import TensorRTModel
+        # This should be irrelevant. Left in case of error at testing
+        # from core.serving.base.backends.trt import TensorRTModel
         if export_type == 'trt':
           log.P("  Exporting to ONNX for TensorRT...")
           log.P("  Exporting with config {}".format(config))

@@ -37,8 +37,9 @@ class _ClassificationMetricsMixin(object):
       **classes_accuracies
     }
 
-  def advanced_metrics(self, y, y_hat, idx, dataset_info, key='dev'):
+  def advanced_metrics(self, y, y_hat, idx, dataset_info, classes=None, key='dev'):
     dct_metrics_per_categ = {}
+    classes = classes if classes is not None else self.get_class_names(dataset_info=dataset_info)
 
     try:
       dct_level_categs = dataset_info['categ_to_id_per_lvl'][self._level_analysis]
@@ -58,7 +59,7 @@ class _ClassificationMetricsMixin(object):
 
       dct_metrics_per_categ['{}_{}'.format(key, categ_name)] = self.basic_metrics(
         y=y_crt, y_hat=y_hat_crt,
-        classes=list(dataset_info['class_to_id'].keys()),
+        classes=classes,
         key=key
       )
     #endfor

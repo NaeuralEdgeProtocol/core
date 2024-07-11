@@ -27,8 +27,8 @@ if __name__ == '__main__':
 
   model = YOLO('yolov8n.pt')
   model = model.model
-  path = '/tmp/yolo.engine'
-  onnx_path = '/tmp/yolo.onnx'
+  path = 'tmp/yolo.engine'
+  onnx_path = 'tmp/yolo.onnx'
   try:
     os.unlink(path)
   except Exception:
@@ -77,8 +77,8 @@ if __name__ == '__main__':
     topk=False,
     backend_type=BackendType.TENSORRT
   )
-  path = '/tmp/yoloy.engine'
-  onnx_path = '/tmp/yoloy.onnx'
+  path = 'tmp/yoloy.engine'
+  onnx_path = 'tmp/yoloy.onnx'
 
   try:
     # Make sure we always rebuild this as it is part of the test.

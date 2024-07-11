@@ -35,6 +35,9 @@ def yolo_models(log):
     'l': [
       [640, 896],
     ],
+    'x': [
+      [1152, 2048]
+    ]
   }
   classnames_model_path = os.path.join(log.get_models_folder(), '20230723_y8l_nms.ths')
   extra_files = {'config.txt': ''}

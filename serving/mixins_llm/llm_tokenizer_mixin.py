@@ -94,7 +94,7 @@ class LlmTokenizerMixin(object):
     super(LlmTokenizerMixin, self).__init__(*args, **kwargs)
     return
 
-
+  # The 2 methods below are no longer used
   def _add_round(self, prompt, request, response=None, system_info=None):
     """
     Manual prompt generation. This is a helper function to generate a prompt

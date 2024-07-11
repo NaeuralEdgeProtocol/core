@@ -227,6 +227,7 @@ class BaseLlmServing(
         warmup_request
       ]
     }
+    # TODO: maybe add warmup flag to predict for printing only in case of warmup
     self._predict(self._pre_process(warmup_inputs_one))
     # Perform a predict with a batch of four requests.
     warmup_inputs_four = {
@@ -238,6 +239,8 @@ class BaseLlmServing(
       ]
     }
     self._predict(self._pre_process(warmup_inputs_four))
+    # Maybe include post_process in the warmup to also check
+    # the decoding process.
     self.P("LLM finished warmup")
 
     return

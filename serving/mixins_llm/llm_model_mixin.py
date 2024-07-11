@@ -107,6 +107,7 @@ class LlmModelMixin(object):
       low_cpu_mem_usage=True,
       torch_dtype=torch_dtype,
       device_map=device_map,
+      # TODO: maybe change this to attn_implementation (got a warning that this was deprecated)
       use_flash_attention_2=self.cfg_use_flash_attention,
     )
     return model_params, quantization_params

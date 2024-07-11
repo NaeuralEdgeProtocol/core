@@ -84,6 +84,8 @@ class TRTServingLogger(trt.ILogger):
 class TensorRTModel(ModelBackendWrapper):
   """
   Wrapper around TensorRT for inference.
+  For further information see the TensorRT documentation at
+  https://docs.nvidia.com/deeplearning/tensorrt/archives/tensorrt-1001/api/python_api/
   """
 
   # Metadata keys
@@ -230,6 +232,9 @@ class TensorRTModel(ModelBackendWrapper):
     # Produce a list of bindings indices and shapes
     # for the bindings that need to be set once the
     # batch size changes
+    # Here will be cached only the dynamic batches, hence
+    # in case of a dynamic shape the engine may change at runtime
+    # (e.g. at the warmup stage when the batch size may vary).
     dynamic_shapes = []
     for i, name in enumerate(self._input_names):
       shape = self._context.get_tensor_shape(name)
@@ -241,6 +246,8 @@ class TensorRTModel(ModelBackendWrapper):
     #endfor all bindings
 
     # Produce a list of output tensors shapes for this batch size.
+    # There will be cached info for what the allocated memory should be.
+    # Thus, we cache the fixed batch sizes too.
     batch_output_types = []
     for name in self._output_names:
       shape = self._context.get_tensor_shape(name)
@@ -512,7 +519,8 @@ class TensorRTModel(ModelBackendWrapper):
     Returns:
       A tuple of output tensors, in the order of outputs of the
       original torch model. Outputs are not captured by the model
-      and are owned by the caller.
+      and are owned by the caller. In case of a tuple with a single
+      output, the output is returned directly.
     """
     batch_size = self._current_batch_size
     # If the batch size was changed from the last inference
@@ -607,8 +615,6 @@ class TensorRTModel(ModelBackendWrapper):
     # Load the ONNX model from disk just to get the input/output names
     # in the correct order.
     model_onnx = onnx.load(onnx_path)
-    input_names = []
-    output_names = []
 
     with open(onnx_path,'rb') as f:
       onnx_md5 = hashlib.md5(f.read()).hexdigest()
@@ -634,6 +640,7 @@ class TensorRTModel(ModelBackendWrapper):
         break
 
     model_precision = onnx_metadata.get('precision')
+    # TODO: change this to a maybe_change_precision function that will be situated in a utils file
     if model_precision is not None:
       if (model_precision.lower() == "fp16") != half:
         # We're raising a runtime error specifically so that this doesn't
@@ -666,8 +673,8 @@ class TensorRTModel(ModelBackendWrapper):
     builder = trt.Builder(trt_logger)
     config = builder.create_builder_config()
 
-    # Set the workspace scratch memory size. Not this is only for
-    # of one layer, the engine can use much more overall in an
+    # Set the workspace scratch memory size. Note that this is only
+    # for one layer and the engine can use much more overall in an
     # execution.
     config.set_memory_pool_limit(
       trt.MemoryPoolType.WORKSPACE,
@@ -716,17 +723,21 @@ class TensorRTModel(ModelBackendWrapper):
     # Write built engine to disk.
     timer_build_id = "trt_engine_build"
     log.start_timer(timer_build_id)
-    if not hasattr(builder, 'build_engine'):
-      # This is the TensorRT 10.0 API case where we don't have a build_engine
-      with builder.build_serialized_network(network, config) as engine, open(path, "wb") as t:
-        t.write(engine)
-    else:
-      # This is the base case for TensorRT 8.6.1
-      with builder.build_engine(network, config) as engine, open(path, 'wb') as t:
-        # Write the serialized TensorRT engine.
-        t.write(engine.serialize())
-    log.stop_timer(timer_build_id)
-    log.P("TensorRT model build took {}".format(log.get_timer_mean(timer_build_id)))
+    try:
+      if not hasattr(builder, 'build_engine'):
+        # This is the TensorRT 10.0 API case where we don't have a build_engine
+        with builder.build_serialized_network(network, config) as engine, open(path, "wb") as t:
+          t.write(engine)
+      else:
+        # This is the base case for TensorRT 8.6.1
+        with builder.build_engine(network, config) as engine, open(path, 'wb') as t:
+          # Write the serialized TensorRT engine.
+          t.write(engine.serialize())
+      log.stop_timer(timer_build_id)
+      log.P("TensorRT model build took {}".format(log.get_timer_mean(timer_build_id)))
+    except Exception as e:
+      log.stop_timer(timer_build_id)
+      raise RuntimeError(f"Failed to build TensorRT engine: {e}")
 
     with open(path,'rb') as f:
       engine_md5 = hashlib.md5(f.read()).hexdigest()
