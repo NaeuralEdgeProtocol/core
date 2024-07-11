@@ -117,12 +117,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     else:
       current_time = self.time()
       if current_time - self._last_anchor_validation_failed_time >= self.cfg_warning_anchor_save_fail_send_interval:
-        msg = "Anchor validation failed: {}".format(reason)
-        self._create_abnormal_notification(
-          msg=msg,
-          displayed=True,
-        )
-
+        self.P("Anchor validation failed: {}".format(reason), color="r")
         self._last_anchor_validation_failed_time = current_time
       return
     pass
