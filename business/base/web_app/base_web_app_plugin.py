@@ -84,5 +84,10 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     return
 
   def on_close(self):
+    self.lock_resource('USED_PORTS')
+    if 'USED_PORTS' in self.plugins_shmem:
+      self.plugins_shmem['USED_PORTS'].pop(self.str_unique_identification, None)
+    self.unlock_resource('USED_PORTS')
+
     super(BaseWebAppPlugin, self).on_close()
     return
