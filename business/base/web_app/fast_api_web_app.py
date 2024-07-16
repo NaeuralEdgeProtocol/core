@@ -255,6 +255,9 @@ class FastApiWebAppPlugin(BasePlugin):
       try:
         value = self._endpoints.get(method)(*args)
       except Exception as _:
+        self.P("Exception occured while processing\n"
+               "Request: {}\nArgs: {}\nException:\n{}".format(
+            method, args, self.get_exception()), color='r')
         value = None
 
       response = {
