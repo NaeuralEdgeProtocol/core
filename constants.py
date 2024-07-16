@@ -19,9 +19,9 @@ BLOCKCHAIN_MANAGER = 'BLOCKCHAIN_MANAGER'
 WHITELIST_COMMANDS_FILE = 'whitelist_commands.json'
 TEMPLATE_WHITELIST_COMMANDS = [
   # TODO: add other commands
-  # NetMon commands
+  # !! NetMon queries
   {
-    "ACTION": "UPDATE_PIPELINE_INSTANCE",
+    "ACTION": COMMANDS.UPDATE_PIPELINE_INSTANCE,
     "PAYLOAD": {
       "SIGNATURE": "NET_MON_01",
       "INSTANCE_ID": "NET_MON_01_INST",
@@ -30,6 +30,49 @@ TEMPLATE_WHITELIST_COMMANDS = [
         }
       }
     }
+  },
+  
+  # !! Get config startup
+  {
+    "ACTION": COMMANDS.UPDATE_PIPELINE_INSTANCE,
+    "PAYLOAD": {
+      "SIGNATURE": "UPDATE_MONITOR_01",
+      "INSTANCE_CONFIG": {
+        "INSTANCE_COMMAND": {
+          "COMMAND": "GET_CONFIG",
+        }
+      }
+    },
+  },
+  # !! Edit config startup - requires authorization
+  # {
+  #   "ACTION": COMMANDS.UPDATE_PIPELINE_INSTANCE,
+  #   "PAYLOAD": {
+  #     "SIGNATURE": "UPDATE_MONITOR_01",
+  #     "INSTANCE_CONFIG": {
+  #       "INSTANCE_COMMAND": {
+  #         "COMMAND": "SAVE_CONFIG",
+  #       }
+  #     }
+  #   },
+  # },
+
+  # !! Restart Edge Node - requires authorization
+  # {
+  #   "ACTION": COMMANDS.STOP,
+  # },
+
+  # !! Restart OS - requires authorization
+  # {
+  #   "ACTION": COMMANDS.RESTART,
+  # },
+
+  # Request heartbeat with extra info
+  {
+    "ACTION": COMMANDS.FULL_HEARTBEAT,
+  },
+  {
+    "ACTION": COMMANDS.TIMERS_ONLY_HEARTBEAT,
   },
 ]
 
