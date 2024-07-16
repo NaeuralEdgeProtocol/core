@@ -148,7 +148,7 @@ class ExecutionEngineCommandHandlers:
     return
 
   def cmd_handler_full_heartbeat(self, initiator_id=None, session_id=None, **kwargs):
-    self.P('  Running `FULL_HEARTBEAT` command in main loop', color='y')
+    self.P("  Running `FULL_HEARTBEAT` command in main loop coming from '{}'".format(initiator_id), color='y')
     self._maybe_send_heartbeat(
       status=None,
       full_info=True,
@@ -158,7 +158,12 @@ class ExecutionEngineCommandHandlers:
       session_id=session_id,
     )
     return
-  
+
+  def cmd_handler_reset_whitelist_commands_to_template(self, initiator_id=None, session_id=None, **kwargs):
+    self.P("  Running 'RESET_WHITELIST_COMMANDS_TO_TEMPLATE' command in main loop received from '{}'".format(initiator_id), color='y')
+    self.comm_manager._reset_whitelist_commands_to_template()
+    return
+
   ##############################################
   #         end command definition area        #
   ##############################################

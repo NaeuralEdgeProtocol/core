@@ -99,6 +99,11 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
 
     return whitelist_commands
 
+  def _reset_whitelist_commands_to_template(self):
+    whitelist_commands_path = os.path.join(self.log.base_folder, ct.WHITELIST_COMMANDS_FILE)
+    self.log.save_json(ct.TEMPLATE_WHITELIST_COMMANDS, whitelist_commands_path)
+    return
+
   def _verify_whitelist_command(self, cmd):
     template_whitelist_command: list[dict] = self._load_whitelist_commands()
     return any([self.log.match_template(cmd, template) for template in template_whitelist_command])
