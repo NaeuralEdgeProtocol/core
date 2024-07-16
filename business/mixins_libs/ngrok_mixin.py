@@ -27,14 +27,6 @@ class _NgrokMixinPlugin(object):
   def ng_token(self):
     return self.os_environ.get(_NgrokMixinPlugin.NgrokCT.NG_TOKEN, None)
 
-  def _check_port_valid(self):
-    # Check the config as we're going to use it to start processes.
-    if not isinstance(self.cfg_port, int):
-      raise ValueError("Ngrok port not an int")
-    if self.cfg_port < 0 or self.cfg_port > 65535:
-      raise ValueError("Invalid port value {}".format(self.cfg_port))
-    return
-
   def _authenticate_ngrok(self):
     ngrok_auth_args = ['ngrok', 'authtoken', self.ng_token]
     self.P('Trying to authenticate ngrok')
@@ -48,12 +40,12 @@ class _NgrokMixinPlugin(object):
 
   def _start_ngrok_tunnel(self):
     # Start ngrok in the background.
-    self.P('Starting ngrok on port {} with domain {}'.format(self.cfg_port, self.cfg_ngrok_domain))
+    self.P('Starting ngrok on port {} with domain {}'.format(self.port, self.cfg_ngrok_domain))
     if self.cfg_ngrok_edge_label is not None:
       ngrok_start_args = [
         'ngrok',
         'tunnel',
-        str(self.cfg_port),
+        str(self.port),
         '--label',
         f'edge={self.cfg_ngrok_edge_label}'
       ]
@@ -61,7 +53,7 @@ class _NgrokMixinPlugin(object):
       ngrok_start_args = [
         'ngrok',
         'http',
-        str(self.cfg_port),
+        str(self.port),
         f'--domain={self.cfg_ngrok_domain}'
       ]
     else:
@@ -90,8 +82,6 @@ class _NgrokMixinPlugin(object):
 
     if not self.cfg_use_ngrok:
       return
-
-    self._check_port_valid()
 
     self._authenticate_ngrok()
 

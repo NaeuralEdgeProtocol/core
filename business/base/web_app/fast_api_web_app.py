@@ -16,7 +16,7 @@ _CONFIG = {
   'NGROK_DOMAIN' : None,
   'NGROK_EDGE_LABEL' : None,
 
-  'PORT' : 8080,
+  'PORT' : None,
 
   'ASSETS' : None,
   'JINJA_ARGS' : {},
@@ -231,7 +231,7 @@ class FastApiWebAppPlugin(BasePlugin):
       '--host',
       '0.0.0.0',
       '--port',
-      str(self.cfg_port)
+      str(self.port)
     ]
     env = self.deepcopy(os.environ)
     env['PYTHONPATH'] = '.:' + os.getcwd() + ':' + env.get('PYTHONPATH', '')
