@@ -180,7 +180,7 @@ class FastApiWebAppPlugin(BasePlugin):
       self._endpoints[name] = method
       http_method = method.__http_method__
       signature = inspect.signature(method)
-      args = [param.name for param in signature.parameters.values()]
+      args = [str(param) for param in signature.parameters.values() if param.name != 'body']
       jinja_args.append({
         'name' : name,
         'method' : http_method,
