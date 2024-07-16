@@ -23,6 +23,7 @@ _CONFIG = {
   'COLLECT_UNTIL': None,
   'LABELS_DONE': False,
   'POSTPONE_THRESHOLD': 5,
+  "DESCRIPTION": "",
 
   'PROCESS_DELAY': 1,
   'MAX_INPUTS_QUEUE_SIZE': 32,
@@ -518,6 +519,7 @@ class CVCropTrainingDataPlugin(BasePlugin):
     payload_kwargs = {
       **kwargs,
       'counts': self.dataset_stats,
+      'description': self.cfg_description,
     }
     return payload_kwargs if return_dict else self._create_payload(**payload_kwargs)
 

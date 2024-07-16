@@ -25,6 +25,7 @@ class SecondStageTrainingProcessPlugin(GeneralTrainingProcessPlugin):
       'SECOND_STAGE_INPUT_SIZE': self.training_output['STATUS']['BEST']['dct_grid_option']['input_size'],
       'SECOND_STAGE_TARGET_CLASS': self.training_output['METADATA']['FIRST_STAGE_TARGET_CLASS'],
       'SECOND_STAGE_PREPROCESS_DEFINITIONS': self.training_output['METADATA']['INFERENCE_PREPROCESS_DEFINITIONS'],
+      'SECOND_STAGE_OBJECTIVE_NAME': self.cfg_objective_name,
     }
 
   def auto_deploy(self):
@@ -52,7 +53,9 @@ class SecondStageTrainingProcessPlugin(GeneralTrainingProcessPlugin):
               # cloud path or extend url lifetime (for now the model data is downloaded by the serving manager,
               # which might have a different bucket policy than the training manager)
               'MODEL_INSTANCE_ID': self.training_output['METADATA']['MODEL_NAME'],
-            }
+            },
+            "DESCRIPTION": self.cfg_description,
+            "OBJECTIVE_NAME": self.cfg_objective_name,
           }
         ]
       })

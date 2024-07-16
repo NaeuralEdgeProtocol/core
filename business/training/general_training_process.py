@@ -14,6 +14,8 @@ _CONFIG = {
     'PIPELINE_CONFIG' : {},
   },
 
+  "DESCRIPTION": "",
+  "OBJECTIVE_NAME": "",
   'PLUGIN_LOOP_RESOLUTION' : 1/60,
   'ALLOW_EMPTY_INPUTS' : False,
   'AUTO_DEPLOY' : {},
@@ -150,7 +152,9 @@ class GeneralTrainingProcessPlugin(BasePlugin):
     assert 'STATUS' in self.training_output
     has_finished = self.training_output.get('HAS_FINISHED', False)
     payload_kwargs = {
-      **self.training_output
+      **self.training_output,
+      'description': self.cfg_description,
+      'objective_name': self.cfg_objective_name,
     }
     save_payload_json = False
     model_id = None

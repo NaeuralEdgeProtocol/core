@@ -115,7 +115,8 @@ _CONFIG = {
   'DATA': {},
   'TRAINING': {},
   'AUTO_DEPLOY': {},
-  "CLASSES": None,
+  "CLASSES": {},
+  "DESCRIPTION": "",
   "ALLOW_EMPTY_INPUTS": True,
 
   'PLUGIN_LOOP_RESOLUTION': 1/5,  # once at 5s
@@ -155,6 +156,30 @@ class CVEndToEndTrainingPlugin(BasePlugin):
       **self.cfg_training
     }
     return training_cfg
+
+  def classes_dict(self):
+    """
+    The `CLASSES` parameter should be a dictionary with the following structure:
+    {
+      "class_1": "Class 1 description",
+      "class_2": "Class 2 description",
+      ...
+    }
+    Returns
+    -------
+    dict : The classes dictionary
+    """
+    return self.cfg_classes
+
+  def classes_list(self):
+    """
+    Utility function to return the classes as a list
+    Returns
+    -------
+    list : The classes list
+    """
+    return list(self.cfg_classes.keys())
+
 
   """DATA SECTION"""
   if True:
@@ -272,9 +297,10 @@ class CVEndToEndTrainingPlugin(BasePlugin):
       cfg_instance = {
         "INSTANCE_ID": f"gather_data_{self.cfg_objective_name}",
         "OBJECTIVE_NAME": self.cfg_objective_name,
+        "DESCRIPTION": self.cfg_description,
         "CLOUD_PATH": self.data_cloud_path,
         "OBJECT_TYPE": object_type,
-        'CLASSES': self.cfg_classes,
+        'CLASSES': self.classes_dict(),
         'TRAIN_SIZE': self.data_train_size,
         **self.data_crop_plugin_params,
       }
@@ -313,7 +339,7 @@ class CVEndToEndTrainingPlugin(BasePlugin):
                 'STARTUP_AI_ENGINE_PARAMS': {
                   'PIPELINE_SIGNATURE': self.training_pipeline_signature,
                   'PIPELINE_CONFIG': {
-                    'CLASSES': self.cfg_classes,
+                    'CLASSES': self.classes_list(),
                     'MODEL_ARCHITECTURE': self.training_model_architecture,
                     'MODEL_NAME': self.cfg_objective_name,
                     'PRELOAD_DATA': self.training_device_load_data is not None,
@@ -326,6 +352,8 @@ class CVEndToEndTrainingPlugin(BasePlugin):
                   },
                 },
                 'AUTO_DEPLOY': self.get_auto_deploy(),
+                "DESCRIPTION": self.cfg_description,
+                "OBJECTIVE_NAME": self.cfg_objective_name,
               }
             ]
           }
