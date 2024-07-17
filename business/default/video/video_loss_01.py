@@ -22,17 +22,17 @@ _CONFIG = {
   'ADD_ORIGINAL_IMAGE': False,
 
   'MAX_INPUTS_QUEUE_SIZE': 1,
-  "PROCESS_DELAY": 0.04,
+  "PROCESS_DELAY": 1,
 
   'ALERT_DATA_COUNT'              : 1,
   'ALERT_RAISE_CONFIRMATION_TIME' : 0,
-  'ALERT_LOWER_CONFIRMATION_TIME' : 3,
-  'ALERT_RAISE_VALUE'             : 5, # video loss delay is usually 1-2 seconds, if it is more than 5 seconds, it is a problem
+  'ALERT_LOWER_CONFIRMATION_TIME' : 10,
+  'ALERT_RAISE_VALUE'             : 180, # video loss delay is usually 1-2 seconds, if it is more than 5 seconds, it is a problem
   'ALERT_LOWER_VALUE'             : 0.5,  # revert to normal when delay is less than 0.5 seconds
   'ALERT_MODE'                    : 'max',
   'ALERT_COOLDOWN'                : 4 * 3600,
 
-  'DISCARD_DUPLICATES': True,
+  'DISCARD_DUPLICATES': False,
 
   'VALIDATION_RULES': {
     **BaseClass.CONFIG['VALIDATION_RULES'],
@@ -60,7 +60,7 @@ class VideoLoss01Plugin(BaseClass):
 
     img = self.dataapi_image()
     if img is not None:
-      if self.cfg_discard_duplicates:
+      if bool(self.cfg_discard_duplicates):
         if self.__last_frame is None or not self.np.equal(self.__last_frame, img).all():
           self.__last_frame = img
           self.__last_frame_timestamp = current_time

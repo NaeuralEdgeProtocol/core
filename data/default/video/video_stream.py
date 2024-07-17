@@ -12,8 +12,6 @@ _CONFIG = {
 
   'DEFAULT_PLUGINS': {
     'VIDEO_LOSS_01': [{
-      'ALERT_RAISE_VALUE': 5,
-      'ALERT_LOWER_VALUE': 0.5,        
     }],
   },
 
