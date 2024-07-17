@@ -30,6 +30,7 @@ _CONFIG = {
   'ALERT_RAISE_VALUE'             : 5, # video loss delay is usually 1-2 seconds, if it is more than 5 seconds, it is a problem
   'ALERT_LOWER_VALUE'             : 0.5,  # revert to normal when delay is less than 0.5 seconds
   'ALERT_MODE'                    : 'max',
+  'ALERT_COOLDOWN'                : 4 * 3600,
 
   'DISCARD_DUPLICATES': True,
 
@@ -47,10 +48,15 @@ class VideoLoss01Plugin(BaseClass):
 
     self.__last_frame_timestamp = None
     self.__last_frame = None
+    self.__last_alert_lower = 0
     return
 
   def _process(self):
     current_time = round(self.time(), 2)
+
+    if current_time - self.__last_alert_lower < self.cfg_alert_cooldown:
+      # plugin is in cooldown, will not process any image
+      return
 
     img = self.dataapi_image()
     if img is not None:
@@ -71,6 +77,8 @@ class VideoLoss01Plugin(BaseClass):
     self.alerter_add_observation(time_since_last_frame)
     
     if self.alerter_status_changed():
+      if self.alerter_is_new_lower():
+        self.__last_alert_lower = current_time
       self.create_and_send_payload(
         last_frame_timestamp=self.__last_frame_timestamp,
         last_frame_datetime=self.timestamp_to_str(self.__last_frame_timestamp),
