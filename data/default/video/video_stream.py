@@ -10,6 +10,7 @@ from core.data.default.video.video_stream_ffmpeg import VideoStreamFfmpegDataCap
 _CONFIG = {
   **ParentDataCapture.CONFIG,
 
+  'OVERWRITE_DEFAULT_PLUGIN_CONFIG': False,
   'DEFAULT_PLUGINS': {
     'VIDEO_LOSS_01': [{
     }],

@@ -343,11 +343,14 @@ class BaseDataCapture(DecentrAIObject, _ConfigHandlerMixin):
             dct_existing_signature_instances[default_plugin_signature].append(default_instance_config)
             lst_added_signature_instance_ids.append((default_plugin_signature, default_instance_config[ct.INSTANCE_ID]))
           else:
-            pos, instance_config = next((pos, x) for pos, x in enumerate(dct_existing_signature_instances[default_plugin_signature]) if x[ct.INSTANCE_ID] == default_instance_config[ct.INSTANCE_ID])
-            if instance_config != {**instance_config, **default_instance_config}:
-              dct_existing_signature_instances[default_plugin_signature][pos].update(default_instance_config)
-              lst_added_signature_instance_ids.append((default_plugin_signature, default_instance_config[ct.INSTANCE_ID]))
-            # endif default config different from existing config
+            overwrite_config = dct_config.get(ct.CONFIG_STREAM.OVERWRITE_DEFAULT_PLUGIN_CONFIG, False)
+            if overwrite_config:
+              pos, instance_config = next((pos, x) for pos, x in enumerate(dct_existing_signature_instances[default_plugin_signature]) if x[ct.INSTANCE_ID] == default_instance_config[ct.INSTANCE_ID])
+              if instance_config != {**instance_config, **default_instance_config}:
+                dct_existing_signature_instances[default_plugin_signature][pos].update(default_instance_config)
+                lst_added_signature_instance_ids.append((default_plugin_signature, default_instance_config[ct.INSTANCE_ID]))
+              # endif default config different from existing config
+            # endif overwrite config
           # endif instance not in default instances
         # end for default instances
       # endif signature not in plugins
