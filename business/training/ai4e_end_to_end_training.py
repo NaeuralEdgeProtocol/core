@@ -1,28 +1,41 @@
 """
 {
-	"NAME" : "auto_full_process",
+	"NAME" : "auto_train_full_process",
 	"TYPE" : "void",
 	"PLUGINS" : [
 		{
-			"SIGNATURE" : "cv_end_to_end_training",
+			"SIGNATURE" : "ai4e_end_to_end_training",
 			"INSTANCES" : [
 				{
-					"INSTANCE_ID" : "default",
-					"OBJECTIVE_NAME" : "weapons",
-					"GENERAL_DETECTOR_OBJECT_TYPE" : "person",
-					"GENERAL_DETECTOR_AI_ENGINE" : "general_detector",
-
-					"DATA" : {
+					"INSTANCE_ID" : "alabala",  # job identifier
+					"OBJECTIVE_NAME" : "weapons",  # job name
+					"GENERAL_DETECTOR_OBJECT_TYPE" : ["person"],  # what will be cropped
+					"GENERAL_DETECTOR_AI_ENGINE" : "general_detector",  # the engine that will be used for cropping
+          "CLASSES": {  # the classes that will be trained and their descriptions
+            "weapon": "Weapon class",
+            "no_weapon": "No weapon class"
+          },
+          "DESCRIPTION": "Classify people based on if they have a weapon or not",  # job description
+          'REWARDS': {  # rewards for the job
+            "BUDGET": 1000,  # the budget for the job
+            "SEATS": 5  # the number of seats for the job
+          },
+          'DATASET': {
+            'MAX_SIZE': 1000,  # the maximum size of the dataset
+          },
+          'CREATION_DATE': "2022-08-10 14:55",  # the creation date of the job
+					"DATA" : {  # the data sources
 						"SOURCES" : [
 							{
-								"NAME" : "terasa",
-								"TYPE" : "VideoStream",
-								"URL"  : "__URL__",
-								"LIVE_FEED" : true,
-								"CAP_RESOLUTION" : 0.5,
-								"RECONNECTABLE" : true,
+								"NAME" : "terasa",  # the name of the source
+								"TYPE" : "VideoStream",  # the type of the source
+								"URL"  : "__URL__",  # the url of the source
+                # below are advanced parameters
+								"LIVE_FEED" : true,  # if the source will be processed live or frame by frame
+								"CAP_RESOLUTION" : 0.5,  # how many frames per second will be read
+								"RECONNECTABLE" : true,  # if the source will be reconnected if it disconnects
 								"STREAM_CONFIG_METADATA" : {
-									"INTERVALS" : {
+									"INTERVALS" : {  # this can be used if we only want to process the source at certain intervals
 										"ziua" : ["10:00", "17:00"],
 										"noaptea" : ["21:00", "23:59"]
 									}
@@ -45,27 +58,28 @@
 							}
 						],
 
-						"CROP_PLUGIN_PARAMS" : {
-							"REPORT_PERIOD" : 60,
-							"ALIVE_UNTIL" : "2022-08-10 14:55"
+						"CROP_PLUGIN_PARAMS" : {  # parameters for the cropping plugin
+							"REPORT_PERIOD" : 60,  # how often the plugin will report the progress
+							"ALIVE_UNTIL" : "2022-08-10 14:55"  # until when the plugin will be alive(in case of not stopping it manually or in case we don't gather enough data)
 						},
 
-						"CLOUD_PATH" : "DATASETS/"
+						"CLOUD_PATH" : "DATASETS/"  # the path where the dataset will be stored
 					},
 
-					"TRAINING" : {
-						"BOX_ID" : "hidra-training",
-						"DEVICE_LOAD_DATA" : "cuda:3",
-						"DEVICE_TRAINING"  : "cuda:3",
-						"TRAINING_PIPELINE_SIGNATURE" : "weapons",
-						"GRID_SEARCH" : {},
-						"BATCH_SIZE" : 64,
-						"EPOCHS" : 4
+          "START_TRAINING": true,  # if the training should start automatically
+					"TRAINING" : {  # the training parameters
+						"BOX_ID" : "hidra-training",  # the id of the box where the training will be done
+						"DEVICE_LOAD_DATA" : "cuda:3",  # the device where the data will be loaded
+						"DEVICE_TRAINING"  : "cuda:3",  # the device where the training will be done
+						"TRAINING_PIPELINE_SIGNATURE" : "weapons",  # the signature of the training pipeline
+						"GRID_SEARCH" : {},  # the grid search parameters (if none are provided the defaults will be used)
+						"BATCH_SIZE" : 64,  # the batch size
+						"EPOCHS" : 4  # the number of epochs
 					},
 
-					"AUTO_DEPLOY" : {
-						"STREAMS" : [
-							{
+					"AUTO_DEPLOY" : {  # the auto deploy parameters
+						"STREAMS" : [  # the streams that will be deployed
+							{  # For details on the stream configuration see the stream configuration section
 								"NAME" : "terasa",
 								"TYPE" : "VideoStream",
 								"URL"  : "__URL__",
@@ -80,7 +94,6 @@
 		}
 	]
 }
-  
 """
 
 from core.business.base import BasePluginExecutor as BasePlugin
@@ -90,7 +103,7 @@ __VER__ = '0.1.0.0'
 DEFAULT_DATA_CONFIG = {
   'SOURCES': [],
   "CROP_PLUGIN_PARAMS": {
-    "REPORT_PERIOD": 10
+    "REPORT_PERIOD": 5
   },
   "COLLECT_UNTIL": None,
   "CLOUD_PATH": "DATASETS/",
@@ -112,14 +125,20 @@ _CONFIG = {
   **BasePlugin.CONFIG,
   'OBJECTIVE_NAME': None,
   'GENERAL_DETECTOR_OBJECT_TYPE': ['person'],
-  'DATA': {},
-  'TRAINING': {},
-  'AUTO_DEPLOY': {},
   "CLASSES": {},
   "DESCRIPTION": "",
+  'DATA': {},
+  'REWARDS': {},
+  'DATASET': {},
+  'CREATION_DATE': None,
+
+  'START_TRAINING': False,
+  'TRAINING': {},
+  'AUTO_DEPLOY': {},
+
   "ALLOW_EMPTY_INPUTS": True,
 
-  'PLUGIN_LOOP_RESOLUTION': 1/5,  # once at 5s
+  'PLUGIN_LOOP_RESOLUTION': 1 / 5,  # once at 5s
 
   'VALIDATION_RULES': {
     **BasePlugin.CONFIG['VALIDATION_RULES'],
@@ -127,18 +146,18 @@ _CONFIG = {
 }
 
 
-class CVEndToEndTrainingPlugin(BasePlugin):
+class Ai4eEndToEndTrainingPlugin(BasePlugin):
   def on_init(self):
-    super(CVEndToEndTrainingPlugin, self).on_init()
-    self.__executed = False
-    self._one_time_commands_performed = False
+    super(Ai4eEndToEndTrainingPlugin, self).on_init()
+    self.__started_gather = False
+    self.__started_training = False
     return
 
   def get_auto_deploy(self):
     auto_deploy = self.cfg_auto_deploy
     if 'BOX_ID' not in auto_deploy or "NODE_ADDRESS" not in auto_deploy:
-      auto_deploy['BOX_ID'] = self.ee_id
-      auto_deploy['NODE_ADDRESS'] = self.node_addr
+      auto_deploy['BOX_ID'] = auto_deploy.get('BOX_ID', self.ee_id)
+      auto_deploy['NODE_ADDRESS'] = auto_deploy.get('NODE_ADDRESS', self.node_addr)
     if 'STREAMS' not in auto_deploy:
       auto_deploy['STREAMS'] = []
     return auto_deploy
@@ -179,7 +198,6 @@ class CVEndToEndTrainingPlugin(BasePlugin):
     list : The classes list
     """
     return list(self.cfg_classes.keys())
-
 
   """DATA SECTION"""
   if True:
@@ -236,49 +254,11 @@ class CVEndToEndTrainingPlugin(BasePlugin):
   """END TRAINING SECTION"""
 
   @property
-  def _dataset_object_name(self):
+  def dataset_object_name(self):
     return self.os_path.join(self.data_cloud_path, self.cfg_objective_name)
 
   """CONFIG PIPELINE SECTION"""
   if True:
-    def _configured_download_dataset_pipeline(self):
-      config = {
-        "NAME" : "download_dataset_{}".format(self.cfg_objective_name),
-        "TYPE" : "VOID",
-        "PLUGINS" : [
-          {
-            "SIGNATURE" : "minio_download_dataset",
-            "INSTANCES" : [
-              {
-                "INSTANCE_ID" : "default",
-                "DATASET_OBJECT_NAME" : self.os_path.join(self.data_cloud_path, self.cfg_objective_name + '_RAW'),
-                "DATASET_LOCAL_PATH" : "<TO_BE_COMPLETED>"
-              }
-            ]
-          }
-        ]
-      }
-      return config
-
-    def _configured_upload_dataset_pipeline(self):
-      config = {
-        "NAME": "upload_dataset_{}".format(self.cfg_objective_name),
-        "TYPE": "VOID",
-        "PLUGINS": [
-          {
-            "SIGNATURE": "minio_upload_dataset",
-            "INSTANCES": [
-              {
-                "INSTANCE_ID": "default",
-                "DATASET_OBJECT_NAME": self.os_path.join(self.data_cloud_path, self.cfg_objective_name),
-                "DATASET_LOCAL_PATH": "<TO_BE_COMPLETED>"
-              }
-            ]
-          }
-        ]
-      }
-      return config
-
     def process_data_gather_config(self, config):
       """
       Fill in the gaps in the data gather config
@@ -289,19 +269,21 @@ class CVEndToEndTrainingPlugin(BasePlugin):
       }
 
     def _configured_metastream_collect_data(self):
-      if not isinstance(self.cfg_general_detector_object_type, list):
-        object_type = [self.cfg_general_detector_object_type]
-      else:
-        object_type = self.cfg_general_detector_object_type
+      object_type = self.cfg_general_detector_object_type
+      if not isinstance(object_type, list):
+        object_type = [object_type]
 
       cfg_instance = {
-        "INSTANCE_ID": f"gather_data_{self.cfg_objective_name}",
+        "INSTANCE_ID": self.get_instance_id(),
         "OBJECTIVE_NAME": self.cfg_objective_name,
         "DESCRIPTION": self.cfg_description,
         "CLOUD_PATH": self.data_cloud_path,
         "OBJECT_TYPE": object_type,
         'CLASSES': self.classes_dict(),
         'TRAIN_SIZE': self.data_train_size,
+        'REWARDS': self.cfg_rewards,
+        'DATASET': self.cfg_dataset,
+        'CREATION_DATE': self.cfg_creation_date,
         **self.data_crop_plugin_params,
       }
 
@@ -310,12 +292,12 @@ class CVEndToEndTrainingPlugin(BasePlugin):
         cfg_instance['AI_ENGINE'] = current_ai_engine
 
       config = {
-        "NAME" : "metastream_collect_data_{}".format(self.cfg_objective_name),
-        "TYPE" : "MetaStream",
+        "NAME": f"collect_data_{self.get_instance_id()}",
+        "TYPE": "MetaStream",
         "COLLECTED_STREAMS": [x['NAME'] for x in self.data_sources],
         "PLUGINS": [
           {
-            "SIGNATURE": "cv_crop_training_data",
+            "SIGNATURE": "ai4e_crop_data",
             "INSTANCES": [cfg_instance]
           }
         ]
@@ -324,24 +306,24 @@ class CVEndToEndTrainingPlugin(BasePlugin):
 
     def _configured_training_pipeline(self):
       config = {
-        "NAME" : "training_{}".format(self.cfg_objective_name),
-        "TYPE" : "minio_dataset",
+        "NAME": "training_{}".format(self.get_instance_id()),
+        "TYPE": "minio_dataset",
         "STREAM_CONFIG_METADATA": {
-          "DATASET_OBJECT_NAME": self._dataset_object_name,
+          "DATASET_OBJECT_NAME": self.dataset_object_name,
         },
-        "PLUGINS" : [
+        "PLUGINS": [
           {
-            "SIGNATURE" : "second_stage_training_process",
-            "INSTANCES" : [
+            "SIGNATURE": "second_stage_training_process",
+            "INSTANCES": [
               {
-                "INSTANCE_ID": f"training_{self.cfg_objective_name}",
-                'AI_ENGINE': f'th_training?{self.cfg_objective_name}',
+                "INSTANCE_ID": self.get_instance_id(),
+                'AI_ENGINE': f'th_training?{self.get_instance_id()}',
                 'STARTUP_AI_ENGINE_PARAMS': {
                   'PIPELINE_SIGNATURE': self.training_pipeline_signature,
                   'PIPELINE_CONFIG': {
                     'CLASSES': self.classes_list(),
                     'MODEL_ARCHITECTURE': self.training_model_architecture,
-                    'MODEL_NAME': self.cfg_objective_name,
+                    'MODEL_NAME': self.get_instance_id(),
                     'PRELOAD_DATA': self.training_device_load_data is not None,
                     'DEVICE_LOAD_DATA': self.training_device_load_data,
                     'DEVICE_TRAINING': self.device_training,
@@ -363,27 +345,26 @@ class CVEndToEndTrainingPlugin(BasePlugin):
   """END CONFIG PIPELINE SECTION"""
 
   def _process(self):
-    if not self.__executed:
-      self.P(f"Starting end to end training for {self.cfg_objective_name}")
+    if not self.__started_gather:
+      self.P(f"Starting end to end training job {self.cfg_objective_name} with id {self.get_instance_id()}")
       for config in self.data_sources:
         processed_config = self.process_data_gather_config(config)
-        self.P(f"Starting pipeline {config['NAME']} for data acquisition")
+        self.P(f"Starting pipeline {config['NAME']} for data acquisition.")
         self.cmdapi_start_stream_by_config_on_current_box(config_stream=processed_config)
       # endfor data sources
-      self.P(f"Starting metastream for data collection")
-      self.cmdapi_start_metastream_by_config_on_current_box(config_metastream=self._configured_metastream_collect_data())
-  
-      if not self._one_time_commands_performed:
-        training_box_addr = self.net_mon.network_node_addr(self.training_box_id)
-        self.P(f"Starting training pipeline for {self.cfg_objective_name} on {training_box_addr}")
-        self._cmdapi_start_stream_by_config(config_stream=self._configured_training_pipeline(), node_address=training_box_addr)
-        config_download = self._configured_download_dataset_pipeline()
-        # config_upload = self._configured_upload_dataset_pipeline()
-        now_str = self.now_str()
-        self.diskapi_save_json_to_output(dct=config_download, filename=f"{now_str}_{config_download['NAME']}.json")
-        # self.diskapi_save_json_to_output(dct=config_upload, filename=f"{now_str}_{config_upload['NAME']}.json")
-        self._one_time_commands_performed = True
-      # endif one time commands performed
-      self.__executed = True
-    # endif not executed
+      self.P(f"Starting metastream for data collection.")
+      self.cmdapi_start_metastream_by_config_on_current_box(
+        config_metastream=self._configured_metastream_collect_data()
+      )
+      self.__started_gather = True
+    # endif not started gather
+    if not self.__started_training and self.cfg_start_training:
+      training_box_addr = self.net_mon.network_node_addr(self.training_box_id)
+      self.P(f"Starting training pipeline for {self.cfg_objective_name} on {training_box_addr}")
+      self._cmdapi_start_stream_by_config(
+        config_stream=self._configured_training_pipeline(),
+        node_address=training_box_addr
+      )
+      self.__started_training = True
+    # endif not started training
     return

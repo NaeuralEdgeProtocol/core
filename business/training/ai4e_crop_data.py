@@ -24,6 +24,9 @@ _CONFIG = {
   'LABELS_DONE': False,
   'POSTPONE_THRESHOLD': 5,
   "DESCRIPTION": "",
+  "REWARDS": {},
+  "DATASET": {},
+  "CREATION_DATE": None,
 
   'PROCESS_DELAY': 1,
   'MAX_INPUTS_QUEUE_SIZE': 32,
@@ -36,7 +39,7 @@ _CONFIG = {
 __VER__ = '0.1.0.0'
 
 
-class CVCropTrainingDataPlugin(BasePlugin):
+class Ai4eCropDataPlugin(BasePlugin):
   def get_default_labelling_data(self):
     return {
       str(k).lower(): 0 for k in self.get_ds_classes()
@@ -48,12 +51,15 @@ class CVCropTrainingDataPlugin(BasePlugin):
     return
 
   def on_init(self):
-    super(CVCropTrainingDataPlugin, self).on_init()
+    super(Ai4eCropDataPlugin, self).on_init()
+    self.voting_status = 0
     self.final_collecting_payload = None
     self._source_names = set()
     self.finished = False
     self.received_input = False
     self.dataset_stats = self.defaultdict(lambda : 0)
+    self.dataset_stats_increment = 0
+    self.last_increment_time = self.time()
     self.raw_dataset_updates_count = 0
     self.count_saved_by_object_type = self.defaultdict(lambda : 0)
     self.raw_dataset_rel_path = self.os_path.join('raw_datasets', self.cfg_objective_name)
@@ -87,7 +93,6 @@ class CVCropTrainingDataPlugin(BasePlugin):
     self.debug_log(f'Loaded previous state: {obj}')
     # endif full debug log
     self.filename_labelling_stats = obj.get('filename_labelling_stats', self.filename_labelling_stats)
-    # self.filename_labelling_stats = self.defaultdict(lambda: self.get_default_labelling_data, self.filename_labelling_stats)
     self.dataset_stats = obj.get('dataset_stats', self.dataset_stats)
     self.dataset_stats = self.defaultdict(lambda: 0, self.dataset_stats)
     self.label_updates_count = obj.get('label_updates_count', self.label_updates_count)
@@ -165,8 +170,11 @@ class CVCropTrainingDataPlugin(BasePlugin):
     return self.cfg_plugin_loop_resolution if not self.delay_process() else 1 / 30
 
   def _create_payload(self, **kwargs):
-    return super(CVCropTrainingDataPlugin, self)._create_payload(
+    return super(Ai4eCropDataPlugin, self)._create_payload(
       objective_name=self.cfg_objective_name,
+      rewards=self.cfg_rewards,
+      dataset=self.cfg_dataset,
+      creation_date=self.cfg_creation_date,
       **kwargs
     )
 
@@ -183,7 +191,12 @@ class CVCropTrainingDataPlugin(BasePlugin):
     classes = self.cfg_classes
     if classes is None:
       classes = self.cfg_object_type
-    return classes if isinstance(classes, list) else [classes]
+    if not isinstance(classes, (list, dict)):
+      classes = [classes]
+    if not isinstance(classes, dict):
+      classes = {k: k for k in classes}
+      return classes
+    return classes
 
   @property
   def collect_until_passed(self):
@@ -491,6 +504,29 @@ class CVCropTrainingDataPlugin(BasePlugin):
       self.diskapi_copy_file(src_path=raw_ds_additional_path, dst_path=final_ds_additional_path)
       return
 
+    def maybe_start_voting(self):
+      if self.voting_status == 1:
+        config = {
+          'TYPE': 'VOID',
+          'NAME': 'VOTING_now',
+          'PLUGINS': [
+            {
+              'SIGNATURE': 'label_voting',
+              'INSTANCES': [
+                {
+                  'INSTANCE_ID': 'voting',
+                }
+              ]
+            }
+          ]
+        }
+        self.P('Starting the voting process')
+        self.cmdapi_start_pipeline(
+          config=config
+        )
+        self.voting_status = 2
+      return
+
     # TODO: change `_on_command`s to 'on_command' in all the plugins
     def on_command(self, data, **kwargs):
       """
@@ -508,6 +544,9 @@ class CVCropTrainingDataPlugin(BasePlugin):
       datapoint = data.get("DATAPOINT")
       self.maybe_copy_additional_files()
       self.maybe_handle_datapoint_label(datapoint)
+      start_voting = data.get('START_VOTING', False)
+      if start_voting:
+        self.voting_status = 1
       finish_labelling = data.get("FINISH_LABELLING", False)
       if finish_labelling:
         self.finish_labeling()
@@ -515,12 +554,16 @@ class CVCropTrainingDataPlugin(BasePlugin):
       return
   """END LABEL SECTION"""
 
-  def generate_progress_payload(self, return_dict=False, **kwargs):
+  def generate_progress_payload(self, return_dict=False, add_crop_speed=False, **kwargs):
     payload_kwargs = {
       **kwargs,
       'counts': self.dataset_stats,
       'description': self.cfg_description,
     }
+    if add_crop_speed:
+      payload_kwargs['crop_speed'] = self.dataset_stats_increment / (self.time() - self.last_increment_time)
+      self.last_increment_time = self.time()
+      self.dataset_stats_increment = 0
     return payload_kwargs if return_dict else self._create_payload(**payload_kwargs)
 
   def archive_and_upload_ds(self):
@@ -570,6 +613,7 @@ class CVCropTrainingDataPlugin(BasePlugin):
     return
 
   def _process(self):
+    self.maybe_start_voting()
     # TODO: test data gathering when other pipelines are running
     # We should only gather from the specified streams
     # Step 1: If gathering not finished and input available, crop and save all images.
@@ -582,7 +626,9 @@ class CVCropTrainingDataPlugin(BasePlugin):
     # or generate labelling payload if the data is being labeled. This is only relevant
     # if the raw dataset was uploaded and is being annotated.
     if self.time() - self.last_payload_time >= self.cfg_report_period:
-      payload = self.get_labelling_payload() if self.done_collecting else self.generate_progress_payload()
+      payload = self.get_labelling_payload() if self.done_collecting else self.generate_progress_payload(
+        add_crop_speed=True
+      )
 
     # Step 3: If no more data gathering is needed, but it was not yet finished,
     # finalise the process and start sending labelling payload.

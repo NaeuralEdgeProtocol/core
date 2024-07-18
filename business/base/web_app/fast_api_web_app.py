@@ -44,10 +44,16 @@ class FastApiWebAppPlugin(BasePlugin):
     return
 
   @staticmethod
-  def endpoint(func, method="get"):
+  def endpoint(func=None, *, method="get"):
     """
     Decorator, marks the method as being exposed as an endpoint.
     """
+    if func is None:
+      def wrapper(func):
+        return FastApiWebAppPlugin.endpoint(func, method=method)
+
+      return wrapper
+
     func.__endpoint__ = True
     func.__http_method__ = method
     return func
@@ -210,15 +216,16 @@ class FastApiWebAppPlugin(BasePlugin):
     script_path = self.os_path.join(self._script_temp_dir, 'main.py')
     self.P("Using script at {}".format(script_path))
 
-    src_dir = self.os_path.join('plugins', 'business', 'fastapi', self.cfg_assets)
-
     jinja_args = {
       **self.get_jinja_template_args(),
       'manager_port' : manager_port,
       'manager_auth' : manager_auth,
       **self._node_comms_jinja_args
     }
-    self._initialize_assets(src_dir, self._script_temp_dir, jinja_args)
+    for main_dir in ['plugins', 'extensions', 'core']:
+      src_dir = self.os_path.join(main_dir, 'business', 'fastapi', self.cfg_assets)
+      self._initialize_assets(src_dir, self._script_temp_dir, jinja_args)
+    # endfor all main dirs
 
     # Set up the uvicorn environment and process. We want it to have access to
     # our class definitions so we need to set PYTHONPATH. Additionally we set
