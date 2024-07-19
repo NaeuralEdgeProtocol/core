@@ -1,2 +1,75 @@
-# core
-Core modules of DecentrAI edge node 
+
+# Naeural Edge Protocol Core Modules
+
+Welcome to the Naeural Edge Protocol Core Modules repository. These modules form the backbone of the Naeural Edge Protocol, enabling the creation of end-to-end AI pipelines for edge computing. This README provides an overview of the core functionality, components, and how to get started with the Naeural Edge Protocol.
+
+## Overview
+
+The Naeural Edge Protocol is designed to facilitate the rapid development and deployment of AI applications at the edge. These core modules are responsible for the following key functionalities:
+
+- **Data Collection**: Acquire data via multiple methods, including:
+  - Default plugins: MQTT, RTSP, CSV, ODBC
+  - Custom-built plugins for sensors and other data sources
+
+- **Data Processing**: Transform and process collected data to prepare it for trustless model training and inference.
+
+- **Model Training and Inference**: Use plugins to train AI models and perform trustless inference tasks.
+
+- **Post-Inference Business Logic**: Run business logic post-inference to derive actionable insights and decisions.
+
+- **Pipeline Persistence**: Ensure the persistence of pipelines for reliability and reproducibility.
+
+- **Communication**: Facilitate communication through MQ-based and API-based methods, including routing and load balancing via ngrok.
+
+These modules can be used as the core for implementing edge nodes within the Naeural Edge Protocol or integrated into third-party Web2 implementations.
+
+## Features
+
+- **Modular Design**: Easily extend functionality with custom plugins for data collection, processing, and more.
+- **Scalability**: Designed to scale from small edge devices to large-scale deployments.
+- **Interoperability**: Compatible with a variety of data sources and communication protocols.
+- **Ease of Use**: Provides low-code/no-code development capabilities for rapid pipeline creation.
+
+
+### Contributing
+
+We welcome contributions from the community. Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to the project.
+
+### License
+
+This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
+
+## Contact
+
+For more information, visit our website [https://naeural.ai](https://naeural.ai) or reach out to us at support@naeural.ai.
+
+
+```bibtex
+@misc{NaeuralAI_edge_node,
+  author = {Naeural.AI},
+  title = {Naeural Edge Protocol: Edge Node},
+  year = {2024},
+  howpublished = {\url{https://github.com/NaeuralEdgeProtocol/edge_node}},
+}
+```
+
+```bibtex
+@misc{PyE2,
+  author = {Stefan Saraev, Andrei Damian},
+  title = {PyE2: Python SDK for Naeural Edge Protocol},
+  year = {2024},
+  howpublished = {\url{https://github.com/NaeuralEdgeProtocol/PyE2}},
+}
+```
+
+```bibtex
+@misc{milik2024naeuralaios,
+      title={Naeural AI OS -- Decentralized ubiquitous computing MLOps execution engine}, 
+      author={Beatrice Milik and Stefan Saraev and Cristian Bleotiu and Radu Lupaescu and Bogdan Hobeanu and Andrei Ionut Damian},
+      year={2024},
+      eprint={2306.08708},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2306.08708}, 
+}
+```
