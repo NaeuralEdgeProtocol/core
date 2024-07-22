@@ -443,8 +443,9 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
     )
     failed = False
     
-    if device_id != self._device_id:
-      self.P('  Message is not for the current device {} != {}'.format(device_id, self._device_id), color='y')
+    if device_id != self._device_id and device_id != self.blockchain_manager.address:
+      self.P('  Message is not for the current device {} != {} ({})'.format(
+        device_id, self._device_id, self.blockchain_manager.address), color='y')
       failed = True
       
     ### signature verification    
