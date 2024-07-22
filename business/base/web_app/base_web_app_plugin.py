@@ -48,16 +48,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
       raise ValueError("Invalid port value {}".format(self.cfg_port))
     return
 
-  @property
-  def port(self):
-    if 'USED_PORTS' not in self.plugins_shmem:
-      return None
-    if self.str_unique_identification not in self.plugins_shmem['USED_PORTS']:
-      return None
-    port = self.plugins_shmem['USED_PORTS'][self.str_unique_identification]
-    return port
-
-  def on_init(self):
+  def __allocate_port(self):
     self.lock_resource('USED_PORTS')
     if 'USED_PORTS' not in self.plugins_shmem:
       self.plugins_shmem['USED_PORTS'] = {}
@@ -79,7 +70,19 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
       dct_shmem_ports[self.str_unique_identification] = port
     # endif port
     self.unlock_resource('USED_PORTS')
+    return
 
+  @property
+  def port(self):
+    if 'USED_PORTS' not in self.plugins_shmem:
+      return None
+    if self.str_unique_identification not in self.plugins_shmem['USED_PORTS']:
+      return None
+    port = self.plugins_shmem['USED_PORTS'][self.str_unique_identification]
+    return port
+
+  def on_init(self):
+    self.__allocate_port()
     super(BaseWebAppPlugin, self).on_init()
     return
 
