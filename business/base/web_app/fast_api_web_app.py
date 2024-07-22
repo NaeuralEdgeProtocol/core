@@ -21,6 +21,10 @@ _CONFIG = {
   'ASSETS' : None,
   'JINJA_ARGS' : {},
   'TEMPLATE' : 'basic_server',
+  
+  'API_TITLE': None, # default is plugin signature
+  'API_SUMMARY': None, # default is f"FastAPI created by {plugin signature}"
+  'API_DESCRIPTION': None, # default is plugin docstring
 
   'VALIDATION_RULES': {
     **BasePlugin.CONFIG['VALIDATION_RULES']
@@ -220,6 +224,10 @@ class FastApiWebAppPlugin(BasePlugin):
       **self.get_jinja_template_args(),
       'manager_port' : manager_port,
       'manager_auth' : manager_auth,
+      'api_title' : repr(self.cfg_api_title or self.get_signature()),
+      'api_summary' : repr(self.cfg_api_summary or f"FastAPI created by {self.get_signature()} plugin"),
+      'api_description' : repr(self.cfg_api_description or self.__doc__),
+      'api_version' : repr(self.__version__),
       **self._node_comms_jinja_args
     }
     for main_dir in ['plugins', 'extensions', 'core']:

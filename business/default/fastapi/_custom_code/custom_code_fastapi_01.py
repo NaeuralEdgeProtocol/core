@@ -1,21 +1,3 @@
-"""
-Plugin that can define custom endpoints and with code for a FastAPI web server.
-
-The endpoints are specified in the `ENDPOINTS` configuration parameter, and should
-look like this:
-
-"ENDPOINTS": [ 
-  {
-    "NAME": "__ENDPOINT_NAME__",
-    "METHOD": "__ENDPOINT_METHOD__", # Optional, default is "get", can be "post", "put", "delete", etc.
-    "CODE": "__BASE64_ENCODED_ENDPOINT_CODE__",
-    "ARGS": "__ENDPOINT_ARGS__",
-  },
-  ...
-]
-
-"""
-
 from core.business.base.web_app import FastApiWebAppPlugin
 
 __VER__ = '0.1.0.0'
@@ -39,6 +21,24 @@ _CONFIG = {
 
 
 class CustomCodeFastapi01Plugin(FastApiWebAppPlugin):
+  """
+  Plugin that can define custom endpoints and with code for a FastAPI web server.
+
+  The endpoints are specified in the `ENDPOINTS` configuration parameter, and should
+  look like this:
+
+  ```
+  "ENDPOINTS": [ 
+    {
+      "NAME": "__ENDPOINT_NAME__",
+      "METHOD": "__ENDPOINT_METHOD__", # Optional, default is "get", can be "post", "put", "delete", etc.
+      "CODE": "__BASE64_ENCODED_ENDPOINT_CODE__",
+      "ARGS": "__ENDPOINT_ARGS__",
+    },
+    ...
+  ]
+
+  """
   CONFIG = _CONFIG
 
   def __register_custom_code_endpoint(self, endpoint_name, endpoint_method, endpoint_base64_code, endpoint_arguments):
