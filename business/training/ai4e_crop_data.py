@@ -23,10 +23,13 @@ _CONFIG = {
   'COLLECT_UNTIL': None,
   'LABELS_DONE': False,
   'POSTPONE_THRESHOLD': 5,
+
+  # These values are only for data transfer purposes
   "DESCRIPTION": "",
   "REWARDS": {},
   "DATASET": {},
   "CREATION_DATE": None,
+  "DATA_SOURCES": [],
 
   'PROCESS_DELAY': 1,
   'MAX_INPUTS_QUEUE_SIZE': 32,
@@ -52,12 +55,14 @@ class Ai4eCropDataPlugin(BasePlugin):
 
   def on_init(self):
     super(Ai4eCropDataPlugin, self).on_init()
+    self.sample_requests = []
     self.voting_status = 0
     self.final_collecting_payload = None
     self._source_names = set()
     self.finished = False
     self.received_input = False
     self.dataset_stats = self.defaultdict(lambda : 0)
+    self.total_image_count = 0
     self.dataset_stats_increment = 0
     self.last_increment_time = self.time()
     self.raw_dataset_updates_count = 0
@@ -95,6 +100,8 @@ class Ai4eCropDataPlugin(BasePlugin):
     self.filename_labelling_stats = obj.get('filename_labelling_stats', self.filename_labelling_stats)
     self.dataset_stats = obj.get('dataset_stats', self.dataset_stats)
     self.dataset_stats = self.defaultdict(lambda: 0, self.dataset_stats)
+    self.total_image_count = obj.get('total_image_count', self.total_image_count)
+    self.total_image_count = max(0, max(sum(self.dataset_stats.values()), self.total_image_count))
     self.label_updates_count = obj.get('label_updates_count', self.label_updates_count)
     self._source_names = set(obj.get('source_names', self._source_names))
     self.started_label_finish = obj.get('started_label_finish', self.started_label_finish)
@@ -136,6 +143,7 @@ class Ai4eCropDataPlugin(BasePlugin):
       obj={
         'filename_labelling_stats': self.filename_labelling_stats,
         'dataset_stats': dict(self.dataset_stats),
+        'total_image_count': self.total_image_count,
         'label_updates_count': self.label_updates_count,
         'source_names': list(self._source_names),
         'started_label_finish': self.started_label_finish,
@@ -150,6 +158,29 @@ class Ai4eCropDataPlugin(BasePlugin):
       },
     )
     return
+
+  def get_job_status(self):
+    """
+    Method for getting the job status.
+    """
+    status = "Gathering"
+    if self.done_collecting:
+      status = "Done Gathering"
+    if self.voting_status == 2:
+      status = "Labelling"
+    if self.labels_finished:
+      status = "Done Labelling"
+    return status
+
+  def get_max_size(self):
+    dataset_details = self.cfg_dataset
+    return dataset_details.get('desiredSize') if dataset_details is not None else None
+
+  def enough_data(self):
+    max_size = self.get_max_size()
+    if max_size is None:
+      return False
+    return self.total_image_count >= max_size
 
   def delay_process(self):
     # Still gathering data
@@ -169,12 +200,21 @@ class Ai4eCropDataPlugin(BasePlugin):
   def get_plugin_loop_resolution(self):
     return self.cfg_plugin_loop_resolution if not self.delay_process() else 1 / 30
 
-  def _create_payload(self, **kwargs):
+  def _create_payload(self, is_status=True, **kwargs):
+    additional_kwargs = {} if not is_status else {
+      "objective_name": self.cfg_objective_name,
+      "rewards": self.cfg_rewards,
+      "dataset": self.cfg_dataset,
+      "creation_date": self.cfg_creation_date,
+      "data_sources": self.cfg_data_sources,
+      "target": self.cfg_object_type,
+      "classes": self.get_ds_classes(),
+      "description": self.cfg_description,
+      "job_status": self.get_job_status()
+    }
     return super(Ai4eCropDataPlugin, self)._create_payload(
-      objective_name=self.cfg_objective_name,
-      rewards=self.cfg_rewards,
-      dataset=self.cfg_dataset,
-      creation_date=self.cfg_creation_date,
+      is_status=is_status,
+      **additional_kwargs,
       **kwargs
     )
 
@@ -333,7 +373,7 @@ class Ai4eCropDataPlugin(BasePlugin):
             continue
           # endif no object type
           # Check if the object type can be saved
-          if self.check_if_can_save_object_type(object_type):
+          if not self.enough_data() and self.check_if_can_save_object_type(object_type):
             # Save the image
             subdir = self.crop_and_save_one_img(
               np_img=np_img, inference=infer, source_name=source_name, current_interval=current_interval
@@ -342,8 +382,10 @@ class Ai4eCropDataPlugin(BasePlugin):
             if subdir is not None:
               self.count_saved_by_object_type[object_type] += 1
               self.dataset_stats[subdir] += 1
+              self.total_image_count += 1
               # Increment the raw dataset counter and maybe backup the state
               self.raw_dataset_updates_count += 1
+              self.dataset_stats_increment += 1
               self.maybe_persistance_save()
             # endif successfully saved
           # endif allowed to save
@@ -352,7 +394,7 @@ class Ai4eCropDataPlugin(BasePlugin):
       return
   """END SAVE SECTION"""
 
-  """LABEL SECTION"""
+  """COMMANDS SECTION"""
   if True:
     def get_training_subdir(self):
       """
@@ -527,6 +569,72 @@ class Ai4eCropDataPlugin(BasePlugin):
         self.voting_status = 2
       return
 
+    def sample_filename(self):
+      return self.np.random.choice(list(self.raw_dataset_set))
+
+    def filename_to_path(self, filename):
+      return self.os_path.join(
+        self.get_output_folder(), self.raw_dataset_rel_path, f'{filename}.jpg'
+      )
+
+    def maybe_respond_to_sample_requests(self, max_requests=10):
+      for req in self.sample_requests[:max_requests]:
+        response_payload_kwargs = {
+          'request_id': req['request_id'],
+        }
+        if req['type'] == 'SAMPLE':
+          self.P('Responding to sample request')
+          response_payload_kwargs['sample_filename'] = self.sample_filename()
+        elif req['type'] == 'FILENAME':
+          filename = req['filename']
+          self.P(f'Responding to filename request for {filename}')
+          response_payload_kwargs['sample_path'] = self.filename_to_path(filename)
+          response_payload_kwargs['IMG'] = self.diskapi_load_image(
+            folder='output',
+            filename=f'{filename}.jpg',
+            subdir=self.raw_dataset_rel_path
+          )
+        # endif filename request
+        self.add_payload(
+          self._create_payload(
+            is_status=False,
+            **response_payload_kwargs
+          )
+        )
+      # endfor requests
+      self.sample_requests = self.sample_requests[max_requests:]
+      return
+
+    def maybe_register_sample_requests(self, data, **kwargs):
+      """
+      Method for registering the sample requests received as commands.
+      Parameters
+      ----------
+      data : dict, the data to handle
+      kwargs : dict, additional keyword arguments
+
+      Returns
+      -------
+      bool, whether the command is a request or not
+      """
+      is_request = False
+      request_id = data.get('REQUEST_ID')
+      if data.get('SAMPLE', False):
+        self.sample_requests.append({
+          'type': 'SAMPLE',
+          'request_id': request_id
+        })
+        is_request = True
+      sample_filename = data.get('FILENAME')
+      if sample_filename is not None:
+        self.sample_requests.append({
+          'type': 'FILENAME',
+          'filename': sample_filename,
+          'request_id': request_id
+        })
+        is_request = True
+      return is_request
+
     # TODO: change `_on_command`s to 'on_command' in all the plugins
     def on_command(self, data, **kwargs):
       """
@@ -541,6 +649,9 @@ class Ai4eCropDataPlugin(BasePlugin):
 
       """
       self.P(f'Got command {data}')
+      # In case the command is a sample request, register it and return
+      if self.maybe_register_sample_requests(data, **kwargs):
+        return
       datapoint = data.get("DATAPOINT")
       self.maybe_copy_additional_files()
       self.maybe_handle_datapoint_label(datapoint)
@@ -552,16 +663,17 @@ class Ai4eCropDataPlugin(BasePlugin):
         self.finish_labeling()
       # endif finish labelling
       return
-  """END LABEL SECTION"""
+  """END COMMANDS SECTION"""
 
   def generate_progress_payload(self, return_dict=False, add_crop_speed=False, **kwargs):
     payload_kwargs = {
       **kwargs,
       'counts': self.dataset_stats,
-      'description': self.cfg_description,
     }
     if add_crop_speed:
-      payload_kwargs['crop_speed'] = self.dataset_stats_increment / (self.time() - self.last_increment_time)
+      payload_kwargs['crop_increment'] = self.dataset_stats_increment
+      payload_kwargs['duration'] = self.time() - self.last_increment_time
+      payload_kwargs['crop_speed'] = self.dataset_stats_increment / payload_kwargs['duration']
       self.last_increment_time = self.time()
       self.dataset_stats_increment = 0
     return payload_kwargs if return_dict else self._create_payload(**payload_kwargs)
@@ -613,6 +725,7 @@ class Ai4eCropDataPlugin(BasePlugin):
     return
 
   def _process(self):
+    self.maybe_respond_to_sample_requests()
     self.maybe_start_voting()
     # TODO: test data gathering when other pipelines are running
     # We should only gather from the specified streams
@@ -632,7 +745,7 @@ class Ai4eCropDataPlugin(BasePlugin):
 
     # Step 3: If no more data gathering is needed, but it was not yet finished,
     # finalise the process and start sending labelling payload.
-    if (self.collect_until_passed or self.cfg_force_terminate_collect) and not self.done_collecting:
+    if (self.collect_until_passed or self.cfg_force_terminate_collect or self.enough_data()) and not self.done_collecting:
       self.finalise_collecting_process()
       payload = None
     # endif no more data gathering needed

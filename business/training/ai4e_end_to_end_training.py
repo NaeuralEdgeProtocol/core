@@ -284,6 +284,7 @@ class Ai4eEndToEndTrainingPlugin(BasePlugin):
         'REWARDS': self.cfg_rewards,
         'DATASET': self.cfg_dataset,
         'CREATION_DATE': self.cfg_creation_date,
+        'DATA_SOURCES': self.data_sources,
         **self.data_crop_plugin_params,
       }
 
