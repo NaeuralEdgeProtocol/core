@@ -666,6 +666,31 @@ class _DiskAPIMixin(object):
       os.makedirs(os.path.dirname(save_path), exist_ok=True)
       return cv2.imwrite(img=image[:, :, ::-1], filename=save_path)  # TODO: use PIL instead of opencv
 
+    def diskapi_load_image(self, filename: str, folder: str, subdir: str):
+      """
+      Method for loading an image from local cache.
+      Parameters
+      ----------
+      filename - string, the name of the file
+      folder - string, the folder in local cache
+      subdir - string, the subfolder in local cache
+
+      Returns
+      -------
+      np.ndarray, the loaded image
+      """
+      assert_folder(folder)
+      load_path = self._get_file_path(
+        folder=folder,
+        subdir=subdir,
+        filename=filename,
+        extension=''
+      )
+      if not os.path.exists(load_path):
+        self.P(f'File {load_path} does not exist')
+        return None
+      return cv2.imread(load_path)[:, :, ::-1]  # TODO: use PIL instead of opencv
+
     def diskapi_save_image_output(self, image, filename: str, subdir: str, extension: str = 'jpg'):
       """
       Shortcut to _diskapi_save_image.
