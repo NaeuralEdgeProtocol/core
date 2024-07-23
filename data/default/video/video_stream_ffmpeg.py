@@ -15,6 +15,7 @@ _CONFIG = {
   "STATS_PERIOD": 120,
   "LOCK_RESOURCE": "ffmpeg-pipe",
   "SHOW_FFMPEG_LOG": False,
+  "USE_LOCK_WHEN_RECONNECTING": False,
 
   "MAX_RETRIES": 2,
 
@@ -572,9 +573,10 @@ class VideoStreamFfmpegDataCapture(DataCaptureThread, _VideoConfigMixin):
       nr_retry += 1
       self.nr_connection_issues += 1
       try:
-        self.log.lock_resource(self.cfg_lock_resource)
-        if self.cfg_show_ffmpeg_log:
-          self.P("Acquired lock for resource '{}', trying to connect...".format(self.cfg_lock_resource))
+        if self.cfg_use_lock_when_reconnecting:
+          self.log.lock_resource(self.cfg_lock_resource)
+          if self.cfg_show_ffmpeg_log:
+            self.P("Acquired lock for resource '{}', trying to connect...".format(self.cfg_lock_resource))
         if self._ffmpeg_process:
           self._release()
         self.P("  Connection retry {}/{} of connect session {}, total retries {}:".format(
@@ -610,9 +612,10 @@ class VideoStreamFfmpegDataCapture(DataCaptureThread, _VideoConfigMixin):
         str_e = self.trace_info()
         self.P('`_maybe_reconnect` exception: {}'.format(str_e), color='r')
       finally:
-        if self.cfg_show_ffmpeg_log:
-          self.P("Released lock for resource '{}'".format(self.cfg_lock_resource))
-        self.log.unlock_resource(self.cfg_lock_resource)
+        if self.cfg_use_lock_when_reconnecting:
+          if self.cfg_show_ffmpeg_log:
+            self.P("Released lock for resource '{}'".format(self.cfg_lock_resource))
+          self.log.unlock_resource(self.cfg_lock_resource)
       # end try-except-finally
 
       if self.has_connection:
