@@ -1118,14 +1118,22 @@ class NetworkMonitor(DecentrAIObject):
 
       """
       hb = self.__network_node_last_heartbeat(addr=addr)
-      ts = hb[ct.PAYLOAD_DATA.EE_TIMESTAMP]
-      tz = hb.get(ct.PAYLOAD_DATA.EE_TIMEZONE)
+
+      ts = hb.get(ct.HB.RECEIVED_TIME)
+      tz = self.log.timezone
+
+      if ts is None:
+        # if heartbeat is too old, we can't know when it was received
+        # so we use the timestamp of the heartbeat
+        ts = hb[ct.PAYLOAD_DATA.EE_TIMESTAMP]
+        tz = hb.get(ct.PAYLOAD_DATA.EE_TIMEZONE)
+
       dt_remote_to_local = self.log.utc_to_local(ts, tz, fmt=ct.HB.TIMESTAMP_FORMAT)
       if dt_now is None:
         dt_now = dt.now()
 
       elapsed = dt_now.timestamp() - dt_remote_to_local.timestamp()
-      
+
       if as_sec:
         return elapsed
       else:
