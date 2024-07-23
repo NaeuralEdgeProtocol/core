@@ -573,7 +573,7 @@ class VideoStreamFfmpegDataCapture(DataCaptureThread, _VideoConfigMixin):
       nr_retry += 1
       self.nr_connection_issues += 1
       try:
-        if self.cfg_use_lock_when_reconnecting:
+        if str(self.cfg_use_lock_when_reconnecting).upper() == 'TRUE':
           self.log.lock_resource(self.cfg_lock_resource)
           if self.cfg_show_ffmpeg_log:
             self.P("Acquired lock for resource '{}', trying to connect...".format(self.cfg_lock_resource))
@@ -612,7 +612,7 @@ class VideoStreamFfmpegDataCapture(DataCaptureThread, _VideoConfigMixin):
         str_e = self.trace_info()
         self.P('`_maybe_reconnect` exception: {}'.format(str_e), color='r')
       finally:
-        if self.cfg_use_lock_when_reconnecting:
+        if str(self.cfg_use_lock_when_reconnecting).upper() == 'TRUE':
           if self.cfg_show_ffmpeg_log:
             self.P("Released lock for resource '{}'".format(self.cfg_lock_resource))
           self.log.unlock_resource(self.cfg_lock_resource)
