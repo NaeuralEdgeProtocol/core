@@ -26,20 +26,16 @@ _CONFIG = {
 
   "FFMPEG_GENERAL_COMMAND_PARAMETERS": {},
   "DEFAULT_FFMPEG_GENERAL_COMMAND_PARAMETERS": {
-    'fflags': '+genpts+igndts+discardcorrupt',
-    'flags' : 'low_delay',
-    'flags2': 'fast',
+    'fflags': '+discardcorrupt',  # removed flags  'nobuffer', 'flush_packets'
     'vcodec': 'rawvideo',
   },
 
   "FFMPEG_STREAM_COMMAND_PARAMETERS": {},
   "DEFAULT_FFMPEG_STREAM_COMMAND_PARAMETERS": {
     'rtsp_transport': 'tcp',  # Force TCP transport for RTSP | Maybe experiment further with UDP
-    'max_delay': '1000000',
-    'analyzeduration': '60M',
-    'probesize': '32M',
-    'reorder_queue_size': '0',
-    'rw_timeout': '10000000',
+    'max_delay': '500000',
+    'analyzeduration': '20M',
+    'probesize': '20M',
     'threads': '2',
   },
 
