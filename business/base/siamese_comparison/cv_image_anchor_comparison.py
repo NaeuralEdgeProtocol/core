@@ -83,7 +83,10 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     bool
         True if we can save a newer anchor, False otherwise
     """
-    if self._force_save_anchor:
+    if self._force_save_anchor or self._anchor is None:
+      # check for anchor None because in the context of model based comparison,
+      # we need to get information from the serving process (like the anchor reload period)
+      # and because of that we will add values in the alerter
       return True
 
     is_alert = self.alerter_is_alert()
