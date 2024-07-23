@@ -47,7 +47,7 @@ class _PersistenceSerializationMixin(object):
   def _maybe_setup_persistence_fld(self):
     if self.__persistence_fld is not None:
       return self.__persistence_fld       
-    self.__persistence_fld = '{}/{}'.format(self._cache_folder, self.plugin_id)
+    self.__persistence_fld = '{}/{}'.format(self._cache_folder, self.plugin_id.lower())
     full_path = os.path.join(self.log.get_data_folder(), self.__persistence_fld)
     os.makedirs(full_path, exist_ok=True)
     return self.__persistence_fld
