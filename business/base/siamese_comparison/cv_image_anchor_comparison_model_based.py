@@ -12,6 +12,7 @@ _CONFIG = {
   "ANCHOR_RELOAD_PERIOD": None,
   "SERVING_DATETIME_FORMAT": "%Y/%m/%d_%H:%M:%S",
   "WARNING_ANCHOR_NOT_SYNCHRONIZED_TIME": 10,  # seconds
+  'DISCARD_FAILED_ANALYSIS': True,
   #############################
 
   # Plugin dependant config

@@ -13,6 +13,7 @@ _CONFIG = {
   # Developer config
   "AI_ENGINE": ["lowres_general_detector"],
   "ALLOW_COMPARISON_WITH_NO_ANCHOR": False,
+  'DISCARD_FAILED_ANALYSIS': False,
   "MAX_INPUTS_QUEUE_SIZE": 1,  # slow plugin - must process only current state/input
   'WARNING_ANCHOR_SAVE_FAIL_SEND_INTERVAL': 60,  # seconds
   #############################
@@ -574,8 +575,11 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     # decide if we keep it or not,
     # based on the presence of people in the image
-    if result is not None and self._validate_image_for_analysis(self.__last_capture_image, object_detector_inferences):
-      # we don't have people in the image, or they occupy the whole image,
+    result_ok = result is not None
+    validation_ok = self._validate_image_for_analysis(self.__last_capture_image, object_detector_inferences)
+    if result_ok and validation_ok:
+      # we don't have people in the image, or they occupy the whole image
+      # and we have a valid comparison result,
       # so we consider this observation
       self.alerter_add_observation(result)
 
@@ -584,10 +588,27 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
       # if we do not save the anchor here, we can risk saving an image for which
       # changes cannot be computed (when `result is None`)
       self._maybe_save_anchor(self.__last_capture_image, object_detector_inferences)
-    else:
+    # endif
+
+    if result_ok and not validation_ok:
+      # we have people in the image
+      # and we have a valid comparison result,
+      # so we do not consider this observation
       # we keep the alerter in the middle until we have valid images to make a good decision
       middle_value = (self.cfg_alert_raise_value + self.cfg_alert_lower_value) / 2
       self.alerter_add_observation(middle_value)
+    # endif
+
+    if not result_ok and validation_ok and not self.cfg_discard_failed_analysis:
+      # we don't have people in the image, or they occupy the whole image,
+      # but our analysis failed
+      # if we do not discard failed analysis, we consider this observation
+      # and so we keep the alerter in the middle until we have the analysis running
+      # to make a good decision
+      middle_value = (self.cfg_alert_raise_value + self.cfg_alert_lower_value) / 2
+      self.alerter_add_observation(middle_value)
+    # endif
+
     alerter_status_changed, current_alerter_status = self._custom_alerter_status_changed()
 
     if alerter_status_changed or self.cfg_demo_mode:
