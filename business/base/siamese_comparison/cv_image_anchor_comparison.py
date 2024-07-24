@@ -415,7 +415,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     return payload
 
-  def __people_areas_prc(self, image, lst_obj_inferences):
+  def __people_areas_prc(self, image, lst_obj_inferences, round_digits=4):
     if self._coords_type == self.ct.COORDS_NONE:
       H, W = image.shape[:2]
       image_area = H * W
@@ -429,7 +429,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
         area = (r - l) * (b - t)
         person_areas.append(area)
 
-    return [area / image_area for area in person_areas]
+    return [round(area / image_area, round_digits) for area in person_areas]
 
   def _validate_image_for_analysis(self, image, lst_obj_inferences):
     return self._validate_detections_for_analysis(image, lst_obj_inferences) and self.custom_image_validation(image)
@@ -451,10 +451,10 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     debug_info = [
       {'value': "A <{} F <{} >{}: {}".format(
-        self.cfg_anchor_max_sum_person_area, 
-        self.cfg_analysis_ignore_min_person_area, 
+        self.cfg_anchor_max_sum_person_area,
+        self.cfg_analysis_ignore_min_person_area,
         self.cfg_analysis_ignore_max_person_area,
-        self.__people_areas_prc(img, object_detector_inferences)
+        self.__people_areas_prc(img, object_detector_inferences, 2)
       )},
       {'value': f"Last Anchor Time: {human_readable_last_anchor_time}   Anchor Save Period (s): {self.serving_anchor_reload_period}"},
     ]
@@ -487,7 +487,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     )
     return
 
-  def _update_cache_last_witness_image(self, img, debug_info, object_detector_inferences, debug_results):   
+  def _update_cache_last_witness_image(self, img, debug_info, debug_results):
     self.update_witness_kwargs(
       witness_args={
         'debug_info': debug_info,
@@ -499,7 +499,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
       pos=0
     )
     return
-  
+
   def get_last_witness_image(self):
     cache_witness = self.get_current_witness_kwargs(pos=0, alerter="__last_witness_cache__")
     cache_witness_debug_info = cache_witness['debug_info']
@@ -559,7 +559,6 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     # prepare the witness image used for the GET_LAST_WITNESS command
     self._update_cache_last_witness_image(
       img=self.__last_capture_image,
-      object_detector_inferences=object_detector_inferences,
       debug_info=debug_info,
       debug_results=debug_results,
     )
@@ -611,7 +610,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     if (isinstance(data, str) and data.upper() == 'RESET_ANCHOR') or reset_anchor:
       self.P("Received command to reset anchor. This will also reset the alerter.")
       self._anchor = None
-      self._anchor_last_save_time = 0 # is this necessary?
+      self._anchor_last_save_time = 0  # is this necessary?
       self._force_save_anchor = True
       self.alerter_hard_reset()
     return
