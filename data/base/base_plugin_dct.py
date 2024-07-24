@@ -102,6 +102,7 @@ class DataCaptureThread(BaseDataCapture,
     self._metadata = MetadataObject(
       current_interval=None,
       payload_context=None,
+      use_local_comms_only=False,
     )
 
     super(DataCaptureThread, self).__init__(**kwargs)
@@ -751,12 +752,19 @@ class DataCaptureThread(BaseDataCapture,
     if isinstance(cmd_data, dict):
       payload_context = cmd_data.get('PAYLOAD_CONTEXT', None)
     self._metadata.payload_context = payload_context # set the payload context
+
+    # this part handles pipeline commands that should be answered only on the local comms 
+    use_local_comms_only = False
+    if isinstance(cmd_data, dict):
+      use_local_comms_only = cmd_data.get('USE_LOCAL_COMMS_ONLY', False)
+    self._metadata.use_local_comms_only = use_local_comms_only
     self._on_pipeline_command(
       cmd_data=cmd_data,
       payload_context=payload_context,
       **kwargs,
     )
     self._metadata.payload_context = None # reset the payload context
+    self._metadata.use_local_comms_only = False # reset the use_local_comms_only
     return
   
   

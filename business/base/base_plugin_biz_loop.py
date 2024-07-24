@@ -339,6 +339,7 @@ class _BasePluginLoopMixin(object):
     if self.cfg_instance_command_log:
       self.P("* * * * * Received INSTANCE_COMMAND: <{} ...> with kwargs {}".format(str(data)[:30], kwargs))
     self._maybe_simulate_loop_crash()
+    use_local_comms_only=kwargs.get('use_local_comms_only', False)
     try:
       self._on_command(data, **kwargs)
       notif = ct.STATUS_TYPE.STATUS_NORMAL
@@ -356,7 +357,8 @@ class _BasePluginLoopMixin(object):
       notif_code=notif_code,
       msg=msg,
       info=info,
-      displayed=True
+      displayed=True,
+      use_local_comms_only=use_local_comms_only,
     )
 
     return

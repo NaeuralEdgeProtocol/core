@@ -197,7 +197,9 @@ class GeneralPayload:
     vars(self)['_P_' + ct.PROCESS_DELAY] = self.owner.cfg_process_delay
     vars(self)['_P_' + ct.GRAPH_TYPE] = self.owner._instance_config.get('AI_ENGINE', 'No model serving process')
     vars(self)['_P_' + ct.VERSION] = '{}'.format(self.owner.__version__)
-            
+
+    vars(self)["USE_LOCAL_COMMS_ONLY"] = vars(self).get("_C_USE_LOCAL_COMMS_ONLY", False) or self.owner.use_local_comms_only
+
     return
     
   

@@ -55,6 +55,7 @@ _CONFIG = {
 
   'COPY_IN_MAIN_THREAD': False,  # flag to switch between copying data in main thread on in plugin instance thread
   'ENCRYPT_PAYLOAD': False,  # flag to independent toggle payload encryption
+  "USE_LOCAL_COMMS_ONLY": False, # flag to switch to local comms only for a particular plugin instance
 
   'RESEND_LAST_STATUS_ON_IDLE': 0,
 
@@ -344,6 +345,7 @@ class BasePluginExecutor(
                runs_in_docker=False,
                docker_branch='main',
                debug_config_changes=False,
+               pipeline_use_local_comms_only=False,
                **kwargs):
     self.__version__ = version
 
@@ -378,6 +380,8 @@ class BasePluginExecutor(
     self._timers_section = None
 
     self._instance_config = None
+    
+    self.__pipeline_use_local_comms_only = pipeline_use_local_comms_only
 
     log.P("Init {} v{} <{}:{}> SUPER:{}".format(
       self.__class__.__name__, self.__version__,
@@ -640,6 +644,10 @@ class BasePluginExecutor(
     if self.cfg_debug_mode:
       return True
     return self._instance_config.get('DEMO_MODE', False)
+
+  @property
+  def use_local_comms_only(self):
+    return self.cfg_use_local_comms_only or self.__pipeline_use_local_comms_only
 
   @property
   def is_debug_mode(self):
@@ -1312,7 +1320,7 @@ class BasePluginExecutor(
       self.loop_paused = False
     return
 
-  def _create_notification(self, msg, info=None, notif=ct.PAYLOAD_CT.STATUS_TYPE.STATUS_NORMAL, **kwargs):
+  def _create_notification(self, msg, info=None, notif=ct.PAYLOAD_CT.STATUS_TYPE.STATUS_NORMAL, use_local_comms_only=False, **kwargs):
     return super()._create_notification(
       notif=notif, msg=msg, info=info,
       stream_name=self._stream_id,
@@ -1322,6 +1330,7 @@ class BasePluginExecutor(
       initiator_id=self.__initiator_id,
       session_id=self._session_id,
       ct=ct,
+      use_local_comms_only=use_local_comms_only or self.use_local_comms_only,
       **kwargs
     )
 

@@ -644,6 +644,7 @@ class NetworkMonitor(DecentrAIObject):
       }
       for k,v in dct_stats.items():
         if k not in mapping:
+          # we ignore the local communicator stats
           continue
         report = mapping[k]
         remote_error_time = v.get("ERRTM", None)

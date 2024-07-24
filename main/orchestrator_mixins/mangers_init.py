@@ -59,6 +59,8 @@ class _ManagersInitMixin(object):
     )
     self._comm_manager.validate(raise_if_error=True)
     self._comm_manager.start_communication()
+    
+    self.app_shmem["comm_manager"] = self._comm_manager
     return
 
   def _initialize_capture_manager(self):

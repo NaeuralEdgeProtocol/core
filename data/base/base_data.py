@@ -23,6 +23,8 @@ _CONFIG = {
   'SESSION_ID'              : None,
   'INITIATOR_ID'            : None,
   
+  'USE_LOCAL_COMMS_ONLY'     : False,
+  
   'VALIDATION_RULES' : {
     'IS_THREAD' : {'TYPE' : 'bool'},
   },
@@ -178,6 +180,7 @@ class BaseDataCapture(DecentrAIObject, _ConfigHandlerMixin):
       initiator_id=self.cfg_initiator_id,
       error_code=error_code,
       ct=ct,
+      use_local_comms_only=self.cfg_use_local_comms_only,
       **kwargs
     )
 

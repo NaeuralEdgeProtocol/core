@@ -444,13 +444,13 @@ class BaseCommThread(
 
   def start(self):
     run_thread_func = None
-    if self._comm_type == ct.COMMS.COMMUNICATION_DEFAULT:
+    if self._comm_type in [ct.COMMS.COMMUNICATION_DEFAULT, "L_" + ct.COMMS.COMMUNICATION_DEFAULT]:
       run_thread_func = self._run_thread_default
-    elif self._comm_type == ct.COMMS.COMMUNICATION_COMMAND_AND_CONTROL:
+    elif self._comm_type in [ct.COMMS.COMMUNICATION_COMMAND_AND_CONTROL, "L_" + ct.COMMS.COMMUNICATION_COMMAND_AND_CONTROL]:
       run_thread_func = self._run_thread_command_and_control
-    elif self._comm_type == ct.COMMS.COMMUNICATION_HEARTBEATS:
+    elif self._comm_type in [ct.COMMS.COMMUNICATION_HEARTBEATS, "L_" + ct.COMMS.COMMUNICATION_HEARTBEATS]:
       run_thread_func = self._run_thread_heartbeats
-    elif self._comm_type == ct.COMMS.COMMUNICATION_NOTIFICATIONS:
+    elif self._comm_type in [ct.COMMS.COMMUNICATION_NOTIFICATIONS, "L_" + ct.COMMS.COMMUNICATION_NOTIFICATIONS]:
       run_thread_func = self._run_thread_notifications
 
     if RUN_ON_THREAD:
