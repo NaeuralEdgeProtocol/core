@@ -233,8 +233,15 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
 
     # TODO: maybe change LOCAL_PARAMS to something else
     if "LOCAL_PARAMS" not in self.config:
-      self.P("Local communication is not configured!", color='r')
-      return
+      self.config["LOCAL_PARAMS"] = {
+        "HOST": "localhost",
+        "PASS": "",
+        "PORT": 1883,
+        "USER": "",
+        "QOS": 0,
+        "SECURED": 0,
+      }
+      self.P("Local communication is not configured! Using default values: localhost:1883 no user and no password")
 
     local_config_instance = {**self.config["PARAMS"], **self.config["LOCAL_PARAMS"]} 
     self.__start_communication(local_config_instance, is_local=True)
