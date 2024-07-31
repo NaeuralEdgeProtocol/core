@@ -105,7 +105,7 @@ class _GPUMixin(object):
         return None
       
 
-      nvsmires = None
+      nvsmires, device_props, dct_proc_info = None, None, dct_proc_info
       try:
         from pynvml.smi import nvidia_smi
         import pynvml
@@ -203,7 +203,10 @@ class _GPUMixin(object):
           lst_inf.append(dct_device)
         #end for all devices
       except Exception as e:
-        self.P("gpu_info exception for device_id {}:\n{}".format(device_id, e), color='r')
+        self.P("gpu_info exception for device_id {}: {}\n devicepros: {}\n nvsmires: {}\n dct_proc_info: {}".format(
+          device_id, e, 
+          device_props, nvsmires, dct_proc_info), color='r'
+        )
 
       if show:
         self.P("GPU information for {} device(s):".format(len(lst_inf)), color='y')
