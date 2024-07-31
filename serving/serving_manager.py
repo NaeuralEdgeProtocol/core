@@ -683,7 +683,12 @@ class ServingManager(Manager):
         _server.terminate()
       if wait:
         self.P("  Waiting for serving process '{}' ...".format(server_name), color='m')
-        _server.join()
+        _server.join(5)
+        if _server.exitcode is None:
+          self.P("  Serving process '{}' did not respond to join()".format(server_name), color='r')
+          _server.kill()
+        #endif exitcode is None
+      #endif wait  
       self.P("  Serving process status: {}".format(_server), color='m'
       )
       self.P("  Closing comm pipe for for serving process '{}' ...".format(server_name), color='m')
@@ -1384,12 +1389,15 @@ class ServingManager(Manager):
 
   def get_active_servers(self, show=True, color='b'):
     res = []
+    lines = []
     if show:
       self.P("Analysing current active serving processes...", color=color)
       if len(self._servers) == 0:
         self.P("  -- No active servers running --", color=color)
+      else:
+        lines = ["==== List of active serving processes ===="]
     
-    server_names = list(self._servers.keys())
+    server_names = list(self._servers.keys())    
     for server_name in server_names:
       count = self._servers[server_name].get(SMConst.PCOUNT, -1)
       covered_by = self._servers[server_name].get(SMConst.COVERED_BY)
@@ -1412,7 +1420,6 @@ class ServingManager(Manager):
           })
         )
       if show:
-        lines = ["==== List of active serving processes ===="]
         lines.append("Server '{}':{}".format(
           server_name, " covered by {}:{}".format(
             covered_by, 
@@ -1425,6 +1432,7 @@ class ServingManager(Manager):
         lines.append("  Run cnt:  {}".format(count))
         lines.append("  Idle/Max: {:.0f}s/{:.0f}s".format(idle_time, self._server_collector_timedelta))
         self.P("\n".join(lines), color=color)
+        lines = []
     return res
   
   def show_servers(self, title="Current servers:", color='b'):
