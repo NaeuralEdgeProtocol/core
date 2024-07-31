@@ -105,7 +105,7 @@ class _GPUMixin(object):
         return None
       
 
-      nvsmires, device_props, dct_proc_info = None, None, dct_proc_info
+      nvsmires, device_props, dct_proc_info = None, None, None
       try:
         from pynvml.smi import nvidia_smi
         import pynvml
