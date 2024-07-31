@@ -14,8 +14,10 @@ _CONFIG = {
   'NGROK_EDGE_LABEL': None,
 
   'PORT': None,
-
   'ASSETS': None,
+  'SETUP_COMMANDS': [],
+
+  'RUN_COMMAND': "",
 
   'VALIDATION_RULES': {
     **BasePlugin.CONFIG['VALIDATION_RULES']
@@ -26,36 +28,98 @@ _CONFIG = {
 class NodeJsWebAppPlugin(BasePlugin):
   """
   A plugin which handles a NodeJS web app.
+
+  Assets must be a path to a directory containing the NodeJS app.
   """
 
   CONFIG = _CONFIG
 
-  def __init__(self, **kwargs):
-    self.nodejs_process = None
-    super(NodeJsWebAppPlugin, self).__init__(**kwargs)
+  def on_init(self):
+    super(NodeJsWebAppPlugin, self).on_init()
+    self._script_temp_dir = tempfile.mkdtemp()
+
+    self.prepared_env = self.deepcopy(os.environ)
+    self.prepared_env["PWD"] = self._script_temp_dir
+    self.prepared_env["PORT"] = str(self.port)
+
+    self.assets_initialized = False
+
+    self.setup_commands_started = [False] * len(self.cfg_setup_commands)
+    self.setup_commands_finished = [False] * len(self.cfg_setup_commands)
+    self.setup_commands_processes = [None] * len(self.cfg_setup_commands)
+
+    self.run_command_started = False
+    self.run_command_process = None
     return
 
-  def get_web_server_path(self):
-    return self._script_temp_dir
+  def __run_command(self, command):
+    command_args = command.split(' ')
+    process = subprocess.Popen(
+      command_args,
+      env=self.prepared_env,
+      cwd=self._script_temp_dir
+    )
+    return process
 
-  def _initialize_assets(self, src_dir, dst_dir):
-    """
-    Initialize and copy nodejs assets.
-    All files from the source directory are copied copied to the
-    destination directory with the following exceptions:
-      - are symbolic links are ignored
-    This maintains the directory structure of the source folder.
+  def __wait_for_command(self, process, timeout):
+    process_finished = False
+    failed = False
+    try:
+      process.wait(timeout)
+      failed = process.returncode != 0
+      process_finished = True
+    except subprocess.TimeoutExpired:
+      pass
 
-    Parameters
-    ----------
-    src_dir: str, path to the source directory
-    dst_dir: str, path to the destination directory
+    return process_finished, failed
 
-    Returns
-    -------
-    None
-    """
-    self.P(f'Copying nodejs assets from {src_dir} to {dst_dir}')
+  def _maybe_run_setup_command(self, idx):
+    if idx > 0 and not self.setup_commands_finished[idx - 1]:
+      # Previous setup command has not finished yet. Skip this one.
+      return
+
+    if not self.setup_commands_started[idx]:
+      self.P(f"Running setup command nr {idx}: {self.cfg_setup_commands[idx]}")
+      self.setup_commands_processes[idx] = self.__run_command(self.cfg_setup_commands[idx])
+      self.setup_commands_started[idx] = True
+    # endif setup command started
+
+    if not self.setup_commands_finished[idx]:
+      timeout = 3
+      finished, failed = self.__wait_for_command(self.setup_commands_processes[idx], timeout)
+      self.setup_commands_finished[idx] = finished
+
+      if finished and not failed:
+        self.add_payload_by_fields(
+          command_type="setup",
+          command_idx=idx,
+          command_str=self.cfg_setup_commands[idx],
+          command_status="success"
+        )
+        self.P(f"Setup command nr {idx} finished successfully")
+      elif finished and failed:
+        self.add_payload_by_fields(
+          command_type="setup",
+          command_idx=idx,
+          command_str=self.cfg_setup_commands[idx],
+          command_status="failed"
+        )
+        self.P(f"ERROR: Setup command nr {idx} finished with exit code {self.setup_commands_processes[idx].returncode}")
+
+    # endif setup command finished
+    return
+
+  def has_finished_setup_commands(self):
+    return all(self.setup_commands_finished)
+
+  def maybe_init_assets(self):
+    if self.assets_initialized:
+      return
+
+    self.P('Starting Nodejs app...')
+
+    src_dir = self.cfg_assets
+    dst_dir = self._script_temp_dir
 
     # Walk through the source directory.
     for root, _, files in os.walk(src_dir):
@@ -73,124 +137,72 @@ class NodeJsWebAppPlugin(BasePlugin):
         # Make sure the destination directory exists.
         os.makedirs(self.os_path.dirname(dst_file_path), exist_ok=True)
 
-        # This is not a jinja template, just copy it do the destination
-        # folder as is.
         shutil.copy2(src_file_path, dst_file_path)
       # endfor all files
     # endfor os.walk
 
-    # make sure assets folder exists
-    os.makedirs(self.os_path.join(dst_dir, 'assets'), exist_ok=True)
     self.assets_initialized = True
+
     return
 
-  def on_init(self):
-    super(NodeJsWebAppPlugin, self).on_init()
-    self._script_temp_dir = tempfile.mkdtemp()
+  def maybe_run_all_setup_commands(self):
+    if self.has_finished_setup_commands():
+      return
 
-    self.prepared_env = self.deepcopy(os.environ)
-    self.prepared_env["PWD"] = self._script_temp_dir
-    self.prepared_env["PORT"] = str(self.port)
+    for idx in range(len(self.cfg_setup_commands)):
+      self._maybe_run_setup_command(idx)
+    return
 
-    self.assets_initialized = False
+  def maybe_run_start_command(self):
+    if not self.has_finished_setup_commands():
+      # Waiting for setup commands to finish before running the run command.
+      return
 
-    self.npm_init_started = False
-    self.npm_init_finished = False
+    if not self.run_command_started:
+      self.P(f"Running run command: {self.cfg_run_command}")
+      self.run_command_process = self.__run_command(self.cfg_run_command)
 
-    self.npm_install_started = False
-    self.npm_install_finished = False
+      timeout = 3
+      self.sleep(timeout)
 
-    self.npm_started = False
+      if self.run_command_process.poll() is None:
+        self.P("Server started successfully")
+        self.add_payload_by_fields(
+          command_type="run",
+          command_str=self.cfg_run_command,
+          command_status="success"
+        )
+        self.run_command_started = True
+      else:
+        self.P(f"ERROR: Run command finished with exit code {self.run_command_process.returncode}")
+        self.add_payload_by_fields(
+          command_type="run",
+          command_str=self.cfg_run_command,
+          command_status="failed"
+        )
+      # endif check server started
+    # endif run command started
+
     return
 
   def process(self):
-    if not self.assets_initialized:
-      # Start the Nodejs app
-      self.P('Starting Nodejs app...')
-      script_path = self.os_path.join(self._script_temp_dir, 'main.py')
-      self.P("Using script at {}".format(script_path))
+    self.maybe_init_assets()
 
-      src_dir = self.os_path.join('plugins', 'business', 'nodejs', self.cfg_assets)
+    self.maybe_run_all_setup_commands()
 
-      self._initialize_assets(src_dir, self._script_temp_dir)
-    # endif not self.assets_initialized
-
-    if not self.npm_init_started:
-      # Init the nodejs server
-      npm_init_args = [
-        'npm',
-        'init',
-        '-y'
-      ]
-
-      npm_init_process = subprocess.Popen(
-        npm_init_args,
-        env=self.prepared_env,
-        cwd=self._script_temp_dir
-      )
-      self.npm_init_started = True
-    # endif not self.npm_init_started
-
-    if not self.npm_init_finished:
-      timeout = 10
-
-      try:
-        npm_init_process.wait(timeout)
-        self.npm_init_finished = True
-      except subprocess.TimeoutExpired:
-        self.P("WARNING: npm init timed out. Continuing anyway.")
-    # endif not self.npm_init_finished
-
-    if not self.npm_install_started:
-      # Install the nodejs server
-      npm_install_args = [
-        'npm',
-        'install'
-      ]
-
-      npm_install_process = subprocess.Popen(
-        npm_install_args,
-        env=self.prepared_env,
-        cwd=self._script_temp_dir
-      )
-      self.npm_install_started = True
-    # endif not self.npm_install_started
-
-    if not self.npm_install_finished:
-      timeout = 10
-
-      try:
-        npm_install_process.wait(timeout)
-        self.npm_install_finished = True
-      except subprocess.TimeoutExpired:
-        self.P("WARNING: npm install timed out. Continuing anyway.")
-    # endif not self.npm_install_finished
-
-    if not self.npm_started:
-      # Set PWD and cwd to the folder containing the nodejs script and assets
-      nodejs_args = [
-        'npm',
-        'start'
-      ]
-      self.nodejs_process = subprocess.Popen(
-        nodejs_args,
-        env=self.prepared_env,
-        cwd=self._script_temp_dir
-      )
-      self.npm_started = True
+    self.maybe_run_start_command()
 
     return
 
   def on_close(self):
-    if not self.npm_started:
+    if not self.run_command_started:
       self.P("Nodejs server was never started. Skipping teardown.")
       return
 
     # Teardown nodejs
     try:
-      # FIXME: there must be a clean way to do this.
       self.P("Forcefully killing nodejs server")
-      self.nodejs_process.kill()
+      self.run_command_process.kill()
       self.P("Killed nodejs server")
     except Exception as _:
       self.P('Could not kill nodejs server')
