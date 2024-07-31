@@ -23,6 +23,7 @@ class MinioDatasetDataCapture(DataCaptureThread):
     self._heuristic_cap_resolution = None
     self._send_pings = False
     self.checked_dataset = False
+    self.dataset_status = "Checking for dataset"
     super(MinioDatasetDataCapture, self).__init__(**kwargs)
     return
 
@@ -54,7 +55,12 @@ class MinioDatasetDataCapture(DataCaptureThread):
       if self._file_system_manager.file_system.signature.lower() != "minio":
         self.P("Errors will occur because the configured file system on this box is not minio!", color='e')
     return
-  
+
+  @property
+  def ds_local_path(self):
+    res = self.os_path.join(self.parent_fld, self.cfg_dataset_object_name)
+    return res if not res.endswith('.zip') else res[:-4]
+
   def _list_minio_files(self):
     res = None
     if self._file_system_manager is not None:
@@ -90,11 +96,11 @@ class MinioDatasetDataCapture(DataCaptureThread):
       self.P(f"Checking if dataset {self.cfg_dataset_object_name} is available...")
     if not self.checked_dataset and not self._is_dataset_available():
       self.P(f"Dataset {self.cfg_dataset_object_name} not available.")
-      self._add_not_data_avail_inputs()
+      self.add_ds_inputs(ready=False)
     else:
       self.checked_dataset = True
       if not self._send_pings:
-        self._add_data_was_found_inputs()
+        self.process_found_dataset()
         self._send_pings = True
       else:
         self._add_ping_inputs()
@@ -102,48 +108,52 @@ class MinioDatasetDataCapture(DataCaptureThread):
     #endif
     return
 
-  def _add_not_data_avail_inputs(self):
-    self._add_inputs(
-      [
-        self._new_input(struct_data={'can_start_training': False, 'dataset_path': None})
-      ]
-    )
-    return
-
-  def _add_data_was_found_inputs(self):
-    target_path = self.os_path.join(self.parent_fld, self.cfg_dataset_object_name)
-    if self.os_path.isdir(target_path) and not self.cfg_force_download:
-      self.P(f"Dataset already available at {target_path}")
-      self._add_inputs(
-        [
-          self._new_input(struct_data={'can_start_training': True, 'dataset_path': target_path})
-        ]
-      )
+  def process_found_dataset(self):
+    if self.os_path.isdir(self.ds_local_path) and not self.cfg_force_download:
+      self.P(f"Dataset already available at {self.ds_local_path}")
+      self.dataset_status = "Dataset available"
+      self.add_ds_inputs(ready=True)
       return
-    #endif
+    # endif dataset already available
 
+    self.dataset_status = "Downloading dataset"
     os.makedirs(self.parent_fld, exist_ok=True)
-    dataset_path = self.os_path.join(self.parent_fld, self.cfg_dataset_object_name) + '.zip'
-    self.P(f"Downloading dataset {self.cfg_dataset_object_name} to {dataset_path}")
+    dataset_path = self.ds_local_path + '.zip'
+    cloud_path = self.cfg_dataset_object_name
+    if not cloud_path.endswith('.zip'):
+      cloud_path += '.zip'
+    self.P(f"Downloading dataset {cloud_path} to {dataset_path}")
     self._download_minio_file(
-      uri=self.cfg_dataset_object_name + '.zip',
+      uri=cloud_path,
       local_file_path=dataset_path
     )
     self.P(f"Downloaded dataset {self.cfg_dataset_object_name} to {dataset_path}. Unzipping...")
-    target_path = self._unzip(dataset_path)
+    self.dataset_status = "Unzipping dataset"
+    target_path = self._unzip(dataset_path, self.ds_local_path)
     self.P(f"Unzipped dataset {self.cfg_dataset_object_name} to {target_path}.")
     os.remove(dataset_path)
-    self._add_inputs(
-      [
-        self._new_input(struct_data={'can_start_training': True, 'dataset_path': target_path})
-      ]
-    )
+    self.dataset_status = "Dataset available"
+    self.add_ds_inputs(ready=True)
     return
+
+  def add_ds_inputs(self, ready=False):
+    self._add_inputs([
+      self._new_input(struct_data={
+        'dataset_ready': ready,
+        'dataset_path': self.ds_local_path if ready else None,
+        'dataset_status': self.dataset_status
+      })
+    ])
 
   def _add_ping_inputs(self):
     self._add_inputs(
       [
-        self._new_input(struct_data={'ping' : True})
+        self._new_input(struct_data={
+          'ping': True,
+          'dataset_ready': True,
+          'dataset_status': self.dataset_status,
+          'dataset_path': self.ds_local_path
+        })
       ]
     )
     return
@@ -155,8 +165,9 @@ class MinioDatasetDataCapture(DataCaptureThread):
     inventory = self._file_system_manager.file_system.list_objects()
     return self.cfg_dataset_object_name in inventory or self.cfg_dataset_object_name + '.zip' in inventory
 
-  def _unzip(self, path_zip_file):
-    base_name, ext = self.os_path.splitext(path_zip_file)
+  def _unzip(self, path_zip_file, dir_name=None):
+    if dir_name is None:
+      dir_name, ext = self.os_path.splitext(path_zip_file)
     with zipfile.ZipFile(path_zip_file, "r") as zip_ref:
-      zip_ref.extractall(base_name)
-    return base_name
+      zip_ref.extractall(dir_name)
+    return dir_name

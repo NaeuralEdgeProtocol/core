@@ -152,10 +152,12 @@ class GeneralTrainingProcessPlugin(BasePlugin):
     assert 'STATUS' in self.training_output
     has_finished = self.training_output.get('HAS_FINISHED', False)
     payload_kwargs = {
-      **self.training_output,
+      'train_status': self.training_output,
       'description': self.cfg_description,
       'objective_name': self.cfg_objective_name,
     }
+    if self.training_output['STATUS'] != 'WAITING':
+      payload_kwargs['job_status'] = 'Training' if not has_finished else 'Trained'
     save_payload_json = False
     model_id = None
     if has_finished and not self.performed_final:

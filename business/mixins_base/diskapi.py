@@ -771,13 +771,14 @@ class _DiskAPIMixin(object):
 
   # Zipfile section
   if True:
-    def diskapi_zip_dir(self, dir_path, zip_path=None):
+    def diskapi_zip_dir(self, dir_path, zip_path=None, include_dir=True):
       """
       Zip the contents of an entire folder (with that folder included).
       Parameters
       ----------
       dir_path - string, path of directory to zip
       zip_path - string, path of the output zip file. If None, zip_path will be dir_path + ".zip"
+      include_dir - bool, whether to include the directory itself in the zip file
 
       Returns
       -------
@@ -789,7 +790,8 @@ class _DiskAPIMixin(object):
       ziph = zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED)
       for root, dirs, files in os.walk(dir_path):
         for file in files:
-          ziph.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(dir_path, '..')))
+          file_root = os.path.join(dir_path, '..') if include_dir else dir_path
+          ziph.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), file_root))
         # endfor files
       # endfor os.walk
       ziph.close()

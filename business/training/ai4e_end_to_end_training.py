@@ -151,6 +151,23 @@ class Ai4eEndToEndTrainingPlugin(BasePlugin):
     super(Ai4eEndToEndTrainingPlugin, self).on_init()
     self.__started_gather = False
     self.__started_training = False
+    self.maybe_load_previous_state()
+    return
+
+  def maybe_load_previous_state(self):
+    obj = self.persistence_serialization_load()
+    if obj is not None:
+      self.__started_gather = obj.get('started_gather', self.__started_gather)
+      self.__started_training = obj.get('started_training', self.__started_training)
+    # endif obj is not None
+    return
+
+  def save_current_state(self):
+    obj = {
+      'started_gather': self.__started_gather,
+      'started_training': self.__started_training,
+    }
+    self.persistence_serialization_save(obj)
     return
 
   def get_auto_deploy(self):
@@ -358,6 +375,7 @@ class Ai4eEndToEndTrainingPlugin(BasePlugin):
         config_metastream=self._configured_metastream_collect_data()
       )
       self.__started_gather = True
+      self.save_current_state()
     # endif not started gather
     if not self.__started_training and self.cfg_start_training:
       training_box_addr = self.net_mon.network_node_addr(self.training_box_id)
@@ -367,5 +385,6 @@ class Ai4eEndToEndTrainingPlugin(BasePlugin):
         node_address=training_box_addr
       )
       self.__started_training = True
+      self.save_current_state()
     # endif not started training
     return

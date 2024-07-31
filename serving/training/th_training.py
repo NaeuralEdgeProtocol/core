@@ -104,15 +104,15 @@ class THTraining(BaseServingProcess, _PluginsManagerMixin):
     return data[0]
 
   def _predict(self, prep_inputs):
-    if 'can_start_training' in prep_inputs:
-      can_start_training = prep_inputs['can_start_training']
+    if 'dataset_ready' in prep_inputs and self._pipeline is None:
+      can_start_training = prep_inputs['dataset_ready']
       if can_start_training:
         self._create_pipeline(path_to_dataset=prep_inputs['dataset_path'])
         return self._on_status(prep_inputs)
       else:
         return {'STATUS' : 'WAITING'}
-      #endif
-    #endif
+      # endif
+    # endif
 
     return self._on_status(prep_inputs)
 
