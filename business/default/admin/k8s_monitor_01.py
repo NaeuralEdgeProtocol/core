@@ -174,6 +174,21 @@ class K8sMonitor01Plugin(BasePluginExecutor):
     self.P(s1, color='r')
     self.__status = s1
     return
+  
+  
+  def on_command(self, data, **kwargs):
+    if isinstance(data, dict):
+      cmd = data.get('cmd', None)
+      args = data.get('args', None)
+      if cmd == 'delete':
+        if isinstance(args, list):
+          pod_names = args[0]
+          namespace = args[1] if len(args) > 1 else "default"
+          self.P(f"Received delete pods command for wilcard '{pod_names}' on namespace {namespace}")
+          self.__km.delete_pods_from_namespace(pod_names, namespace)
+        #end if has args
+      #end if cmd is delete
+    return None
  
   
   def process(self):
