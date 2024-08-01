@@ -22,9 +22,9 @@ async def {{ item['name'] }}({% if item['method']=='post' %}request: Request, {%
     body = await request.json()
   except json.JSONDecodeError:
     body = None
-  result = await eng.call_plugin("{{ item['name'] }}"{% for arg in item['args'] %}, {{ arg }}{% endfor %}, body)
+  result = await eng.call_plugin("{{ item['name'] }}"{% for param in item['params'] %}, {{ param }}{% endfor %}, body)
   {% else %}
-  result = await eng.call_plugin("{{ item['name'] }}"{% for arg in item['args'] %}, {{ arg }}{% endfor %})
+  result = await eng.call_plugin("{{ item['name'] }}"{% for param in item['params'] %}, {{ param }}{% endfor %})
   {% endif %}
   return result
 {% endfor %}
