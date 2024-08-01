@@ -38,9 +38,17 @@ class NodeJsWebAppPlugin(BasePlugin):
     super(NodeJsWebAppPlugin, self).on_init()
     self._script_temp_dir = tempfile.mkdtemp()
 
-    self.prepared_env = self.deepcopy(os.environ)
+    self.prepared_env = dict(os.environ)
     self.prepared_env["PWD"] = self._script_temp_dir
     self.prepared_env["PORT"] = str(self.port)
+
+    if self.os_path.exists(self.os_path.join(self.cfg_assets, '.env')):
+      with open(self.os_path.join(self.cfg_assets, '.env'), 'r') as f:
+        for line in f:
+          if line.startswith('#') or len(line.strip()) == 0:
+            continue
+          key, value = line.strip().split('=', 1)
+          self.prepared_env[key] = value
 
     self.assets_initialized = False
 
@@ -140,6 +148,13 @@ class NodeJsWebAppPlugin(BasePlugin):
         shutil.copy2(src_file_path, dst_file_path)
       # endfor all files
     # endfor os.walk
+    
+    # write .env file in the target directory
+    # environment variables are passed in subprocess.Popen, so this is not needed
+    # but it's useful for debugging
+    with open(self.os_path.join(dst_dir, '.env'), 'w') as f:
+      for key, value in self.prepared_env.items():
+        f.write(f"{key}={value}\n")
 
     self.assets_initialized = True
 
