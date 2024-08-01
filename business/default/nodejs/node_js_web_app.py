@@ -38,6 +38,8 @@ class NodeJsWebAppPlugin(BasePlugin):
     super(NodeJsWebAppPlugin, self).on_init()
     self._script_temp_dir = tempfile.mkdtemp()
 
+    # TODO: Is it okay to copy the env of the current process?
+    # Is it a security risk?
     self.prepared_env = dict(os.environ)
     self.prepared_env["PWD"] = self._script_temp_dir
     self.prepared_env["PORT"] = str(self.port)
