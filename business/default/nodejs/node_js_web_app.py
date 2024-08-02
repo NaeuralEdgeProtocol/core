@@ -9,6 +9,8 @@ __VER__ = '0.0.0.0'
 
 _CONFIG = {
   **BasePlugin.CONFIG,
+  'PROCESS_DELAY': 5,
+
   'USE_NGROK': True,
   'NGROK_ENABLED': True,
   'NGROK_DOMAIN': None,
@@ -39,9 +41,7 @@ class NodeJsWebAppPlugin(BasePlugin):
     super(NodeJsWebAppPlugin, self).on_init()
     self._script_temp_dir = tempfile.mkdtemp()
 
-    # TODO: Is it okay to copy the env of the current process?
-    # Is it a security risk?
-    self.prepared_env = dict(os.environ)
+    self.prepared_env = dict()
     self.prepared_env["PWD"] = self._script_temp_dir
     self.prepared_env["PORT"] = str(self.port)
 
@@ -61,6 +61,12 @@ class NodeJsWebAppPlugin(BasePlugin):
 
     self.run_command_started = False
     self.run_command_process = None
+
+    self.logs = self.deque(maxlen=1000)
+    self.logs_reader = None
+    self.err_logs = self.deque(maxlen=1000)
+    self.err_logs_reader = None
+    self.last_log_read_timestamp = 0
     return
 
   def __run_command(self, command):
@@ -68,8 +74,12 @@ class NodeJsWebAppPlugin(BasePlugin):
     process = subprocess.Popen(
       command_args,
       env=self.prepared_env,
-      cwd=self._script_temp_dir
+      cwd=self._script_temp_dir,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.PIPE,
     )
+    self.logs_reader = self.LogReader(process.stdout)
+    self.err_logs_reader = self.LogReader(process.stderr)
     return process
 
   def __wait_for_command(self, process, timeout):
@@ -77,12 +87,33 @@ class NodeJsWebAppPlugin(BasePlugin):
     failed = False
     try:
       process.wait(timeout)
+      self.sleep(0.1)
+      self.logs_reader.stop()
+      self.err_logs_reader.stop()
+
+      self.read_current_logs()
+
       failed = process.returncode != 0
       process_finished = True
     except subprocess.TimeoutExpired:
       pass
 
     return process_finished, failed
+
+  def get_current_logs(self):
+    logs = []
+    L = len(self.logs)
+    for _ in range(L):
+      logs.append(self.logs.popleft())
+    logs = "".join(logs)
+
+    err_logs = []
+    E = len(self.err_logs)
+    for _ in range(E):
+      err_logs.append(self.err_logs.popleft())
+    err_logs = "".join(err_logs)
+
+    return logs, err_logs
 
   def _maybe_run_setup_command(self, idx):
     if idx > 0 and not self.setup_commands_finished[idx - 1]:
@@ -151,7 +182,7 @@ class NodeJsWebAppPlugin(BasePlugin):
         shutil.copy2(src_file_path, dst_file_path)
       # endfor all files
     # endfor os.walk
-    
+
     # write .env file in the target directory
     # environment variables are passed in subprocess.Popen, so this is not needed
     # but it's useful for debugging
@@ -203,13 +234,16 @@ class NodeJsWebAppPlugin(BasePlugin):
 
     return
 
-  def process(self):
-    self.maybe_init_assets()
+  def read_current_logs(self):
+    logs = self.logs_reader.get_next_characters()
+    if len(logs) > 0:
+      self.P(logs)
+      self.logs.append(logs)
 
-    self.maybe_run_all_setup_commands()
-
-    self.maybe_run_start_command()
-
+    err_logs = self.err_logs_reader.get_next_characters()
+    if len(err_logs) > 0:
+      self.P(err_logs, color='r')
+      self.err_logs.append(err_logs)
     return
 
   def on_close(self):
@@ -221,6 +255,7 @@ class NodeJsWebAppPlugin(BasePlugin):
     try:
       self.P("Forcefully killing nodejs server")
       self.run_command_process.kill()
+      self.__wait_for_command(self.run_command_process, 3)
       self.P("Killed nodejs server")
     except Exception as _:
       self.P('Could not kill nodejs server')
@@ -229,4 +264,32 @@ class NodeJsWebAppPlugin(BasePlugin):
     # to keep around for debugging purposes.
 
     super(NodeJsWebAppPlugin, self).on_close()
+    return
+
+  def on_command(self, data, delta_logs=None, full_logs=None, **kwargs):
+    if (isinstance(data, str) and data.upper() == 'DELTA_LOGS') or delta_logs:
+      # TODO: Implement delta logs
+      self.add_payload_by_fields(
+        on_command_request=data,
+        logs=[]
+      )
+      pass
+    if (isinstance(data, str) and data.upper() == 'FULL_LOGS') or full_logs:
+      logs, err_logs = self.get_current_logs()
+      self.add_payload_by_fields(
+        on_command_request=data,
+        logs=logs,
+        err_logs=err_logs,
+      )
+
+    return
+
+  def process(self):
+    self.maybe_init_assets()
+
+    self.maybe_run_all_setup_commands()
+
+    self.maybe_run_start_command()
+
+    self.read_current_logs()
     return
