@@ -20,7 +20,7 @@ class _NgrokMixinPlugin(object):
   """
 
   def on_init(self):
-    self.cached_use_ngrok = self.cfg_use_ngrok
+    self.cached_use_ngrok = self.cfg_use_ngrok or self.cfg_ngrok_enabled
     self.ngrok_process = None
 
     self.ngrok_authentication_done = False
@@ -111,7 +111,7 @@ class _NgrokMixinPlugin(object):
   def _process(self):
     super(_NgrokMixinPlugin, self)._process()
 
-    if self.cfg_use_ngrok:
+    if self.cfg_use_ngrok or self.cfg_ngrok_enabled:
       self._maybe_authenticate_ngrok()
       self._maybe_start_ngrok_tunnel()
     # endif
@@ -119,7 +119,7 @@ class _NgrokMixinPlugin(object):
 
   def on_config(self):
     super(_NgrokMixinPlugin, self).on_config()
-    if self.cached_use_ngrok and not self.cfg_use_ngrok:
+    if self.cached_use_ngrok and not (self.cfg_use_ngrok or self.cfg_ngrok_enabled):
       self.P("User disabled ngrok. Closing tunnel.")
       self._maybe_close_ngrok_tunnel()
     # endif

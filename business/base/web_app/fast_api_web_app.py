@@ -12,7 +12,7 @@ __VER__ = '0.0.0.0'
 
 _CONFIG = {
   **BasePlugin.CONFIG,
-  'USE_NGROK' : False,
+  'NGROK_ENABLED' : True,
   'NGROK_DOMAIN' : None,
   'NGROK_EDGE_LABEL' : None,
 

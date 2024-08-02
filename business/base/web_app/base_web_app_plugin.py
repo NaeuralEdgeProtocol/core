@@ -10,6 +10,7 @@ _CONFIG = {
   'PROCESS_DELAY': 0.01,
 
   'USE_NGROK': False,
+  'NGROK_ENABLED': False,
   'NGROK_DOMAIN': None,
   'NGROK_EDGE_LABEL': None,
 
