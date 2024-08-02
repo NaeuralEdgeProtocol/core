@@ -1,4 +1,5 @@
 import json
+from threading import Thread
 import numpy as np
 import pandas as pd
 import cv2
@@ -14,6 +15,8 @@ import base64
 import yaml
 import zlib
 
+from core.utils.thread_raise import ctype_async_raise
+
 try:
   # Temporarily guard the bs4 import until we can be sure
   # that it's available in all environments.
@@ -23,7 +26,7 @@ except ImportError as _:
 
 
 from collections import OrderedDict, defaultdict, deque
-from io import BytesIO
+from io import BufferedReader, BytesIO
 from time import sleep, time
 from datetime import datetime, timedelta, timezone
 from copy import deepcopy
@@ -137,6 +140,125 @@ class NPJson(json.JSONEncoder):
           return obj.strftime("%Y-%m-%d %H:%M:%S")
       else:
           return super(NPJson, self).default(obj)
+
+
+class LogReader():
+  def __init__(self, owner, buff_reader, size=100):
+    self.buff_reader: BufferedReader = buff_reader
+    self.owner = owner
+    self.buf_reader_size = size
+
+    self.buffer = []
+    self.done = False
+    self.exited = False
+    self.thread = None
+    # now we start the thread
+    self.start()
+    return
+
+  def P(self, *args, **kwargs):
+    self.owner.P(*args, **kwargs)
+    return
+
+  def _run(self):
+    try:
+      while not self.done:
+        text = self.buff_reader.read(self.buf_reader_size)
+        if text:
+          self.buffer.append(text.decode('utf-8'))
+        else:
+          break
+    except Exception as exc:
+      self.owner.P("Log reader exception: {}".format(exc), color='r')
+    self.exited = True
+    return
+
+  def start(self):
+    self.thread = Thread(target=self._run)
+    self.thread.start()
+    return
+
+  # Public methods
+  def stop(self):
+    self.done = True
+    if not self.exited:
+      self.owner.sleep(0.2)
+    # end if
+
+    if not self.exited:
+      self.owner.P("Forcing log reader thread to stop...")
+      ctype_async_raise(self.thread.ident, ValueError)
+      self.owner.sleep(0.2)
+      self.owner.P("Log reader stopped forcefully.")
+    # end if
+
+    self.thread.join(timeout=0.1)
+
+    if self.thread.is_alive():
+      self.owner.P("Log reader thread is still alive.", color='r')
+    else:
+      self.owner.P("Log reader thread joined gracefully.")
+    # end if
+
+    return
+
+  def get_next_characters(self, max_characters=-1):
+    result = []
+    
+    if max_characters == -1:
+      # get all the buffer
+      L = len(self.buffer)
+      for i in range(L):
+        result.append(self.buffer.pop(0))
+      # end for
+    else:
+      L = len(self.buffer)
+      nr_chars = 0
+      for i in range(L):
+        segment = self.buffer[0]
+
+        if nr_chars + len(segment) > max_characters:
+          result.append(segment[:max_characters - nr_chars])
+          segment = segment[max_characters - nr_chars:]
+          break
+        elif nr_chars + len(segment) == max_characters:
+          result.append(segment)
+          self.buffer.pop(0)
+          break
+        else:
+          result.append(segment)
+          nr_chars += len(segment)
+          self.buffer.pop(0)
+        # end if
+      # end for
+    # end if
+    result = ''.join(result)
+    return result
+  
+  def get_next_line(self):
+    result = []
+    L = len(self.buffer)
+    for i in range(L):
+      segment = self.buffer[i]
+      if '\n' in segment:
+        pos = segment.index('\n')
+        result.append(segment[:pos])
+        self.buffer[i] = segment[pos+1:]
+        break
+      else:
+        result.append(segment)
+      # end if
+    # end for
+
+    if '\n' in result[-1]:
+      for _ in range(len(result)):
+        self.buffer.pop(0)
+      result = ''.join(result)
+    else:
+      result = None
+    # end if
+    return result
+
 
 class _UtilsBaseMixin(
   _PersistenceSerializationMixin
@@ -587,8 +709,25 @@ class _UtilsBaseMixin(
         
     """
     return NestedDefaultDotDict(*args)
-    
-    
+
+  def LogReader(self, buff_reader, size=100):
+    """
+    Returns a `LogReader` object that is used to read from a buffer reader.
+
+    Parameters
+    ----------
+    buff_reader : BufferedReader
+        the buffer from where to read
+    size : int, optional
+        the size of the buffer. The default is 100.
+
+    Returns
+    -------
+    LogReader : class
+        the log reader object.
+    """
+
+    return LogReader(owner=self, buff_reader=buff_reader, size=size)
 
   def path_exists(self, path):
     """
