@@ -305,10 +305,10 @@ class VideoStreamFfmpegDataCapture(DataCaptureThread, _VideoConfigMixin):
     if frame_reader_thr is not None:
       if not self._ffmpeg_frame_reader.exited:
         self._ffmpeg_frame_reader.force_stop()
-        frame_reader_thr.join()
+      frame_reader_thr.join()
       if not self._ffmpeg_log_reader.exited:
         self._ffmpeg_log_reader.force_stop()
-        log_reader_thr.join()
+      log_reader_thr.join()
 
     if self._ffmpeg_process is not None:
       del self._ffmpeg_process.stderr
