@@ -41,7 +41,7 @@ class NodeJsWebAppPlugin(BasePlugin):
     super(NodeJsWebAppPlugin, self).on_init()
     self._script_temp_dir = tempfile.mkdtemp()
 
-    self.prepared_env = dict()
+    self.prepared_env = self.__prepare_env()
     self.prepared_env["PWD"] = self._script_temp_dir
     self.prepared_env["PORT"] = str(self.port)
 
@@ -68,6 +68,18 @@ class NodeJsWebAppPlugin(BasePlugin):
     self.err_logs_reader = None
     self.last_log_read_timestamp = 0
     return
+
+  def __prepare_env(self):
+    prepared_env = dict(self.os_environ)
+    to_pop_keys = []
+    for key in prepared_env:
+      if key.startswith('EE_'):
+        to_pop_keys.append(key)
+    # endfor all keys
+
+    for key in to_pop_keys:
+      prepared_env.pop(key)
+    return prepared_env
 
   def __run_command(self, command):
     command_args = command.split(' ')
