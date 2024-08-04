@@ -37,39 +37,8 @@ class NodeJsWebAppPlugin(BasePlugin):
 
   CONFIG = _CONFIG
 
-  def on_init(self):
-    super(NodeJsWebAppPlugin, self).on_init()
-    self._script_temp_dir = tempfile.mkdtemp()
-
-    self.prepared_env = self.__prepare_env()
-    self.prepared_env["PWD"] = self._script_temp_dir
-    self.prepared_env["PORT"] = str(self.port)
-
-    if self.os_path.exists(self.os_path.join(self.cfg_assets, '.env')):
-      with open(self.os_path.join(self.cfg_assets, '.env'), 'r') as f:
-        for line in f:
-          if line.startswith('#') or len(line.strip()) == 0:
-            continue
-          key, value = line.strip().split('=', 1)
-          self.prepared_env[key] = value
-
-    self.assets_initialized = False
-
-    self.setup_commands_started = [False] * len(self.cfg_setup_commands)
-    self.setup_commands_finished = [False] * len(self.cfg_setup_commands)
-    self.setup_commands_processes = [None] * len(self.cfg_setup_commands)
-
-    self.run_command_started = False
-    self.run_command_process = None
-
-    self.logs = self.deque(maxlen=1000)
-    self.logs_reader = None
-    self.err_logs = self.deque(maxlen=1000)
-    self.err_logs_reader = None
-    self.last_log_read_timestamp = 0
-    return
-
   def __prepare_env(self):
+    # pop all `EE_` keys
     prepared_env = dict(self.os_environ)
     to_pop_keys = []
     for key in prepared_env:
@@ -79,6 +48,21 @@ class NodeJsWebAppPlugin(BasePlugin):
 
     for key in to_pop_keys:
       prepared_env.pop(key)
+
+    # add mandatory keys
+    prepared_env["PWD"] = self.script_temp_dir
+    prepared_env["PORT"] = str(self.port)
+
+    # add optional keys, found in `.env` file from assets
+    env_file_path = self.os_path.join(self.cfg_assets, '.env')
+    if self.os_path.exists(env_file_path):
+      with open(env_file_path, 'r') as f:
+        for line in f:
+          if line.startswith('#') or len(line.strip()) == 0:
+            continue
+          key, value = line.strip().split('=', 1)
+          prepared_env[key] = value
+
     return prepared_env
 
   def __run_command(self, command):
@@ -86,7 +70,7 @@ class NodeJsWebAppPlugin(BasePlugin):
     process = subprocess.Popen(
       command_args,
       env=self.prepared_env,
-      cwd=self._script_temp_dir,
+      cwd=self.script_temp_dir,
       stdout=subprocess.PIPE,
       stderr=subprocess.PIPE,
     )
@@ -103,7 +87,10 @@ class NodeJsWebAppPlugin(BasePlugin):
       self.logs_reader.stop()
       self.err_logs_reader.stop()
 
-      self.read_current_logs()
+      self.__maybe_read_current_logs()
+
+      self.logs_reader = None
+      self.err_logs_reader = None
 
       failed = process.returncode != 0
       process_finished = True
@@ -112,22 +99,72 @@ class NodeJsWebAppPlugin(BasePlugin):
 
     return process_finished, failed
 
-  def get_current_logs(self):
-    logs = []
-    L = len(self.logs)
-    for _ in range(L):
-      logs.append(self.logs.popleft())
+  def __get_delta_logs(self):
+    logs = list(self.logs)
     logs = "".join(logs)
+    self.logs.clear()
 
-    err_logs = []
-    E = len(self.err_logs)
-    for _ in range(E):
-      err_logs.append(self.err_logs.popleft())
+    err_logs = list(self.err_logs)
     err_logs = "".join(err_logs)
+    self.err_logs.clear()
 
     return logs, err_logs
 
-  def _maybe_run_setup_command(self, idx):
+  def __maybe_read_current_logs(self):
+    if self.logs_reader is not None:
+      logs = self.logs_reader.get_next_characters()
+      if len(logs) > 0:
+        self.P(logs)
+        self.logs.append(logs)
+
+    if self.err_logs_reader is not None:
+      err_logs = self.err_logs_reader.get_next_characters()
+      if len(err_logs) > 0:
+        self.P(err_logs, color='r')
+        self.err_logs.append(err_logs)
+    return
+
+  def __maybe_init_assets(self):
+    if self.assets_initialized:
+      return
+
+    self.P('Starting Nodejs app...')
+
+    src_dir = self.cfg_assets
+    dst_dir = self.script_temp_dir
+
+    # Walk through the source directory.
+    for root, _, files in os.walk(src_dir):
+      for file in files:
+        src_file_path = self.os_path.join(root, file)
+        dst_file_path = self.os_path.join(
+          dst_dir,
+          self.os_path.relpath(src_file_path, src_dir)
+        )
+
+        # If we have a symlink don't do anything.
+        if self.os_path.islink(src_file_path):
+          continue
+
+        # Make sure the destination directory exists.
+        os.makedirs(self.os_path.dirname(dst_file_path), exist_ok=True)
+
+        shutil.copy2(src_file_path, dst_file_path)
+      # endfor all files
+    # endfor os.walk
+
+    # write .env file in the target directory
+    # environment variables are passed in subprocess.Popen, so this is not needed
+    # but it's useful for debugging
+    with open(self.os_path.join(dst_dir, '.env_used'), 'w') as f:
+      for key, value in self.prepared_env.items():
+        f.write(f"{key}={value}\n")
+
+    self.assets_initialized = True
+
+    return
+
+  def __maybe_run_nth_setup_command(self, idx):
     if idx > 0 and not self.setup_commands_finished[idx - 1]:
       # Previous setup command has not finished yet. Skip this one.
       return
@@ -163,59 +200,19 @@ class NodeJsWebAppPlugin(BasePlugin):
     # endif setup command finished
     return
 
-  def has_finished_setup_commands(self):
+  def __has_finished_setup_commands(self):
     return all(self.setup_commands_finished)
 
-  def maybe_init_assets(self):
-    if self.assets_initialized:
-      return
-
-    self.P('Starting Nodejs app...')
-
-    src_dir = self.cfg_assets
-    dst_dir = self._script_temp_dir
-
-    # Walk through the source directory.
-    for root, _, files in os.walk(src_dir):
-      for file in files:
-        src_file_path = self.os_path.join(root, file)
-        dst_file_path = self.os_path.join(
-          dst_dir,
-          self.os_path.relpath(src_file_path, src_dir)
-        )
-
-        # If we have a symlink don't do anything.
-        if self.os_path.islink(src_file_path):
-          continue
-
-        # Make sure the destination directory exists.
-        os.makedirs(self.os_path.dirname(dst_file_path), exist_ok=True)
-
-        shutil.copy2(src_file_path, dst_file_path)
-      # endfor all files
-    # endfor os.walk
-
-    # write .env file in the target directory
-    # environment variables are passed in subprocess.Popen, so this is not needed
-    # but it's useful for debugging
-    with open(self.os_path.join(dst_dir, '.env'), 'w') as f:
-      for key, value in self.prepared_env.items():
-        f.write(f"{key}={value}\n")
-
-    self.assets_initialized = True
-
-    return
-
-  def maybe_run_all_setup_commands(self):
-    if self.has_finished_setup_commands():
+  def __maybe_run_all_setup_commands(self):
+    if self.__has_finished_setup_commands():
       return
 
     for idx in range(len(self.cfg_setup_commands)):
-      self._maybe_run_setup_command(idx)
+      self.__maybe_run_nth_setup_command(idx)
     return
 
-  def maybe_run_start_command(self):
-    if not self.has_finished_setup_commands():
+  def __maybe_run_start_command(self):
+    if not self.__has_finished_setup_commands():
       # Waiting for setup commands to finish before running the run command.
       return
 
@@ -246,16 +243,26 @@ class NodeJsWebAppPlugin(BasePlugin):
 
     return
 
-  def read_current_logs(self):
-    logs = self.logs_reader.get_next_characters()
-    if len(logs) > 0:
-      self.P(logs)
-      self.logs.append(logs)
+  def on_init(self):
+    super(NodeJsWebAppPlugin, self).on_init()
+    self.script_temp_dir = tempfile.mkdtemp()
 
-    err_logs = self.err_logs_reader.get_next_characters()
-    if len(err_logs) > 0:
-      self.P(err_logs, color='r')
-      self.err_logs.append(err_logs)
+    self.prepared_env = self.__prepare_env()
+
+    self.assets_initialized = False
+
+    self.setup_commands_started = [False] * len(self.cfg_setup_commands)
+    self.setup_commands_finished = [False] * len(self.cfg_setup_commands)
+    self.setup_commands_processes = [None] * len(self.cfg_setup_commands)
+
+    self.run_command_started = False
+    self.run_command_process = None
+
+    self.logs = self.deque(maxlen=1000)
+    self.logs_reader = None
+
+    self.err_logs = self.deque(maxlen=1000)
+    self.err_logs_reader = None
     return
 
   def on_close(self):
@@ -274,34 +281,31 @@ class NodeJsWebAppPlugin(BasePlugin):
 
     # TODO remove temporary folder. For now it's useful
     # to keep around for debugging purposes.
-
-    super(NodeJsWebAppPlugin, self).on_close()
     return
 
   def on_command(self, data, delta_logs=None, full_logs=None, **kwargs):
     if (isinstance(data, str) and data.upper() == 'DELTA_LOGS') or delta_logs:
-      # TODO: Implement delta logs
-      self.add_payload_by_fields(
-        on_command_request=data,
-        logs=[]
-      )
-      pass
-    if (isinstance(data, str) and data.upper() == 'FULL_LOGS') or full_logs:
-      logs, err_logs = self.get_current_logs()
+      logs, err_logs = self.__get_delta_logs()
       self.add_payload_by_fields(
         on_command_request=data,
         logs=logs,
         err_logs=err_logs,
       )
+    if (isinstance(data, str) and data.upper() == 'FULL_LOGS') or full_logs:
+      # TODO: Implement full logs
+      self.add_payload_by_fields(
+        on_command_request=data,
+        logs=[]
+      )
 
     return
 
   def process(self):
-    self.maybe_init_assets()
+    self.__maybe_init_assets()
 
-    self.maybe_run_all_setup_commands()
+    self.__maybe_run_all_setup_commands()
 
-    self.maybe_run_start_command()
+    self.__maybe_run_start_command()
 
-    self.read_current_logs()
+    self.__maybe_read_current_logs()
     return
