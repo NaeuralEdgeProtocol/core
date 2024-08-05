@@ -74,7 +74,7 @@ class SelfCheck01Plugin(BasePluginExecutor):
     dct_results['CHECK_DATA'] = dct_check_data
     return is_issue, dct_results
   
-  def __get_result(self, avail : float, alert : float, check : str):
+  def get_result(self, avail : float, alert : float, check : str):
     return {
       "AVAIL_PRC": round(avail, 4),
       "ALERT_PRC": round(alert, 4),
@@ -112,7 +112,7 @@ class SelfCheck01Plugin(BasePluginExecutor):
           100 * mem_avail_prc, 100 * self.cfg_mem_low_prc, self.e2_addr, self.eeid,
       )
       is_alert = True
-      dct_result = self.__get_result(
+      dct_result = self.get_result(
         avail=mem_avail_prc, alert=self.cfg_mem_low_prc, check="Available RAM"
       )
     return is_alert, msg, dct_result
@@ -137,7 +137,7 @@ class SelfCheck01Plugin(BasePluginExecutor):
           100 * disk_avail_prc, 100 * self.cfg_mem_low_prc, self.e2_addr, self.eeid,
       ) 
       is_alert = True
-      dct_result = self.__get_result(
+      dct_result = self.get_result(
         avail=disk_avail_prc, alert=self.cfg_disk_low_prc, check="Available disk"
       )
     return is_alert, msg, dct_result
