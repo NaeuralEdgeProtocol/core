@@ -1,6 +1,5 @@
 import os
 import shutil
-import subprocess
 import tempfile
 
 from core.business.base.web_app.base_web_app_plugin import BaseWebAppPlugin as BasePlugin
@@ -65,40 +64,6 @@ class NodeJsWebAppPlugin(BasePlugin):
 
     return prepared_env
 
-  def __run_command(self, command):
-    command_args = command.split(' ')
-    process = subprocess.Popen(
-      command_args,
-      env=self.prepared_env,
-      cwd=self.script_temp_dir,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.PIPE,
-    )
-    self.logs_reader = self.LogReader(process.stdout)
-    self.err_logs_reader = self.LogReader(process.stderr)
-    return process
-
-  def __wait_for_command(self, process, timeout):
-    process_finished = False
-    failed = False
-    try:
-      process.wait(timeout)
-      self.sleep(0.1)
-      self.logs_reader.stop()
-      self.err_logs_reader.stop()
-
-      self.__maybe_read_current_logs()
-
-      self.logs_reader = None
-      self.err_logs_reader = None
-
-      failed = process.returncode != 0
-      process_finished = True
-    except subprocess.TimeoutExpired:
-      pass
-
-    return process_finished, failed
-
   def __get_delta_logs(self):
     logs = list(self.logs)
     logs = "".join(logs)
@@ -110,7 +75,7 @@ class NodeJsWebAppPlugin(BasePlugin):
 
     return logs, err_logs
 
-  def __maybe_read_current_logs(self):
+  def __maybe_print_ngrok_logs(self):
     if self.logs_reader is not None:
       logs = self.logs_reader.get_next_characters()
       if len(logs) > 0:
@@ -171,13 +136,17 @@ class NodeJsWebAppPlugin(BasePlugin):
 
     if not self.setup_commands_started[idx]:
       self.P(f"Running setup command nr {idx}: {self.cfg_setup_commands[idx]}")
-      self.setup_commands_processes[idx] = self.__run_command(self.cfg_setup_commands[idx])
+      self.setup_commands_processes[idx], self.logs_reader, self.err_logs_reader = self.run_command(self.cfg_setup_commands[idx])
       self.setup_commands_started[idx] = True
     # endif setup command started
 
     if not self.setup_commands_finished[idx]:
       timeout = 3
-      finished, failed = self.__wait_for_command(self.setup_commands_processes[idx], timeout)
+      finished, failed = self.wait_for_command(self.setup_commands_processes[idx], timeout, [self.logs_reader, self.err_logs_reader])
+      self.__maybe_print_ngrok_logs()
+      self.logs_reader = None
+      self.err_logs_reader = None
+
       self.setup_commands_finished[idx] = finished
 
       if finished and not failed:
@@ -218,7 +187,7 @@ class NodeJsWebAppPlugin(BasePlugin):
 
     if not self.run_command_started:
       self.P(f"Running run command: {self.cfg_run_command}")
-      self.run_command_process = self.__run_command(self.cfg_run_command)
+      self.run_command_process, self.logs_reader, self.err_logs_reader = self.run_command(self.cfg_run_command)
 
       timeout = 3
       self.sleep(timeout)
@@ -274,7 +243,12 @@ class NodeJsWebAppPlugin(BasePlugin):
     try:
       self.P("Forcefully killing nodejs server")
       self.run_command_process.kill()
-      self.__wait_for_command(self.run_command_process, 3)
+      timeout = 3
+      self.wait_for_command(self.run_command_process, timeout, [self.logs_reader, self.err_logs_reader])
+      self.__maybe_print_ngrok_logs()
+      self.logs_reader = None
+      self.err_logs_reader = None
+
       self.P("Killed nodejs server")
     except Exception as _:
       self.P('Could not kill nodejs server')
@@ -307,5 +281,5 @@ class NodeJsWebAppPlugin(BasePlugin):
 
     self.__maybe_run_start_command()
 
-    self.__maybe_read_current_logs()
+    self.__maybe_print_ngrok_logs()
     return

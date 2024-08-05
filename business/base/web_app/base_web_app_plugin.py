@@ -1,3 +1,5 @@
+import subprocess
+
 from core.business.base import BasePluginExecutor
 from core.business.mixins_libs.ngrok_mixin import _NgrokMixinPlugin
 
@@ -95,3 +97,41 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
     super(BaseWebAppPlugin, self)._on_close()
     return
+
+  # Exposed methods
+  def run_command(self, command, read_stdout=True, read_stderr=True):
+    if isinstance(command, list):
+      command_args = command
+    elif isinstance(command, str):
+      command_args = command.split(' ')
+    else:
+      raise ValueError("Command must be a string or a list of strings")
+
+    process = subprocess.Popen(
+      command_args,
+      env=self.prepared_env,
+      cwd=self.script_temp_dir,
+      stdout=subprocess.PIPE if read_stdout else None,
+      stderr=subprocess.PIPE if read_stderr else None,
+    )
+    logs_reader = self.LogReader(process.stdout) if read_stdout else None
+    err_logs_reader = self.LogReader(process.stderr) if read_stderr else None
+    return process, logs_reader, err_logs_reader
+
+  def wait_for_command(self, process, timeout, lst_log_reader=None):
+    if lst_log_reader is None:
+      lst_log_reader = []
+    process_finished = False
+    failed = False
+    try:
+      process.wait(timeout)
+      for log_reader in lst_log_reader:
+        if log_reader is not None:
+          log_reader.stop()
+      # endfor
+      failed = process.returncode != 0
+      process_finished = True
+    except subprocess.TimeoutExpired:
+      pass
+
+    return process_finished, failed
