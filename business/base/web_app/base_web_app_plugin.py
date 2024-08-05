@@ -1,4 +1,5 @@
 import subprocess
+import tempfile
 
 from core.business.base import BasePluginExecutor
 from core.business.mixins_libs.ngrok_mixin import _NgrokMixinPlugin
@@ -75,6 +76,41 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     self.unlock_resource('USED_PORTS')
     return
 
+  def __prepare_env(self):
+    # pop all `EE_` keys
+    prepared_env = dict(self.os_environ)
+    to_pop_keys = []
+    for key in prepared_env:
+      if key.startswith('EE_'):
+        to_pop_keys.append(key)
+    # endfor all keys
+
+    for key in to_pop_keys:
+      prepared_env.pop(key)
+
+    # add mandatory keys
+    prepared_env["PWD"] = self.script_temp_dir
+    prepared_env["PORT"] = str(self.port)
+
+    # add optional keys, found in `.env` file from assets
+    env_file_path = self.os_path.join(self.cfg_assets, '.env')
+    if self.os_path.exists(env_file_path):
+      with open(env_file_path, 'r') as f:
+        for line in f:
+          if line.startswith('#') or len(line.strip()) == 0:
+            continue
+          key, value = line.strip().split('=', 1)
+          prepared_env[key] = value
+
+    # write .env file in the target directory
+    # environment variables are passed in subprocess.Popen, so this is not needed
+    # but it's useful for debugging
+    with open(self.os_path.join(self.script_temp_dir, '.env_used'), 'w') as f:
+      for key, value in prepared_env.items():
+        f.write(f"{key}={value}\n")
+
+    return prepared_env
+
   @property
   def port(self):
     if 'USED_PORTS' not in self.plugins_shmem:
@@ -86,6 +122,9 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
   def on_init(self):
     self.__allocate_port()
+    self.script_temp_dir = tempfile.mkdtemp()
+    self.prepared_env = self.__prepare_env()
+
     super(BaseWebAppPlugin, self).on_init()
     return
 
