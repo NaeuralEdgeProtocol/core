@@ -1391,3 +1391,8 @@ CONFIG_STARTUP_MANDATORY_KEYS = [
   CONFIG_STARTUP_v2.K_CONFIG_RETRIEVE,
   PLUGINS_ON_THREADS,
 ]
+
+try:
+  from constants import *
+except:
+  pass
