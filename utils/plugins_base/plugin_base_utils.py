@@ -156,10 +156,6 @@ class LogReader():
     self.start()
     return
 
-  def P(self, *args, **kwargs):
-    self.owner.P(*args, **kwargs)
-    return
-
   def _run(self):
     try:
       while not self.done:
@@ -180,6 +176,8 @@ class LogReader():
 
   # Public methods
   def stop(self):
+    if self.done:
+      return
     self.done = True
     if not self.exited:
       self.owner.sleep(0.2)
@@ -250,13 +248,14 @@ class LogReader():
       # end if
     # end for
 
-    if '\n' in result[-1]:
+    if len(result) > 0 and '\n' in result[-1]:
       for _ in range(len(result)):
         self.buffer.pop(0)
       result = ''.join(result)
     else:
       result = None
     # end if
+
     return result
 
 
