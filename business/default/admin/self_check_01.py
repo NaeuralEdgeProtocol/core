@@ -57,8 +57,8 @@ class SelfCheck01Plugin(BasePluginExecutor):
         try:
           is_check_alert, msg, dct_alert_info = func(self)
           is_issue = is_issue or is_check_alert
-          alerter_name = self.__get_alert_name(method_name)
-          check_name = self.__get_check_name(method_name).upper()
+          alerter_name = self.get_alert_name(method_name)
+          check_name = self.get_check_name(method_name).upper()
           dct_alerter = self.alerter_status_dict(alerter=alerter_name)
           dct_alerter = {k.upper(): v for k, v in dct_alerter.items()}
           dct_check_data[check_name] = {
@@ -81,11 +81,11 @@ class SelfCheck01Plugin(BasePluginExecutor):
       "CHECK": check,
     }    
     
-  def __get_check_name(self, func_name):
+  def get_check_name(self, func_name):
     return func_name.replace('_self_check_', '')
   
-  def __get_alert_name(self, func_name):
-    return "check_" + self.__get_check_name(func_name)
+  def get_alert_name(self, func_name):
+    return "check_" + self.get_check_name(func_name)
             
   def _self_check_memory(self):
     """
@@ -97,7 +97,7 @@ class SelfCheck01Plugin(BasePluginExecutor):
     # start mandatory
     dct_result = self.OrderedDict()
     self_name = self.inspect.currentframe().f_code.co_name 
-    alerter_name = self.__get_alert_name(self_name)
+    alerter_name = self.get_alert_name(self_name)
     is_alert, msg = False, ""
     # end mandatory
     is_ok_mem = self.netmon.network_node_is_ok_available_memory_prc(
@@ -122,7 +122,7 @@ class SelfCheck01Plugin(BasePluginExecutor):
     # start mandatory
     dct_result = self.OrderedDict()
     self_name = self.inspect.currentframe().f_code.co_name 
-    alerter_name = self.__get_alert_name(self_name)
+    alerter_name = self.get_alert_name(self_name)
     is_alert, msg = False, ""
     # end mandatory
     is_ok_disk = self.netmon.network_node_is_ok_available_disk_prc(
