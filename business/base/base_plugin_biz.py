@@ -512,8 +512,8 @@ class BasePluginExecutor(
     self._reset_plugin_instance_alerters()
     return
 
-  def _get_methods(self, cls):
-    return self.log.get_class_methods(cls, include_parent=False)
+  def _get_methods(self, cls, include_parent=False):
+    return self.log.get_class_methods(cls, include_parent=include_parent)
 
   def reset_default_plugin_vars(self):
     self.__default_payload_data = {}
