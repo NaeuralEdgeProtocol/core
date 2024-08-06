@@ -24,7 +24,7 @@ from PyE2.utils import load_dotenv
 MANDATORY_PACKAGES = {
   'torch'           : '2.0',
   'accelerate'      : '0.2',
-  'transformers'    : '4.30',
+  'transformers'    : '4.43',
   'tokenizers'      : '0.14',
 }
 
