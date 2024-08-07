@@ -177,7 +177,9 @@ class ConfigCommandHandlers:
       
       if session_id is None:
         session_id = self.dct_config_streams[pipeline_name].get(ct.PAYLOAD_DATA.SESSION_ID)
-        
+      else:
+        self.dct_config_streams[pipeline_name][ct.PAYLOAD_DATA.SESSION_ID] = session_id
+
       if initiator_id is None:
         initiator_id = self.dct_config_streams[pipeline_name].get(ct.PAYLOAD_DATA.INITIATOR_ID)    
       else:

@@ -1227,8 +1227,16 @@ class BasePluginExecutor(
     # if is just a INSTANCE_COMMAND then bypass the full config update including
     # `is_instance_command_only` check from the `_update_instance_config`
     # first set _upstream_config
-    
-    
+
+    if session_id is not None and session_id != self._session_id:
+      self.P("  Changing session_id from '{}' to '{}'".format(self._session_id, session_id), color='y')
+      self._session_id = session_id
+    if modified_by_id is not None and modified_by_id != self.__modified_by_id:
+      self.P("  Changing modified-by-id from '{}' to '{}'".format(self.__modified_by_id, modified_by_id), color='y')
+      self.__modified_by_id = modified_by_id
+      self.__modified_by_addr = modified_by_addr
+    # endif session_id
+
     # check if is just a command
     if upstream_config.get('INSTANCE_COMMAND') not in [None, '', [], {}]:
       # if the command is not empty then we just set the command and return
@@ -1252,14 +1260,6 @@ class BasePluginExecutor(
     # END DEBUG
     self.config_changed_since_last_process = True
 
-    if session_id is not None and session_id != self._session_id:
-      self.P("  Changing session_id from '{}' to '{}'".format(self._session_id, session_id), color='y')
-      self._session_id = session_id
-    if modified_by_id is not None and modified_by_id != self.__modified_by_id:
-      self.P("  Changing modified-by-id from '{}' to '{}'".format(self.__modified_by_id, modified_by_id), color='y')
-      self.__modified_by_id = modified_by_id
-      self.__modified_by_addr = modified_by_addr
-    # endif session_id
     
     # now while changing config we must stop loop exec
     self.__set_loop_stage(s='maybe_update_instance_config.wait', prefix='2.bm.refresh.{}'.format(self.cfg_instance_id))
