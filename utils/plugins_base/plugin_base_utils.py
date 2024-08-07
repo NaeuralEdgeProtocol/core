@@ -217,7 +217,7 @@ class LogReader():
 
         if nr_chars + len(segment) > max_characters:
           result.append(segment[:max_characters - nr_chars])
-          segment = segment[max_characters - nr_chars:]
+          self.buffer[0] = self.buffer[0][max_characters - nr_chars:]
           break
         elif nr_chars + len(segment) == max_characters:
           result.append(segment)

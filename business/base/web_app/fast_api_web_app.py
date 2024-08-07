@@ -1,7 +1,4 @@
 import os
-import shutil
-import subprocess
-import tempfile
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -12,24 +9,25 @@ __VER__ = '0.0.0.0'
 
 _CONFIG = {
   **BasePlugin.CONFIG,
-  'NGROK_ENABLED' : True,
-  'NGROK_DOMAIN' : None,
-  'NGROK_EDGE_LABEL' : None,
+  'NGROK_ENABLED': True,
+  'NGROK_DOMAIN': None,
+  'NGROK_EDGE_LABEL': None,
 
-  'PORT' : None,
+  'PORT': None,
 
-  'ASSETS' : None,
-  'JINJA_ARGS' : {},
-  'TEMPLATE' : 'basic_server',
-  
-  'API_TITLE': None, # default is plugin signature
-  'API_SUMMARY': None, # default is f"FastAPI created by {plugin signature}"
-  'API_DESCRIPTION': None, # default is plugin docstring
+  'ASSETS': None,
+  'JINJA_ARGS': {},
+  'TEMPLATE': 'basic_server',
+
+  'API_TITLE': None,  # default is plugin signature
+  'API_SUMMARY': None,  # default is f"FastAPI created by {plugin signature}"
+  'API_DESCRIPTION': None,  # default is plugin docstring
 
   'VALIDATION_RULES': {
     **BasePlugin.CONFIG['VALIDATION_RULES']
   },
 }
+
 
 class FastApiWebAppPlugin(BasePlugin):
   """
@@ -41,11 +39,6 @@ class FastApiWebAppPlugin(BasePlugin):
   """
 
   CONFIG = _CONFIG
-
-  def __init__(self, **kwargs):
-    self.uvicorn_process = None
-    super(FastApiWebAppPlugin, self).__init__(**kwargs)
-    return
 
   @staticmethod
   def endpoint(func=None, *, method="get"):
@@ -63,9 +56,9 @@ class FastApiWebAppPlugin(BasePlugin):
     return func
 
   def get_web_server_path(self):
-    return self._script_temp_dir
+    return self.script_temp_dir
 
-  def _initialize_assets(self, src_dir, dst_dir, jinja_args):
+  def initialize_assets(self, src_dir, dst_dir, jinja_args):
     """
     Initialize and copy fastapi assets, expanding any jinja templates.
     All files from the source directory are copied copied to the
@@ -86,41 +79,9 @@ class FastApiWebAppPlugin(BasePlugin):
     -------
     None
     """
-    self.P(f'Copying uvicorn assets from {src_dir} to {dst_dir} with keys {jinja_args}')
+    super(FastApiWebAppPlugin, self).initialize_assets(src_dir, dst_dir, jinja_args)
 
     env = Environment(loader=FileSystemLoader('.'))
-    # Walk through the source directory.
-    for root, _, files in os.walk(src_dir):
-      for file in files:
-        src_file_path = self.os_path.join(root, file)
-        dst_file_path = self.os_path.join(
-          dst_dir,
-          self.os_path.relpath(src_file_path, src_dir)
-        )
-
-        # If we have a symlink don't do anything.
-        if self.os_path.islink(src_file_path):
-          continue
-
-        # Make sure the destination directory exists.
-        os.makedirs(self.os_path.dirname(dst_file_path), exist_ok=True)
-
-        # If this file is a jinja template render it to a file with the
-        # .jinja suffix removed.
-        if src_file_path.endswith(('.jinja')):
-          dst_file_path = dst_file_path[:-len('.jinja')]
-          template = env.get_template(src_file_path)
-          rendered_content = template.render(jinja_args)
-          with open(dst_file_path, 'w') as f:
-            f.write(rendered_content)
-          continue
-        #endif jinja template
-
-        # This is not a jinja template, just copy it do the destination
-        # folder as is.
-        shutil.copy2(src_file_path, dst_file_path)
-      #endfor all files
-    #endfor os.walk
 
     # make sure assets folder exists
     os.makedirs(self.os_path.join(dst_dir, 'assets'), exist_ok=True)
@@ -136,28 +97,9 @@ class FastApiWebAppPlugin(BasePlugin):
 
       with open(self.os_path.join(dst_dir, 'main.py'), 'w') as f:
         f.write(rendered_content)
-    #endif render main.py
+    # endif render main.py
 
     return
-
-  def get_jinja_template_args(self) -> dict:
-    """
-    Produces the dictionary of arguments that is used for  jinja template
-    expansion. These arguments will be used while expanding all the jinja
-    templates.
-
-    Users can overload this to pass in custom arguments.
-
-    Parameters
-    ----------
-    None
-
-    Returns
-    -------
-    dict - dictionary of arguments that is used for jinja template
-           expansion.
-    """
-    return self.cfg_jinja_args
 
   def _init_endpoints(self) -> None:
     """
@@ -177,6 +119,7 @@ class FastApiWebAppPlugin(BasePlugin):
     import inspect
     self._endpoints = {}
     jinja_args = []
+
     def _filter(obj):
       try:
         return inspect.ismethod(obj)
@@ -193,74 +136,37 @@ class FastApiWebAppPlugin(BasePlugin):
       params = [param.name for param in signature.parameters.values() if param.name != 'body']
       args = [str(param) for param in signature.parameters.values() if param.name != 'body']
       jinja_args.append({
-        'name' : name,
-        'method' : http_method,
-        'args' : args,
-        'params' : params
+        'name': name,
+        'method': http_method,
+        'args': args,
+        'params': params
       })
-    #endfor all methods
+    # endfor all methods
     self._node_comms_jinja_args = {
-      'node_comm_params' : jinja_args
+      'node_comm_params': jinja_args
     }
     return
 
   def on_init(self):
-    super(FastApiWebAppPlugin, self).on_init()
     # Register all endpoint methods.
     self._init_endpoints()
 
     # FIXME: move to setup_manager method
-    manager_auth = b'abc'
-    self._manager = get_server_manager(manager_auth)
+    self.manager_auth = b'abc'
+    self._manager = get_server_manager(self.manager_auth)
 
-    self.P("manager address: {}",format(self._manager.address))
-    _, manager_port = self._manager.address
+    self.P("manager address: {}", format(self._manager.address))
+    _, self.manager_port = self._manager.address
+
+    self.prepared_env['PYTHONPATH'] = '.:' + os.getcwd() + ':' + self.prepared_env.get('PYTHONPATH', '')
 
     # Start the FastAPI app
     self.P('Starting FastAPI app...')
-    self._script_temp_dir = tempfile.mkdtemp()
-    script_path = self.os_path.join(self._script_temp_dir, 'main.py')
-    self.P("Using script at {}".format(script_path))
-
-    jinja_args = {
-      **self.get_jinja_template_args(),
-      'manager_port' : manager_port,
-      'manager_auth' : manager_auth,
-      'api_title' : repr(self.cfg_api_title or self.get_signature()),
-      'api_summary' : repr(self.cfg_api_summary or f"FastAPI created by {self.get_signature()} plugin"),
-      'api_description' : repr(self.cfg_api_description or self.__doc__),
-      'api_version' : repr(self.__version__),
-      **self._node_comms_jinja_args
-    }
-    for main_dir in ['plugins', 'extensions', 'core']:
-      src_dir = self.os_path.join(main_dir, 'business', 'fastapi', self.cfg_assets)
-      self._initialize_assets(src_dir, self._script_temp_dir, jinja_args)
-    # endfor all main dirs
-
-    # Set up the uvicorn environment and process. We want it to have access to
-    # our class definitions so we need to set PYTHONPATH. Additionally we set
-    # PWD and cwd to the folder containing the fastapi script and assets so we
-    uvicorn_args = [
-      'uvicorn',
-      '--app-dir',
-      self._script_temp_dir,
-      'main:app',
-      '--host',
-      '0.0.0.0',
-      '--port',
-      str(self.port)
-    ]
-    env = self.deepcopy(os.environ)
-    env['PYTHONPATH'] = '.:' + os.getcwd() + ':' + env.get('PYTHONPATH', '')
-    env['PWD'] = self._script_temp_dir
-    self.uvicorn_process = subprocess.Popen(
-      uvicorn_args,
-      env=env,
-      cwd=self._script_temp_dir
-    )
+    super(FastApiWebAppPlugin, self).on_init()
     return
 
-  def process(self):
+  def _process(self):
+    super(FastApiWebAppPlugin, self)._process()
     while not self._manager.get_server_queue().empty():
       request = self._manager.get_server_queue().get()
       id = request['id']
@@ -274,33 +180,38 @@ class FastApiWebAppPlugin(BasePlugin):
       except Exception as _:
         self.P("Exception occured while processing\n"
                "Request: {}\nArgs: {}\nException:\n{}".format(
-            method, args, self.get_exception()), color='r')
+                   method, args, self.get_exception()), color='r')
         value = None
 
       response = {
-        'id'    : id,
-        'value' : value
+        'id': id,
+        'value': value
       }
       self._manager.get_client_queue().put(response)
-    #end while
+    # end while
 
     return None
 
   def on_close(self):
-    # Teardown uvicorn
-    try:
-      # FIXME: there must be a clean way to do this.
-      self.P("Forcefully killing uvicorn server")
-      self.uvicorn_process.kill()
-      self.P("Killed uvicorn server")
-    except Exception as _:
-      self.P('Could not kill uvicorn server')
-
-
-    # Teardown communicator
     self._manager.shutdown()
-    # TODO remove temporary folder. For now it's useful
-    # to keep around for debugging purposes.
-
-    super(FastApiWebAppPlugin, self).on_close()
     return
+
+  def __get_uvicorn_process_args(self):
+    return f"uvicorn --app-dir {self.script_temp_dir} main:app --host 0.0.0.0 --port {self.port}"
+
+  @property
+  def jinja_args(self):
+    return {
+      **self.cfg_jinja_args,
+      'manager_port': self.manager_port,
+      'manager_auth': self.manager_auth,
+      'api_title': repr(self.cfg_api_title or self.get_signature()),
+      'api_summary': repr(self.cfg_api_summary or f"FastAPI created by {self.get_signature()} plugin"),
+      'api_description': repr(self.cfg_api_description or self.__doc__),
+      'api_version': repr(self.__version__),
+      **self._node_comms_jinja_args
+    }
+
+  def get_start_commands(self):
+    super_start_commands = super(FastApiWebAppPlugin, self).get_start_commands()
+    return super_start_commands + [self.__get_uvicorn_process_args()]
