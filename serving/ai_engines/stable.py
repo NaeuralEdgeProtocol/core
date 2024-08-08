@@ -199,6 +199,11 @@ AI_ENGINES['code_generator'] = {
 }
 
 
+AI_ENGINES['llm'] = {
+  'SERVING_PROCESS': 'llama_v31'
+}
+
+
 AI_ENGINES['th_training'] = {
   'SERVING_PROCESS': 'th_training',
   'REQUIRES_INSTANCE': True

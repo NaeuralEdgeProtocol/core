@@ -34,17 +34,17 @@ for llama3.1 in-filling:
 {
   "ACTION" : "PIPELINE_COMMAND",
   "PAYLOAD" : {
-    "NAME": "code-on-demand",
+    "NAME": "llm_request",
     "PIPELINE_COMMAND" : {
       "STRUCT_DATA" : {
-        "request" : "def hello_world(<FILL>\n\nhello_world()",
+        "request" : "What is the square root of 4?",
         "history" : [
           {
-            "request"   : "print('hello",
-            "response"  : " world')"
+            "request"   : "hello",
+            "response"  : "Hello, how can I help you today?"
           }
         ],
-        "system_info" : "You are a funny python programmer assistant. your task is to complete the code you are given. return only the completion, not the whole program."
+        "system_info" : "You are a funny university teacher. Your task is to help students with their learning journey."
       }
     }
   }
@@ -71,11 +71,7 @@ _CONFIG = {
 }
 
 
-class Llama_v31(BaseServingProcess):
-  def __init__(self, **kwargs):
-    self._counter = 0
-    super(Llama_v31, self).__init__(**kwargs)
-    return
+class LlamaV31(BaseServingProcess):
 
   def _setup_llm(self):
     # just override this method as the base class has a virtual method that raises an exception
