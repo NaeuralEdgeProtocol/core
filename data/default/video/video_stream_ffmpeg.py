@@ -5,6 +5,7 @@ from threading import Thread
 
 from core.data.base import DataCaptureThread
 from core.data.mixins_libs import _VideoConfigMixin
+from core.utils.plugins_base.plugin_base_utils import LogReader
 from core.utils.thread_raise import ctype_async_raise
 
 _CONFIG = {
@@ -21,7 +22,7 @@ _CONFIG = {
 
   "FRAME_H": None,  # 720,
   "FRAME_W": None,  # 1280,
-  
+
   "USER": None,
   "PASSWORD": None,
 
@@ -48,15 +49,9 @@ _CONFIG = {
 }
 
 
-class LogReader():
+class FfmpegLogReader(LogReader):
   def __init__(self, owner, buff_reader):
-    self.buff_reader: BufferedReader = buff_reader
-    self.buffer = ""
-    self.lines = owner.deque(maxlen=100)
-    self.owner = owner
-    self.done = False
-    self.exited = False
-    self.thread = None
+    super(FfmpegLogReader, self).__init__(owner=owner, buff_reader=buff_reader, size=100)
     self.__metadata_ready = False
     self.__metadata_buffer = ""
     self.__metadata = {
@@ -65,12 +60,6 @@ class LogReader():
       'frame_w': None,
       'frame_h': None
     }
-    # now we start the thread
-    self.start()
-    return
-
-  def P(self, *args, **kwargs):
-    self.owner.P(*args, **kwargs)
     return
 
   def __parse_ffmpeg_log(self, log_line):
@@ -90,87 +79,43 @@ class LogReader():
       self.__metadata['encoding'] = encoding
       self.__metadata['fps'] = fps
       try:
-        self.__metadata['frame_w'] = int(resolution.split('x')[0])
-        self.__metadata['frame_h'] = int(resolution.split('x')[1])
+        frame_w, frame_h = resolution.split('x')[:2]
+        self.__metadata['frame_w'] = int(frame_w)
+        self.__metadata['frame_h'] = int(frame_h)
       except:
         pass
       self.__metadata_ready = True
     return
 
-  def _run(self):
-    try:
-      while not self.done:
-        text = self.buff_reader.read(100)
-        if text:
-          self.buffer += text.decode('utf-8')
-          if not self.__metadata_ready:
-            self.__metadata_buffer += text.decode('utf-8')
-            self.__process_metadata()
-          if '\n' in self.buffer:
-            lines = self.buffer.split('\n')
-            self.buffer = lines[-1]
-            self.lines += lines[:-1]
-        else:
-          break
-    except Exception as exc:
-      self.owner.P("Log reader exception: {}".format(exc), color='r')
-    self.exited = True
+  def on_text(self, text):
+    super().on_text(text)
+    if not self.__metadata_ready:
+      self.__metadata_buffer += text.decode('utf-8')
+      self.__process_metadata()
     return
 
   # Public methods
-
   def get_metadata(self):
     return self.__metadata if self.__metadata_ready else None
 
-  def force_stop(self):
-    if self.done:
-      return
-    self.exited = False
-    self.stop()
-    self.owner.sleep(0.2)
-    if not self.exited:
-      self.owner.P("Forcing log reader thread to stop...")
-      ctype_async_raise(self.thread.ident, ValueError)
-      self.owner.sleep(0.2)
-      self.owner.P("Log reader stopped forcefully.")
-    else:
-      self.owner.P("Log reader stopped gracefully.")
-    return
-
   def read_log(self):
-    result = None
-    if len(self.lines) > 0:
-      result = self.lines.popleft()
-    elif len(self.buffer) > 0:
-      result = self.buffer
-      self.buffer = ""
-    return result
-
-  def start(self):
-    self.thread = Thread(target=self._run)
-    self.thread.start()
-    return
-
-  def stop(self):
-    self.done = True
-    return self.thread
+    buf = self.get_next_characters()
+    if len(buf) == 0:
+      return None
+    return buf
 
 
-class FrameReader():
+class FfmpegFrameReader(LogReader):
   def __init__(self, owner, buff_reader, frame_size):
-    self.buff_reader: BufferedReader = buff_reader
+    super(FfmpegFrameReader, self).__init__(owner=owner, buff_reader=buff_reader, size=frame_size)
+    self.frame_size = frame_size
     self.frame_buffer = b""
     self.frames_deques = owner.deque(maxlen=1)
-    self.frame_size = frame_size
     self.__full_frames = 0
     self.__part_frames = 0
-    self.done = False
-    self.owner = owner
-    self.exited = False
-    self.thread = None
-    # now we start the thread
-    self.start()
     return
+
+  # Public methods
 
   @property
   def n_full_frames(self):
@@ -180,49 +125,14 @@ class FrameReader():
   def n_part_frames(self):
     return self.__part_frames
 
-  def _run(self):
-    try:
-      while not self.done:
-        frame = self.buff_reader.read(self.frame_size)
-        if frame:
-          self.__part_frames += 1
-          self.frame_buffer += frame
-          while len(self.frame_buffer) >= self.frame_size:
-            self.__full_frames += 1
-            self.frames_deques.append(self.frame_buffer[:self.frame_size])
-            self.frame_buffer = self.frame_buffer[self.frame_size:]
-    except Exception as exc:
-      self.owner.P("Frame reader exception: {}".format(exc), color='r')
-    self.exited = True
-    return
-
-  # Public methods
-
-  def force_stop(self):
-    if self.done:
-      return
-    self.exited = False
-    self.stop()
-    self.owner.sleep(0.2)
-    if not self.exited:
-      self.owner.P("Forcing log reader thread to stop...")
-      ctype_async_raise(self.thread.ident, ValueError)
-      self.owner.sleep(0.2)
-      self.owner.P("Log reader stopped forcefully.")
-    else:
-      self.owner.P("Log reader stopped gracefully.")
-    return
-
-  def start(self):
-    self.thread = Thread(target=self._run)
-    self.thread.start()
-    return
-
-  def stop(self):
-    self.done = True
-    return self.thread
-
   def read_frame(self):
+    self.frame_buffer += self.get_next_characters(decode=False)
+    while len(self.frame_buffer) >= self.frame_size:
+      self.__full_frames += 1
+      self.frames_deques.append(self.frame_buffer[:self.frame_size])
+      self.frame_buffer = self.frame_buffer[self.frame_size:]
+    # end while
+
     frame = None
     if len(self.frames_deques) > 0:
       frame = self.frames_deques.popleft()
@@ -273,13 +183,11 @@ class VideoStreamFfmpegDataCapture(DataCaptureThread, _VideoConfigMixin):
     return self.cfg_frame_h, self.cfg_frame_w
 
   def _release(self):
-    frame_reader_thr = None
     if self._ffmpeg_frame_reader is not None:
-      frame_reader_thr = self._ffmpeg_frame_reader.stop()
+      self._ffmpeg_frame_reader.stop()
 
-    log_reader_thr = None
     if self._ffmpeg_log_reader is not None:
-      log_reader_thr = self._ffmpeg_log_reader.stop()
+      self._ffmpeg_log_reader.stop()
 
     if self._ffmpeg_process is not None:
       self._ffmpeg_process.kill()
@@ -301,14 +209,6 @@ class VideoStreamFfmpegDataCapture(DataCaptureThread, _VideoConfigMixin):
       # end while
       if self.cfg_show_ffmpeg_log:
         self.P("FFmpeg process exited with code {}".format(self._ffmpeg_process.returncode))
-
-    if frame_reader_thr is not None:
-      if not self._ffmpeg_frame_reader.exited:
-        self._ffmpeg_frame_reader.force_stop()
-      frame_reader_thr.join()
-      if not self._ffmpeg_log_reader.exited:
-        self._ffmpeg_log_reader.force_stop()
-      log_reader_thr.join()
 
     if self._ffmpeg_process is not None:
       del self._ffmpeg_process.stderr
@@ -383,7 +283,8 @@ class VideoStreamFfmpegDataCapture(DataCaptureThread, _VideoConfigMixin):
     new_netloc = f"{user}:{password}@{host}"
     new_netloc = f"{new_netloc}:{port}" if port is not None else new_netloc
 
-    new_url = self.urlunparse((parsed_url.scheme, new_netloc, parsed_url.path, parsed_url.params, parsed_url.query, parsed_url.fragment))
+    new_url = self.urlunparse((parsed_url.scheme, new_netloc, parsed_url.path,
+                              parsed_url.params, parsed_url.query, parsed_url.fragment))
 
     self.P(f"New URL: {new_url}")
 
@@ -459,7 +360,7 @@ class VideoStreamFfmpegDataCapture(DataCaptureThread, _VideoConfigMixin):
       self.P("Starting ffmpeg process with command: {}".format(" ".join(ffmpeg_command)))
 
     self._ffmpeg_process = sp.Popen(ffmpeg_command, stdout=sp.PIPE, stderr=sp.PIPE, bufsize=10 ** 7)
-    self._ffmpeg_log_reader = LogReader(owner=self, buff_reader=self._ffmpeg_process.stderr)
+    self._ffmpeg_log_reader = FfmpegLogReader(owner=self, buff_reader=self._ffmpeg_process.stderr)
 
     initial_time = self.time()
     while self.time() - initial_time < self.cfg_initial_max_time_no_read:
@@ -488,7 +389,7 @@ class VideoStreamFfmpegDataCapture(DataCaptureThread, _VideoConfigMixin):
 
     self._metadata.update(**metadata)
 
-    self._ffmpeg_frame_reader = FrameReader(
+    self._ffmpeg_frame_reader = FfmpegFrameReader(
       owner=self,
       buff_reader=self._ffmpeg_process.stdout,
       frame_size=height * width * 3
