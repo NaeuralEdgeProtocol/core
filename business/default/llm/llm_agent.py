@@ -28,9 +28,13 @@ class LlmAgentPlugin(BasePlugin):
     data = self.dataapi_struct_data()
     self.P(f"Received request:\n{self.json_dumps(data, indent=2)}")
     inferences = self.dataapi_struct_data_inferences()
+    text_responses = [inf.get('text') for inf in inferences]
+    model_name = inferences[0].get('MODEL_NAME', None) if len(inferences) > 0 else None
     payload = self._create_payload(
       data=data,
       inferences=inferences,
       request_id=data.get('request_id', None),
+      text_responses=text_responses,
+      model_name=model_name,
     )
     return payload

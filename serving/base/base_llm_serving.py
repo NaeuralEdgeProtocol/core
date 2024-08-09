@@ -376,10 +376,12 @@ class BaseLlmServing(
     self.P("Model ran at {} tokens per second".format(num_tps))
 
     dct_result = {
-        LlmCT.PRED : yhat,
-        LlmCT.PRMP : prompt_lst,
-        LlmCT.TKNS : batch_tokens,
-        LlmCT.TPS  : num_tps
+      LlmCT.PRED : yhat,
+      LlmCT.PRMP : prompt_lst,
+      LlmCT.TKNS : batch_tokens,
+      LlmCT.TPS  : num_tps,
+      # TODO: find a way to send the model metadata to the plugin, other than through the inferences.
+      'MODEL_NAME': self.cfg_model_name
     }
     return dct_result
 
