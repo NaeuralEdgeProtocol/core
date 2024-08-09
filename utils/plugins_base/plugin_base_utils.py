@@ -161,12 +161,19 @@ class LogReader():
       while not self.done:
         text = self.buff_reader.read(self.buf_reader_size)
         if text:
-          self.buffer.append(text.decode('utf-8'))
+          self.on_text(text)
         else:
           break
+    except ct.ForceStopException:
+      self.owner.P("Log reader forced to stop.")
     except Exception as exc:
-      self.owner.P("Log reader exception: {}".format(exc), color='r')
+      self.owner.P(f"Log reader exception: {exc}", color='r')
     self.exited = True
+    # self.buff_reader.close()
+    return
+
+  def on_text(self, text):
+    self.buffer.append(text)
     return
 
   def start(self):
@@ -179,13 +186,14 @@ class LogReader():
     if self.done:
       return
     self.done = True
+    self.buff_reader.close()
     if not self.exited:
       self.owner.sleep(0.2)
     # end if
 
     if not self.exited:
       self.owner.P("Forcing log reader thread to stop...")
-      ctype_async_raise(self.thread.ident, ValueError)
+      ctype_async_raise(self.thread.ident, ct.ForceStopException)
       self.owner.sleep(0.2)
       self.owner.P("Log reader stopped forcefully.")
     # end if
@@ -200,7 +208,7 @@ class LogReader():
 
     return
 
-  def get_next_characters(self, max_characters=-1):
+  def get_next_characters(self, max_characters=-1, decode='utf-8'):
     result = []
     
     if max_characters == -1:
@@ -230,9 +238,17 @@ class LogReader():
         # end if
       # end for
     # end if
-    result = ''.join(result)
+    result = b''.join(result)
+    if decode is None:
+      return result
+    if decode == False:
+      return result
+    if decode == True:
+      return result.decode('utf-8')
+    if len(decode) > 0:
+      return result.decode(decode)
     return result
-  
+
   def get_next_line(self):
     result = []
     L = len(self.buffer)
