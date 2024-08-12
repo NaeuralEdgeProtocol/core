@@ -50,7 +50,7 @@ MISSING_ID = 'missing_id'
 
 class NetworkMonitor(DecentrAIObject):
   
-  HB_HISTORY = 30 * 60 // 10 # 30 minutes of history with 10 seconds intervals
+  HB_HISTORY = 2 * 60 * 60 // 10 # 2 hours of history with 10 seconds intervals
   
 
 
