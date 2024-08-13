@@ -51,7 +51,6 @@ _CONFIG = {
 
 class FfmpegLogReader(LogReader):
   def __init__(self, owner, buff_reader):
-    super(FfmpegLogReader, self).__init__(owner=owner, buff_reader=buff_reader, size=100)
     self.__metadata_ready = False
     self.__metadata_buffer = ""
     self.__metadata = {
@@ -60,6 +59,7 @@ class FfmpegLogReader(LogReader):
       'frame_w': None,
       'frame_h': None
     }
+    super(FfmpegLogReader, self).__init__(owner=owner, buff_reader=buff_reader, size=100)
     return
 
   def __parse_ffmpeg_log(self, log_line):

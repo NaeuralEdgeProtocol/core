@@ -603,7 +603,7 @@ class ModelServingProcess(
               self.P("Predict timers dump time {}s reached. Dumping timers and sending to Serving Manager".format(self.serving_timers_predict_dump))
               tm_last_timers_dump = time()
               self.log.show_timers(color='d')
-              send_timers = True
+              must_send_timers = True
             # now we can write a run-each-n-predicts debug section
             self._predict_iter_debug_handle(curr_iter=n_predicts) # DEBUG method
             # send message with the result if managed so far
