@@ -220,7 +220,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
   def initialize_assets(self, src_dir, dst_dir, jinja_args):
     """
-    Initialize and copy fastapi assets, expanding any jinja templates.
+    Initialize and copy assets, expanding any jinja templates.
     All files from the source directory are copied copied to the
     destination directory with the following exceptions:
       - are symbolic links are ignored
@@ -239,6 +239,34 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     -------
     None
     """
+
+    # handle assets url: download, extract, then copy, then delete
+    download_path = self.os_path.join('downloaded_assets', self.plugin_id, 'assets')
+
+    # now download the assets there
+    self.maybe_download(
+      url=src_dir,
+      fn=download_path,
+      target='output'
+    )
+
+    # now check if it is a zip file
+    folder_path = self.os_path.join(self.get_output_folder(), download_path)
+    if self.os_path.isfile(folder_path):
+      os.rename(folder_path, folder_path + '.zip')
+      download_path = self.os_path.join('downloaded_assets', self.plugin_id, 'unzipped')
+      self.maybe_download(
+        url=folder_path + '.zip',
+        fn=download_path,
+        target='output',
+        unzip=True
+      )
+      # remove zip file
+      os.remove(folder_path + '.zip')
+
+    src_dir = self.os_path.join(self.get_output_folder(), download_path)
+
+    # now copy the assets to the destination
     self.P(f'Copying assets from {src_dir} to {dst_dir} with keys {jinja_args}')
 
     env = Environment(loader=FileSystemLoader('.'))
@@ -274,6 +302,9 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
         shutil.copy2(src_file_path, dst_file_path)
       # endfor all files
     # endfor os.walk
+
+    # now cleanup the output folder
+    shutil.rmtree(self.os_path.join(self.get_output_folder(), 'downloaded_assets', self.plugin_id))
 
     self.P("Assets copied successfully")
 
