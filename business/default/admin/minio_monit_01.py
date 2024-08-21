@@ -208,7 +208,9 @@ class MinioMonit01Plugin(BasePluginExecutor):
         break
       except Exception as e:
         tb_info = self.trace_info()
-        self.P("Error processing object: {}\n{}".format(e, tb_info), color='r')
+        self.P("Error processing bucket {} at file {}: {}\n{}".format(
+          self.__current_bucket.name, local_count, e, tb_info), color='r'
+        )
         break
     elapsed_time = self.time() - start_time + 1e-10
     if self.cfg_minio_debug_mode and local_count > 0:
