@@ -9,6 +9,10 @@ from minio import Minio
 
 __VER__ = '0.2.1'
 
+class MINIO_STATES:
+  IN_PROC = 'IN_PROC'
+  DONE = 'DONE'
+
 _CONFIG = {
   **BasePluginExecutor.CONFIG,
   'MINIO_HOST'          : None,
@@ -25,6 +29,8 @@ _CONFIG = {
   
   'PROCESS_DELAY'       : 5,
   
+  'MINIO_IDLE_SECONDS'  : 600,
+  
   'MAX_FILES_PER_ITER'  : 2_000,
 
   'ALERT_DATA_COUNT'    : 1,
@@ -36,7 +42,7 @@ _CONFIG = {
   
   'QUOTA_UNIT'          : ct.FILE_SIZE_UNIT.GB,
   
-  'DEBUG_MODE'          : False,
+  'MINIO_DEBUG_MODE'          : True,
   
   'MIN_TIME_BETWEEN_PAYLOADS' : 60 * 5, # 5 minutes
 
@@ -65,6 +71,8 @@ class MinioMonit01Plugin(BasePluginExecutor):
     self.__default_secret_key = None    
     self.__default_secure = None  
     self.__minio_client = None
+    self.__plugin_state = None
+    self.__idle_start = None
     self.__buckets_list = []
     self.__current_bucket_objects_generator = None
     self.__last_minio_payload_time = 0
@@ -88,7 +96,8 @@ class MinioMonit01Plugin(BasePluginExecutor):
       view_access = self.__default_access_key[:3] + '*' * (len(self.__default_access_key) - 3)
       self.__default_secure = self.json_loads(self.os_environ.get(self.cfg_env_secure))
       self.P("Detected supervisor node, using environment variables for Minio connection...")
-      self.P("\n  MINIO_HOST: {}\n SECURE: {}\n ACCESS_KEY: {}\n SECRET_KEY: {}".format(
+      self.P("Minio config params:\n  MINIO VER: {}\n  MINIO_HOST: {}\n  SECURE: {}\n  ACCESS_KEY: {}\n  SECRET_KEY: {}".format(
+        minio.__version__,
         self.__default_host, 
         self.__default_secure,
         view_access, view_secret,
@@ -138,7 +147,7 @@ class MinioMonit01Plugin(BasePluginExecutor):
         bucket_name=self.__current_bucket.name, 
         recursive=True,
       )
-      if self.cfg_debug_mode:
+      if self.cfg_minio_debug_mode:
         self.P("Iteration {}/{} through bucket '{}'".format(
           self.__current_bucket_no, len(self.__bucket_size),
           self.__current_bucket.name, 
@@ -158,7 +167,7 @@ class MinioMonit01Plugin(BasePluginExecutor):
       secret_key is not None and
       secured is not None
       ):
-        self.P("Creating Minio client connection at iteration {} to {}...".format(self.__global_iter, self.cfg_minio_host))
+        self.P("Creating Minio client connection at iteration {} to {}...".format(self.__global_iter, host))
         self.__minio_client = Minio(
           endpoint=host,
           access_key=access_key,
@@ -173,20 +182,36 @@ class MinioMonit01Plugin(BasePluginExecutor):
 
 
   def __process_iter_files(self):
+    MAX_ITER_TIME = 10
     start_time = self.time()
+    max_nr_files = self.cfg_max_files_per_iter
+    if self.cfg_minio_debug_mode:
+      self.P("Processing batch of {} files in bucket '{}'".format(
+        max_nr_files, self.__current_bucket.name
+      ))
     local_count = 0
-    for _ in range(self.cfg_max_files_per_iter):
+    for _ in range(max_nr_files):
       try:
         obj = next(self.__current_bucket_objects_generator)
         self.__server_size += obj.size
         local_count += 1
         self.__bucket_size[self.__current_bucket.name]['size'] += obj.size
         self.__bucket_size[self.__current_bucket.name]['objects'] += 1
+        if (self.time() - start_time) > MAX_ITER_TIME:
+          self.P("WARNING: iterated through {}/{} files in {:.1f}s on bucket {}".format(
+            local_count, max_nr_files, self.time() - start_time, self.__current_bucket.name
+          ))
+          break
       except StopIteration:
         self.__current_bucket_objects_generator = None
+        self.P("Finished processing bucket '{}'".format(self.__current_bucket.name))
+        break
+      except Exception as e:
+        tb_info = self.trace_info()
+        self.P("Error processing object: {}\n{}".format(e, tb_info), color='r')
         break
     elapsed_time = self.time() - start_time + 1e-10
-    if self.cfg_debug_mode and local_count > 0:
+    if self.cfg_minio_debug_mode and local_count > 0:
       self.P("Processed {} objects in {:.1f}s, {:.0f} files/s".format(
         local_count, elapsed_time, local_count / elapsed_time)
       )
@@ -206,6 +231,14 @@ class MinioMonit01Plugin(BasePluginExecutor):
   def _process(self):
     self.__global_iter += 1
     payload = None
+    
+    # if the plugin has finished a full cycle wait some time done, just return the payload
+    if self.__plugin_state == MINIO_STATES.DONE:
+      if (self.time() - self.__idle_start) > self.cfg_minio_idle_seconds:
+        self.__plugin_state = MINIO_STATES.IN_PROC
+        self.__idle_start = None
+      else:
+        return payload
 
     self.__maybe_create_client_connection()
     if self.__minio_client is None:
@@ -217,6 +250,10 @@ class MinioMonit01Plugin(BasePluginExecutor):
 
     # when the plugin iterated through all buckets send payload
     if self.__current_bucket_objects_generator is None and len(self.__buckets_list) == 0:
+      # set done state
+      self.__plugin_state = MINIO_STATES.DONE
+      self.__idle_start = self.time()
+      
       converted_size = self.convert_size(self.__server_size, self.cfg_quota_unit)
       percentage_used = converted_size / self.cfg_max_server_quota
 
@@ -237,7 +274,7 @@ class MinioMonit01Plugin(BasePluginExecutor):
         )
         color = 'r' if self.alerter_is_alert() else None
         # only log-show detailed info in debug mode
-        if self.cfg_debug_mode:
+        if self.cfg_minio_debug_mode:
           self.P("{}:\n{}".format(
             msg, self.json_dumps(self.__bucket_size, indent=2),
             ), color=color
