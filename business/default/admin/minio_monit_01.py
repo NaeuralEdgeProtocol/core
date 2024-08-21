@@ -4,6 +4,7 @@ from datetime import datetime as dt
 #local dependencies
 from core import constants as ct
 from core.business.base import BasePluginExecutor
+import minio
 from minio import Minio
 
 __VER__ = '0.2.1'
@@ -54,9 +55,9 @@ class MinioMonit01Plugin(BasePluginExecutor):
   
   def on_init(self):
     if self.is_supervisor_node:
-      self.P("MinioMonit01Plugin initializing on SUPERVISOR node...")
+      self.P(f"{self.__class__.__name__} initializing on SUPERVISOR node (Minio v{minio.__version__})...")
     else:
-      self.P("MinioMonit01Plugin initializing on simple worker node...")
+      self.P(f"{self.__class__.__name__} initializing on simple worker node (Minio v{minio.__version__})...")
     self.__global_iter = 0
     self.__last_display = 0
     self.__default_host = None
@@ -83,9 +84,15 @@ class MinioMonit01Plugin(BasePluginExecutor):
       self.__default_host = self.os_environ.get(self.cfg_env_host)
       self.__default_access_key = self.os_environ.get(self.cfg_env_access_key)
       self.__default_secret_key = self.os_environ.get(self.cfg_env_secret_key)
+      view_secret = self.__default_secret_key[:3] + '*' * (len(self.__default_secret_key) - 3)
+      view_access = self.__default_access_key[:3] + '*' * (len(self.__default_access_key) - 3)
       self.__default_secure = self.json_loads(self.os_environ.get(self.cfg_env_secure))
       self.P("Detected supervisor node, using environment variables for Minio connection...")
-      self.P("  MINIO_HOST: {}, SECURE: {}".format(self.__default_host, self.__default_secure))
+      self.P("\n  MINIO_HOST: {}\n SECURE: {}\n ACCESS_KEY: {}\n SECRET_KEY: {}".format(
+        self.__default_host, 
+        self.__default_secure,
+        view_access, view_secret,
+      ))
     #endif
     return
   
@@ -157,10 +164,12 @@ class MinioMonit01Plugin(BasePluginExecutor):
           access_key=access_key,
           secret_key=secret_key,
           secure=secured,
+          cert_check=False,  # disable SSL certificate check   
         )
     else:
       if self.__minio_client is None and self.__global_iter < 2:
         self.P(f"Missing Minio connection parameters (is_supervisor_node: {self.is_supervisor_node}, host: {host}, access_key: {access_key}, secret_key: {secret_key}, secure: {secured})", color='r')
+    return
 
 
   def __process_iter_files(self):
