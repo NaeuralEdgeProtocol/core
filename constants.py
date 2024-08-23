@@ -86,7 +86,9 @@ ADMIN_PIPELINE = {
     "MINIO_HOST": None,
     "MINIO_ACCESS_KEY": None,
     "MINIO_SECRET_KEY": None,
-    "MINIO_SECURE": None
+    "MINIO_SECURE": None,
+    "MAX_SERVER_QUOTA"  : 95
+    
   },
 
   "REST_CUSTOM_EXEC_01": {

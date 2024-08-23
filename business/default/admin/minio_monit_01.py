@@ -1,13 +1,10 @@
-#global dependencies
-from datetime import datetime as dt
-
 #local dependencies
 from core import constants as ct
 from core.business.base import BasePluginExecutor
 import minio
 from minio import Minio
 
-__VER__ = '0.2.1'
+__VER__ = '0.2.2'
 
 class MINIO_STATES:
   IN_PROC = 'IN_PROC'
@@ -38,11 +35,11 @@ _CONFIG = {
   'ALERT_LOWER_VALUE'   : 0.75,
   'ALERT_MODE'          : 'min',
 
-  'MAX_SERVER_QUOTA'    : 20,
+  'MAX_SERVER_QUOTA'    : 90,
   
   'QUOTA_UNIT'          : ct.FILE_SIZE_UNIT.GB,
   
-  'MINIO_DEBUG_MODE'          : True,
+  'MINIO_DEBUG_MODE'    : True,
   
   'MIN_TIME_BETWEEN_PAYLOADS' : 60 * 5, # 5 minutes
 
@@ -60,16 +57,28 @@ class MinioMonit01Plugin(BasePluginExecutor):
 
   
   def on_init(self):
+    infos = """
+    - Minio v{minio.__version__}
+    - Plugin version: {__VER__}
+    - Configured server quota: {self.cfg_max_server_quota} {self.cfg_quota_unit}
+    """
     if self.is_supervisor_node:
-      self.P(f"{self.__class__.__name__} initializing on SUPERVISOR node (Minio v{minio.__version__})...")
+      self.P(f"{self.__class__.__name__} initializing on SUPERVISOR node: {infos}")
     else:
-      self.P(f"{self.__class__.__name__} initializing on simple worker node (Minio v{minio.__version__})...")
+      self.P(f"{self.__class__.__name__} initializing on simple worker node: {infos}")
     self.__global_iter = 0
     self.__last_display = 0
-    self.__default_host = None
-    self.__default_access_key = None
-    self.__default_secret_key = None    
-    self.__default_secure = None  
+    self.__default_host = self.cfg_minio_host
+    self.__default_access_key = self.cfg_minio_access_key
+    self.__default_secret_key = self.cfg_minio_secret_key
+    self.__default_secure = self.cfg_minio_secure
+
+    self.__host = None
+    self.__access_key = None
+    self.__secret_key = None
+    self.__secured = None
+
+
     self.__minio_client = None
     self.__plugin_state = None
     self.__idle_start = None
@@ -87,32 +96,40 @@ class MinioMonit01Plugin(BasePluginExecutor):
     return
   
   
+  def show_minio_config(self, error=False):
+    view_access = self.__access_key[:3] + "*" * (len(self.__access_key) - 3)
+    view_secret = self.__secret_key[:3] + "*" * (len(self.__secret_key) - 3)
+    infos = f"""
+    MINIO VER:    {minio.__version__}
+    MINIO_HOST:   {self.__default_host}
+    SECURE:       {self.__default_secure}
+    ACCESS_KEY:   {view_access}
+    SECRET_KEY:   {view_secret}  
+    SERVER_QUOTA: {self.cfg_max_server_quota} {self.cfg_quota_unit}
+    """
+    self.P(f"Minio config params: {infos}", color='r' if error else None)
+    return
+    
+  
+  
   def __maybe_get_env_config(self):
     if self.is_supervisor_node and self.__default_host is None:
+      self.P("Configuring supervisor node using environment variables for Minio connection...")
       self.__default_host = self.os_environ.get(self.cfg_env_host)
       self.__default_access_key = self.os_environ.get(self.cfg_env_access_key)
       self.__default_secret_key = self.os_environ.get(self.cfg_env_secret_key)
-      view_secret = self.__default_secret_key[:3] + '*' * (len(self.__default_secret_key) - 3)
-      view_access = self.__default_access_key[:3] + '*' * (len(self.__default_access_key) - 3)
       self.__default_secure = self.json_loads(self.os_environ.get(self.cfg_env_secure))
-      self.P("Detected supervisor node, using environment variables for Minio connection...")
-      self.P("Minio config params:\n  MINIO VER: {}\n  MINIO_HOST: {}\n  SECURE: {}\n  ACCESS_KEY: {}\n  SECRET_KEY: {}".format(
-        minio.__version__,
-        self.__default_host, 
-        self.__default_secure,
-        view_access, view_secret,
-      ))
     #endif
     return
   
   
   def __get_connection_config(self):
     self.__maybe_get_env_config()
-    host = self.cfg_minio_host or self.__default_host
-    access_key = self.cfg_minio_access_key or self.__default_access_key
-    secret_key = self.cfg_minio_secret_key or self.__default_secret_key
-    secured = self.cfg_minio_secure or self.__default_secure
-    return host, access_key, secret_key, secured
+    self.__host = self.cfg_minio_host or self.__default_host
+    self.__access_key = self.cfg_minio_access_key or self.__default_access_key
+    self.__secret_key = self.cfg_minio_secret_key or self.__default_secret_key
+    self.__secured = self.cfg_minio_secure or self.__default_secure
+    return self.__host, self.__access_key, self.__secret_key, self.__secured
   
       
 
@@ -158,8 +175,6 @@ class MinioMonit01Plugin(BasePluginExecutor):
 
   def __maybe_create_client_connection(self):
     host, access_key, secret_key, secured = self.__get_connection_config()    
-    self.__host = host
-    self.__secured = secured
     if (
       self.__minio_client is None and
       host is not None and
@@ -168,6 +183,7 @@ class MinioMonit01Plugin(BasePluginExecutor):
       secured is not None
       ):
         self.P("Creating Minio client connection at iteration {} to {}...".format(self.__global_iter, host))
+        self.show_minio_config()
         self.__minio_client = Minio(
           endpoint=host,
           access_key=access_key,
@@ -198,9 +214,9 @@ class MinioMonit01Plugin(BasePluginExecutor):
         self.__bucket_size[self.__current_bucket.name]['size'] += obj.size
         self.__bucket_size[self.__current_bucket.name]['objects'] += 1
         if (self.time() - start_time) > MAX_ITER_TIME:
-          self.P("WARNING: iterated through {}/{} files in {:.1f}s on bucket {}".format(
+          self.P("WARNING: iterated through {} files out of batch({}) in {:.1f}s on bucket {}".format(
             local_count, max_nr_files, self.time() - start_time, self.__current_bucket.name
-          ))
+          ), color='r')
           break
       except StopIteration:
         self.__current_bucket_objects_generator = None
@@ -208,9 +224,10 @@ class MinioMonit01Plugin(BasePluginExecutor):
         break
       except Exception as e:
         tb_info = self.trace_info()
-        self.P("Error processing bucket {} at file {}: {}\n{}".format(
-          self.__current_bucket.name, local_count, e, tb_info), color='r'
+        self.P("Error processing bucket '{}' at file no {} of batch({}): {}\n{}".format(
+          self.__current_bucket.name, local_count, max_nr_files, e, tb_info), color='r'
         )
+        self.show_minio_config(error=True)
         break
     elapsed_time = self.time() - start_time + 1e-10
     if self.cfg_minio_debug_mode and local_count > 0:
