@@ -80,12 +80,14 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
     if self.blockchain_manager is not None:
       result = self.blockchain_manager.verify(cmd, return_full_info=True, verify_allowed=verify_allowed)
       if not result.valid:
-        self.P("Command received from sender addr <{}> verification failed: {}".format(
-          result.sender, result.message
+        self.P("Command received from sender (verify allowed: {}) addr <{}> signature verification failed: {}".format(
+          verify_allowed, result.sender, result.message
           ),color='r'
         )
       else:
-        self.P("Command received from sender addr <{}> verification OK.".format(result.sender))
+        self.P("Command received from sender (verify allowed: {}) addr <{}> signature verification OK.".format(
+          verify_allowed, result.sender
+        ))
     else:
       raise ValueError("Blockchain Manager is unavailable for verifying the incoming command data")
     return result
@@ -547,7 +549,8 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
     ### signature verification    
     # allowed list will be checked later due to the fact that we will do one shot allowed check and 
     # command-whitelist check conditioned by the decryption of the command itsels (to check for potential whitelist)
-    verify_msg = self._verify_command_signature(json_msg, verify_allowed=False) 
+    _verify_allowed_at_signature = False
+    verify_msg = self._verify_command_signature(json_msg, verify_allowed=_verify_allowed_at_signature) 
     if not verify_msg.valid:
       if self.is_secured:
         msg = "Received invalid command from {}({}):{} due to '{}'. Command will be DROPPED.".format(
@@ -572,10 +575,11 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
         displayed=False,
       )
     else:
-      msg = "* * * *  Command from {}({}) is VALIDATED.".format(
-        initiator_id, verify_msg.sender
-      )
-      self.P(msg)
+      if _verify_allowed_at_signature:
+        msg = "Command from {}({}) signature VALIDATED (verify allowed: {}).".format(
+          initiator_id, verify_msg.sender, _verify_allowed_at_signature
+        )
+        self.P(msg)
     ### end signature verification
     validated_command = verify_msg.valid 
 
@@ -583,6 +587,7 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
     if failed:
       self.P("  Message dropped.", color='r')      
     else:
+      # Not failed, lets process
       is_encrypted = json_msg.get(ct.COMMS.COMM_RECV_MESSAGE.K_EE_IS_ENCRYPTED, False)
       if is_encrypted:
         encrypted_data = json_msg.pop(ct.COMMS.COMM_RECV_MESSAGE.K_EE_ENCRYPTED_DATA, None)
@@ -605,6 +610,9 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
       else:
         # now that the message is decrypted, we can check if it is allowed or not as well
         # as if it is whitelisted or not
+        self.P("Message pre-processed (is_encrypted: {}), verifying allow list...".format(
+          is_encrypted
+        ))
         allowed, allowed_msg = self._verify_command_allowed(json_msg)
         self.P("  Command allowed: {}. Reason: {}".format(allowed, allowed_msg), color=None if allowed else 'r')
         if allowed:

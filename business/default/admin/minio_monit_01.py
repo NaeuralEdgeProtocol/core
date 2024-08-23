@@ -1,8 +1,10 @@
-#local dependencies
-from core import constants as ct
-from core.business.base import BasePluginExecutor
+import urllib3
 import minio
 from minio import Minio
+
+
+from core import constants as ct
+from core.business.base import BasePluginExecutor
 
 __VER__ = '0.2.2'
 
@@ -68,6 +70,9 @@ class MinioMonit01Plugin(BasePluginExecutor):
       self.P(f"{self.__class__.__name__} initializing on simple worker node: {infos}")
     self.__global_iter = 0
     self.__last_display = 0
+    self.__errors_during_iteration = 0
+    
+    
     self.__default_host = self.cfg_minio_host
     self.__default_access_key = self.cfg_minio_access_key
     self.__default_secret_key = self.cfg_minio_secret_key
@@ -93,6 +98,7 @@ class MinioMonit01Plugin(BasePluginExecutor):
     self.__server_size = 0
     self.__bucket_size = {}
     self.__current_bucket_no = 0
+    self.__errors_during_iteration = 0
     return
   
   
@@ -106,6 +112,7 @@ class MinioMonit01Plugin(BasePluginExecutor):
     ACCESS_KEY:   {view_access}
     SECRET_KEY:   {view_secret}  
     SERVER_QUOTA: {self.cfg_max_server_quota} {self.cfg_quota_unit}
+    VERBOSE:      {self.cfg_minio_debug_mode}
     """
     self.P(f"Minio config params: {infos}", color='r' if error else None)
     return
@@ -142,6 +149,7 @@ class MinioMonit01Plugin(BasePluginExecutor):
         self.__bucket_size[bucket.name] = {
           'size': 0,
           'objects': 0,
+          'minio_errors' : 0,
         }        
       str_buckets = ", ".join(map(lambda x: x.name, self.__buckets_list))    
       DISPLAY_EVERY = 15 * 60 
@@ -184,11 +192,16 @@ class MinioMonit01Plugin(BasePluginExecutor):
       ):
         self.P("Creating Minio client connection at iteration {} to {}...".format(self.__global_iter, host))
         self.show_minio_config()
+        http_client = urllib3.PoolManager(
+          timeout=urllib3.Timeout(connect=10.0, read=10.0),
+          cert_reqs='CERT_NONE'  # Disable SSL certificate verification
+        )
         self.__minio_client = Minio(
           endpoint=host,
           access_key=access_key,
           secret_key=secret_key,
           secure=secured,
+          http_client=http_client,
           cert_check=False,  # disable SSL certificate check   
         )
     else:
@@ -228,22 +241,27 @@ class MinioMonit01Plugin(BasePluginExecutor):
           self.__current_bucket.name, local_count, max_nr_files, e, tb_info), color='r'
         )
         self.show_minio_config(error=True)
+        self.__errors_during_iteration += 1
+        self.__bucket_size[self.__current_bucket.name]['minio_errors'] += 1
         break
     elapsed_time = self.time() - start_time + 1e-10
-    if self.cfg_minio_debug_mode and local_count > 0:
-      self.P("Processed {} objects in {:.1f}s, {:.0f} files/s".format(
-        local_count, elapsed_time, local_count / elapsed_time)
-      )
-      n_o = self.__bucket_size[self.__current_bucket.name]['objects']
-      cut = self.cfg_max_files_per_iter * 3
-      if n_o > 0 and (n_o % cut) == 0:
-        self.P("  Bucket '{}' size: {:.2f} {} (so far for {} objs)".format(
-          self.__current_bucket.name,
-          self.convert_size(self.__bucket_size[self.__current_bucket.name]['size'], self.cfg_quota_unit),
-          self.cfg_quota_unit,
-          self.__bucket_size[self.__current_bucket.name]['objects'],
+    if self.cfg_minio_debug_mode:
+      if local_count > 0:
+        self.P("  Processed {} objects in {:.1f}s, {:.0f} files/s".format(
+          local_count, elapsed_time, local_count / elapsed_time)
+        )
+        n_o = self.__bucket_size[self.__current_bucket.name]['objects']
+        cut = self.cfg_max_files_per_iter * 3
+        if n_o > 0 and (n_o % cut) == 0:
+          self.P("  Bucket '{}' size: {:.2f} {} (so far for {} objs)".format(
+            self.__current_bucket.name,
+            self.convert_size(self.__bucket_size[self.__current_bucket.name]['size'], self.cfg_quota_unit),
+            self.cfg_quota_unit,
+            self.__bucket_size[self.__current_bucket.name]['objects'],
+            )
           )
-        ) 
+      else:
+        self.P("  No objects processed in bucket '{}'".format(self.__current_bucket.name))
     return
 
 
@@ -287,14 +305,18 @@ class MinioMonit01Plugin(BasePluginExecutor):
       
       if (self.time() - self.__last_minio_payload_time) > self.cfg_min_time_between_payloads:        
         self.__last_minio_payload_time = self.time()
-        msg = "Server size: {:.1f} {} of configured quota {:.1f} {} ({:.1f} %)".format(
+        msg = """Server size: 
+        Total size: {:.1f} {} 
+        Configured quota: {:.1f} {}
+        Quota percentage: {:.1f} %
+        Minio errors during iteration: {}""".format(
           converted_size, self.cfg_quota_unit, self.cfg_max_server_quota, self.cfg_quota_unit,
-          percentage_used * 100,
+          percentage_used * 100, self.__errors_during_iteration,
         )
         color = 'r' if self.alerter_is_alert() else None
         # only log-show detailed info in debug mode
         if self.cfg_minio_debug_mode:
-          self.P("{}:\n{}".format(
+          self.P("{}\nResults:\n{}".format(
             msg, self.json_dumps(self.__bucket_size, indent=2),
             ), color=color
           )
@@ -305,6 +327,7 @@ class MinioMonit01Plugin(BasePluginExecutor):
           server_size=self.__server_size,
           buckets=self.__bucket_size,
           status=msg,
+          minio_errors_during_analisys=self.__errors_during_iteration,
         )
       #endif time check
     return payload
