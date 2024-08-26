@@ -1273,7 +1273,27 @@ class _UtilsBaseMixin(
     str_text = b_text.decode('utf-8')
     return str_text
   
-  
+  def image_entropy(self, image):
+    """
+    Computes the entropy of an image.
+
+    Parameters
+    ----------
+    image : cv2 image | PIL image | np.ndarray
+        the input image.
+
+    Returns
+    -------
+    entropy: float
+        the entropy of the image
+    """
+
+    np_image = np.array(image)
+    np_marg = np.histogramdd(np.ravel(np_image), bins=256)[0] / np_image.size
+    np_marg = np_marg[np.where(np_marg > 0)]
+    entropy = -np.sum(np.multiply(np_marg, np.log2(np_marg)))
+
+    return entropy
 
 
   def normalize_text(self, text):

@@ -36,6 +36,7 @@ _CONFIG = {
   "ANCHOR_MAX_SUM_PERSON_AREA": 0,  # percent
   "ANALYSIS_IGNORE_MAX_PERSON_AREA": 70,  # percent
   "ANALYSIS_IGNORE_MIN_PERSON_AREA": 0.5,  # percent
+  "MIN_ENTROPY_THRESHOLD": 2,
 
   "DEMO_MODE": False,
   "ANCHOR_RELOAD_PERIOD": 10 * 60,  # second
@@ -215,12 +216,26 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     return lst_intersect_inferences
 
-  def _validate_image_as_anchor(self, image, object_detection_inferences):
+  def __validate_image_as_anchor_check_people(self, image, object_detection_inferences):
     people_areas = self.__people_areas_prc(image, object_detection_inferences)
 
     total_area = sum(people_areas) * 100
 
     return total_area <= self.cfg_anchor_max_sum_person_area, "Total people area occupied in scene {}".format(total_area)
+
+  def __validate_image_as_anchor_check_entropy(self, image):
+    entropy = self.image_entropy(image)
+    return entropy >= self.cfg_min_entropy_threshold, f"Entropy of the image is {entropy:.02f}"
+
+  def _validate_image_as_anchor(self, image, object_detection_inferences):
+    people_ok, people_validation_msg = self.__validate_image_as_anchor_check_people(image, object_detection_inferences)
+    entropy_ok, entropy_validation_msg = self.__validate_image_as_anchor_check_entropy(image)
+
+    anchor_ok = people_ok and entropy_ok
+
+    aggregated_messages = ", ".join([people_validation_msg, entropy_validation_msg])
+
+    return anchor_ok, aggregated_messages
 
   def _maybe_force_lower(self):
     """
@@ -452,13 +467,15 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     human_readable_last_anchor_time = self.datetime.strftime(human_readable_last_anchor_time, "%Y-%m-%d %H:%M:%S")
 
     debug_info = [
-      {'value': "A <{} F <{} >{}: {}".format(
+      {'value': "A <{} F <{} >{}: {}  (E {:.02f})".format(
         self.cfg_anchor_max_sum_person_area,
         self.cfg_analysis_ignore_min_person_area,
         self.cfg_analysis_ignore_max_person_area,
-        self.__people_areas_prc(img, object_detector_inferences, 2)
+        self.__people_areas_prc(img, object_detector_inferences, 2),
+        self.image_entropy(img)
       )},
-      {'value': f"Last Anchor Time: {human_readable_last_anchor_time}   Anchor Save Period (s): {self.serving_anchor_reload_period}"},
+      {'value': "Last Anchor Time: {}   Anchor Save Period (s): {} Anchor E: {:.02f}".format(
+        human_readable_last_anchor_time, self.serving_anchor_reload_period, self.image_entropy(self._anchor))},
     ]
     if self.cfg_demo_mode:
       if self.cfg_forced_lower:
