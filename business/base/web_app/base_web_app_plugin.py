@@ -528,6 +528,8 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     self.__maybe_run_all_start_commands()
 
     self.__maybe_print_all_logs()
+    
+    super(BaseWebAppPlugin, self)._process()
     return
 
   def on_close(self):
