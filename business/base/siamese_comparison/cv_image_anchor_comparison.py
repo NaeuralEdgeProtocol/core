@@ -378,6 +378,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
       'is_forced_lower': self._alerter_forced_lower,
       'is_new_re_raise': self._alerter_re_raised if not self._alerter_forced_lower else False,
       'is_new_forced_lower': self._alerter_forced_lower,
+      'is_new_lower': self.alerter_is_new_lower() or self._alerter_forced_lower,
       'is_alert_status_changed': self.alerter_status_changed() or (self._alerter_re_raised and not self._alerter_forced_lower) or self._alerter_forced_lower,
     }
 
