@@ -19,6 +19,8 @@ _CONFIG = {
   'MINIO_SECRET_KEY'    : None,
   'MINIO_SECURE'        : None,
   
+  'MINIO_TIMEOUT'       : 20,
+  
   'ENV_HOST'            : 'EE_MINIO_ENDPOINT',
   'ENV_ACCESS_KEY'      : 'EE_MINIO_ACCESS_KEY',
   'ENV_SECRET_KEY'      : 'EE_MINIO_SECRET_KEY',
@@ -71,6 +73,7 @@ class MinioMonit01Plugin(BasePluginExecutor):
     self.__global_iter = 0
     self.__last_display = 0
     self.__errors_during_iteration = 0
+    self.__minio_idle_wait_time = self.cfg_minio_idle_seconds
     
     
     self.__default_host = self.cfg_minio_host
@@ -193,7 +196,10 @@ class MinioMonit01Plugin(BasePluginExecutor):
         self.P("Creating Minio client connection at iteration {} to {}...".format(self.__global_iter, host))
         self.show_minio_config()
         http_client = urllib3.PoolManager(
-          timeout=urllib3.Timeout(connect=10.0, read=10.0),
+          timeout=urllib3.Timeout(
+            connect=self.cfg_minio_timeout,             
+            read=self.cfg_minio_timeout,
+          ),
           cert_reqs='CERT_NONE'  # Disable SSL certificate verification
         )
         self.__minio_client = Minio(
@@ -271,7 +277,7 @@ class MinioMonit01Plugin(BasePluginExecutor):
     
     # if the plugin has finished a full cycle wait some time done, just return the payload
     if self.__plugin_state == MINIO_STATES.DONE:
-      if (self.time() - self.__idle_start) > self.cfg_minio_idle_seconds:
+      if (self.time() - self.__idle_start) > self.__minio_idle_wait_time:
         self.__plugin_state = MINIO_STATES.IN_PROC
         self.__idle_start = None
       else:
@@ -303,7 +309,7 @@ class MinioMonit01Plugin(BasePluginExecutor):
         )
       
       
-      if (self.time() - self.__last_minio_payload_time) > self.cfg_min_time_between_payloads:        
+      if (self.time() - self.__last_minio_payload_time) > self.cfg_min_time_between_payloads:
         self.__last_minio_payload_time = self.time()
         msg = """Server size: 
         Total size: {:.1f} {} 
@@ -329,5 +335,14 @@ class MinioMonit01Plugin(BasePluginExecutor):
           status=msg,
           minio_errors_during_analisys=self.__errors_during_iteration,
         )
+
+      if self.__errors_during_iteration > 0:
+        self.__minio_idle_wait_time = 10
+        self.P("Errors during iteration: {}, lowering idle time to {}s".format(
+          self.__errors_during_iteration, self.__minio_idle_wait_time), color='r'
+        )
+        self.__minio_idle_wait_time = 10
+      else:
+        self.__minio_idle_wait_time = self.cfg_minio_idle_seconds
       #endif time check
     return payload
