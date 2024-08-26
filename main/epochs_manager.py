@@ -369,7 +369,10 @@ class EpochsManager(Singleton):
     avail_seconds = self.__calc_node_avail_seconds(node_addr, time_between_heartbeats=time_between_heartbeats)
     # max is number of seconds from midnight to now    
     max_possible_from_midnight = (self.get_current_date() - self.get_current_date().replace(hour=0, minute=0, second=0)).seconds
-    prc_available = round(avail_seconds / max_possible_from_midnight, 4)
+    if max_possible_from_midnight == 0:
+      prc_available = 0
+    else:
+      prc_available = round(avail_seconds / max_possible_from_midnight, 4)
     return prc_available
 
 
