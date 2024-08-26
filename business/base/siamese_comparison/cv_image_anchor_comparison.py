@@ -595,9 +595,9 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
       # we have people in the image
       # and we have a valid comparison result,
       # so we do not consider this observation
-      # we keep the alerter in the middle until we have valid images to make a good decision
-      middle_value = (self.cfg_alert_raise_value + self.cfg_alert_lower_value) / 2
-      self.alerter_add_observation(middle_value)
+      # and we lower the mean alerter value because the people in the image
+      # generate a lot of false positives
+      self.alerter_add_observation(0)
     # endif
 
     if not result_ok and validation_ok and not self.cfg_discard_failed_analysis:
