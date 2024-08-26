@@ -315,9 +315,11 @@ class MinioMonit01Plugin(BasePluginExecutor):
         Total size: {:.1f} {} 
         Configured quota: {:.1f} {}
         Quota percentage: {:.1f} %
-        Minio errors during iteration: {}""".format(
+        Minio errors during iteration: {}
+        Alerter: {}""".format(
           converted_size, self.cfg_quota_unit, self.cfg_max_server_quota, self.cfg_quota_unit,
-          percentage_used * 100, self.__errors_during_iteration,
+          percentage_used * 100, self.__errors_during_iteration, 
+          self.get_alerter_status(),
         )
         color = 'r' if self.alerter_is_alert() else None
         # only log-show detailed info in debug mode
