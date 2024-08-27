@@ -143,7 +143,7 @@ class AlertHelper:
       new_values_queue.append(self._raw_values_queue[-1])
     self._raw_values_queue = new_values_queue
 
-    self._queue_time = time()
+    self._queue_time = time() # FIXME: this can be set to None
     self._first_change = True
     self.in_confirmation = False
     self._confirmation_wait = 0
@@ -403,7 +403,8 @@ if __name__ == '__main__':
     if t is None:
       t = time()
     return strftime(fmt, localtime(t))
-  LOOP_TIME = 0.6
+  LOOP_RESOLUTION = 4
+  LOOP_TIME = 1 / LOOP_RESOLUTION
   DATA_TRAIN = [0,4,3,1,0,0,0,5,9,8,7,1,1,1,1,0,0,0,0,0,0]
   DATA_TRAIN_PRC = [
     0.31,0.6,0.5,0.5,0.2,0.3,0.4,0.515,
@@ -411,9 +412,19 @@ if __name__ == '__main__':
     0.35,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.2,0.4,
     0.5,0.9,0.8,0.71,0.51,0.61,0.71,0.51,
     ]
+  DATA_TRAIN_BUG = [
+    100, 100, 100, # trigger a spike
+    *([0] * (LOOP_RESOLUTION - 1)),
+    *([0] * 5 * LOOP_RESOLUTION),
+    0,
+    *([70] * 4),
+    45,
+    70
+    ]
   TEST_COUNTS = False
   TEST_BOOLS = False
-  TEST_PERCENT = True
+  TEST_PERCENT = False
+  TEST_BUG = True
   
   if TEST_PERCENT:
     print("Testing percent alerts ...")
@@ -442,3 +453,29 @@ if __name__ == '__main__':
       print(f"{t} {msg} {asm.get_last_alert_duration()} {asm}")
       sleep(LOOP_TIME)
   
+  if TEST_BUG:
+    print("Testing bug alerts ...")
+    asm = AlertHelper(
+      name='TEST_PLUGIN_01',
+      values_count=5,
+      raise_confirmation_time=7,
+      lower_confirmation_time=30,
+      reduce_value=False,
+      reduce_threshold=0.5,
+      alert_mode='mean',
+      raise_alert_value=60,
+      lower_alert_value=30,
+      show_version=False,
+      )
+    
+    for i, value in enumerate(DATA_TRAIN_BUG):
+      t = time_to_str(time())
+      asm.add_observation(value)
+      if asm.is_new_alert():
+        msg = "[New alert]"
+      elif asm.is_new_lower():
+        msg = "[Lwr alert]"
+      elif not asm.is_alert():
+        msg = "[No change]"
+      print(f"{t} {msg} {asm.get_last_alert_duration()} {asm}")
+      sleep(LOOP_TIME)
