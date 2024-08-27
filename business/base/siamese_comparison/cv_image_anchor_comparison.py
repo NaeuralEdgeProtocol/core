@@ -37,6 +37,7 @@ _CONFIG = {
   "ANALYSIS_IGNORE_MAX_PERSON_AREA": 70,  # percent
   "ANALYSIS_IGNORE_MIN_PERSON_AREA": 0.5,  # percent
   "MIN_ENTROPY_THRESHOLD": 2,
+  "PEOPLE_IN_FRAME_COOLDOWN_FRAMES": 10, # <= 0 means no cooldown
 
   "DEMO_MODE": False,
   "ANCHOR_RELOAD_PERIOD": 10 * 60,  # second
@@ -58,6 +59,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     self._anchor_last_save_time = 0
     self._force_save_anchor = False
     self._anchor = None
+    self._people_in_frame_cooldown_counter = 0
 
     self._last_anchor_validation_failed_time = 0
 
@@ -216,6 +218,16 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     return lst_intersect_inferences
 
+  def _maybe_update_people_cooldown_counter(self, image, object_detector_inferences):
+    people_ok, _ = self.__validate_image_as_anchor_check_people(image, object_detector_inferences)
+    if people_ok:
+      if self._people_in_frame_cooldown_counter > 0:
+        self._people_in_frame_cooldown_counter -= 1
+      # endif counter > 0
+    else:
+      self._people_in_frame_cooldown_counter = self.cfg_people_in_frame_cooldown_frames
+    return
+
   def __validate_image_as_anchor_check_people(self, image, object_detection_inferences):
     people_areas = self.__people_areas_prc(image, object_detection_inferences)
 
@@ -223,17 +235,23 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     return total_area <= self.cfg_anchor_max_sum_person_area, "Total people area occupied in scene {}".format(total_area)
 
+  def __validate_image_as_anchor_check_people_cooldown(self):
+    people_cooldown_ok = self._people_in_frame_cooldown_counter <= 0
+    people_cooldown_validation_msg = "People cooldown {} frames".format(self._people_in_frame_cooldown_counter)    
+    return people_cooldown_ok, people_cooldown_validation_msg
+
   def __validate_image_as_anchor_check_entropy(self, image):
     entropy = self.image_entropy(image)
     return entropy >= self.cfg_min_entropy_threshold, f"Entropy of the image is {entropy:.02f}"
 
   def _validate_image_as_anchor(self, image, object_detection_inferences):
     people_ok, people_validation_msg = self.__validate_image_as_anchor_check_people(image, object_detection_inferences)
+    people_cooldown_ok, people_cooldown_validation_msg = self.__validate_image_as_anchor_check_people_cooldown()
     entropy_ok, entropy_validation_msg = self.__validate_image_as_anchor_check_entropy(image)
 
-    anchor_ok = people_ok and entropy_ok
+    anchor_ok = people_ok and people_cooldown_ok and entropy_ok
 
-    aggregated_messages = ", ".join([people_validation_msg, entropy_validation_msg])
+    aggregated_messages = ", ".join([people_validation_msg, people_cooldown_validation_msg, entropy_validation_msg])
 
     return anchor_ok, aggregated_messages
 
@@ -555,6 +573,11 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     object_detector_inferences = self.dataapi_inferences()[self._get_detector_ai_engine()][0]
 
     object_detector_inferences = self._intersect_tlbrs_with_target_zone(object_detector_inferences)
+
+    # update the people cooldown counter
+    # reset the counter to config value if we have people in the image
+    # decrease the counter if we do not have people in the image
+    self._maybe_update_people_cooldown_counter(self.__last_capture_image, object_detector_inferences)
 
     # save the anchor if just started (anchor is None) or if we are forced to save it (force_save_anchor is True)
     # otherwise save a new anchor after comparison
