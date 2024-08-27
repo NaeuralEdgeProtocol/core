@@ -6,16 +6,17 @@ __VER__ = '1.0.0'
 
 _CONFIG = {
   **BasePlugin.CONFIG,
-  'VALIDATION_RULES': {
-    **BasePlugin.CONFIG['VALIDATION_RULES'],
+  "VALIDATION_RULES": {
+    **BasePlugin.CONFIG["VALIDATION_RULES"],
   },
 
   # Developer config
   "AI_ENGINE": ["lowres_general_detector"],
   "ALLOW_COMPARISON_WITH_NO_ANCHOR": False,
-  'DISCARD_FAILED_ANALYSIS': False,
+  "DISCARD_FAILED_ANALYSIS": False,
   "MAX_INPUTS_QUEUE_SIZE": 1,  # slow plugin - must process only current state/input
-  'WARNING_ANCHOR_SAVE_FAIL_SEND_INTERVAL': 60,  # seconds
+  "WARNING_ANCHOR_SAVE_FAIL_SEND_INTERVAL": 60,  # seconds
+  "IMG_ORIG": False,
   #############################
 
   # Alerter config
@@ -442,9 +443,10 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     # create payload
     payload = self._create_payload(
+      img=[img_witness, original_image, self._anchor],
+
       # we no longer send the original image because we have IMG_ORIG set to True
-      # img=[img_witness, original_image, self._anchor],
-      img=[img_witness, self._anchor],
+      # img=[img_witness, self._anchor],
       **payload_kwargs,
     )
 
