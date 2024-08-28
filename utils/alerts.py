@@ -269,12 +269,16 @@ class AlertHelper:
             self._last_raise_timestamp = self._change_time
           else:
             self._last_lower_timestamp = self._change_time
-        else:
-          # seems like we are overrunning the buffer as time has not passed 
-          self._increase_queue()
         #endif
-      elif self.in_confirmation and self._confirmation_time_passed():
-        self._reset_queue()
+      elif self.in_confirmation:
+        if self._confirmation_time_passed():
+          self._reset_queue()
+        else:
+          # we extend the buffer in order to evaluate all observations from the
+          # first change until now. If we increase the queue only if the state 
+          # is changed then we can have spikes that trigger false alerts 
+          # Run the spike test with the previous version
+          self._increase_queue()
       #endif
       self._last_state = last_state
     else:
@@ -412,19 +416,20 @@ if __name__ == '__main__':
     0.35,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.2,0.4,
     0.5,0.9,0.8,0.71,0.51,0.61,0.71,0.51,
     ]
-  DATA_TRAIN_BUG = [
+  DATA_TRAIN_SPIKE = [
     100, 100, 100, # trigger a spike
     *([0] * (LOOP_RESOLUTION - 1)),
     *([0] * 5 * LOOP_RESOLUTION),
     0,
     *([70] * 4),
     45,
-    70
+    70,
+    *([0] * (LOOP_RESOLUTION - 1)),
     ]
   TEST_COUNTS = False
   TEST_BOOLS = False
   TEST_PERCENT = False
-  TEST_BUG = True
+  TEST_SPIKE = True
   
   if TEST_PERCENT:
     print("Testing percent alerts ...")
@@ -453,8 +458,8 @@ if __name__ == '__main__':
       print(f"{t} {msg} {asm.get_last_alert_duration()} {asm}")
       sleep(LOOP_TIME)
   
-  if TEST_BUG:
-    print("Testing bug alerts ...")
+  if TEST_SPIKE:
+    print("Testing spike alerts ...")
     asm = AlertHelper(
       name='TEST_PLUGIN_01',
       values_count=5,
@@ -468,7 +473,7 @@ if __name__ == '__main__':
       show_version=False,
       )
     
-    for i, value in enumerate(DATA_TRAIN_BUG):
+    for i, value in enumerate(DATA_TRAIN_SPIKE):
       t = time_to_str(time())
       asm.add_observation(value)
       if asm.is_new_alert():
