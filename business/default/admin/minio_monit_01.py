@@ -61,7 +61,7 @@ class MinioMonit01Plugin(BasePluginExecutor):
 
   
   def on_init(self):
-    infos = """
+    infos = f"""
     - Minio v{minio.__version__}
     - Plugin version: {__VER__}
     - Configured server quota: {self.cfg_max_server_quota} {self.cfg_quota_unit}
