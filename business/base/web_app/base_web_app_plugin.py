@@ -25,6 +25,7 @@ _CONFIG = {
 
   'SETUP_COMMANDS': [],
   'START_COMMANDS': [],
+  'AUTO_START': True,
 
   'PORT': None,
 
@@ -151,6 +152,8 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     self.P(f"Port: {self.port}")
     self.P(f"Setup commands: {self.get_setup_commands()}")
     self.P(f"Start commands: {self.get_start_commands()}")
+
+    self.can_run_start_commands = self.cfg_auto_start
 
     super(BaseWebAppPlugin, self)._on_init()
     return
@@ -288,7 +291,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
         # If this file is a jinja template render it to a file with the
         # .jinja suffix removed.
-        if src_file_path.endswith(('.jinja')):
+        if src_file_path.endswith(('.jinja')):  # TODO: add .j2 to support both
           dst_file_path = dst_file_path[:-len('.jinja')]
           template = env.get_template(src_file_path)
           rendered_content = template.render(jinja_args)
@@ -516,6 +519,9 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     if not self.__has_finished_setup_commands():
       return
 
+    if not self.can_run_start_commands:
+      return
+
     for idx in range(len(self.get_start_commands())):
       self.__maybe_run_nth_start_command(idx)
     return
@@ -528,7 +534,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     self.__maybe_run_all_start_commands()
 
     self.__maybe_print_all_logs()
-    
+
     super(BaseWebAppPlugin, self)._process()
     return
 
@@ -585,5 +591,9 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
         on_command_request=data,
         logs=[]
       )
+
+    if (isinstance(data, str) and data.upper() == 'START'):
+      self.can_run_start_commands = True
+      self.P("Starting server")
 
     return

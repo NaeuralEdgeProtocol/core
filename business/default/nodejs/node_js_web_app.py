@@ -15,6 +15,7 @@ _CONFIG = {
   'ASSETS': None,
   'SETUP_COMMANDS': [],
   'START_COMMANDS': [],
+  'AUTO_START': True,
 
   'RUN_COMMAND': "",
 
