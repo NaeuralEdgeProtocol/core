@@ -246,12 +246,52 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     # handle assets url: download, extract, then copy, then delete
     download_path = self.os_path.join('downloaded_assets', self.plugin_id, 'assets')
 
+    operation = "download"
+
+    if isinstance(src_dir, dict):
+      """
+      src_dir = {
+        "url": "https://example.com/assets.zip",
+        "operation": "download",
+      }
+      src_dir = {
+        "url": "https://github.com/user/repo",
+        "username": "username",
+        "token": "token",
+        "operation": "clone",
+      }
+      src_dir = {
+        "url": "https://github.com/user/repo",
+        "username": null,
+        "token": null,
+        "operation": "clone",
+      }
+      src_dir = {
+        "url": "/path/to/local/dir",
+        "operation": "download",
+      """
+      dct_data = src_dir
+      operation = dct_data.get("operation", "download")
+      src_dir = dct_data.get("url", None)
+
+    if src_dir is None:
+      raise ValueError("No assets provided")
+
     # now download the assets there
-    self.maybe_download(
-      url=src_dir,
-      fn=download_path,
-      target='output'
-    )
+    if operation == "clone":
+      self.git_clone(
+        repo_url=src_dir,
+        repo_dir=download_path,
+        target='output',
+        user=dct_data.get("username", None),
+        token=dct_data.get("token", None)
+      )
+    elif operation == "download":
+      self.maybe_download(
+        url=src_dir,
+        fn=download_path,
+        target='output'
+      )
 
     # now check if it is a zip file
     folder_path = self.os_path.join(self.get_output_folder(), download_path)

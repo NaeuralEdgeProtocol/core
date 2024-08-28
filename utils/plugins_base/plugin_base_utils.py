@@ -1,4 +1,5 @@
 import json
+import subprocess
 from threading import Thread
 import numpy as np
 import pandas as pd
@@ -14,6 +15,7 @@ import re
 import base64
 import yaml
 import zlib
+from subprocess import Popen
 
 from core.utils.thread_raise import ctype_async_raise
 
@@ -991,7 +993,53 @@ class _UtilsBaseMixin(
       self.P('Errors while downloading: {}'.format([str(x) for x in msgs]))
     return res
   
-  
+  def git_clone(self, repo_url, repo_dir, target='output', user=None, token=None):
+    """
+    Clones a git repository
+
+    Parameters
+    ----------
+    repo_url : str
+      The git repository URL
+    token : str, optional
+      The token to be used for authentication. The default is None.
+
+    Returns
+    -------
+    str
+      The local folder where the repository was cloned.
+    """
+
+    repo_path = self.os_path.join(self.get_target_folder(target), repo_dir)
+    self.P(f"Cloning git repository from {repo_url} to {repo_path}")
+
+    if user is not None and token is not None:
+      repo_url = repo_url.replace('https://', f'https://{user}:{token}@')
+
+    command = ["git", "clone", repo_url, repo_path]
+
+    process = subprocess.Popen(
+      command,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.PIPE,
+    )
+    logs_reader = self.LogReader(process.stdout)
+    err_logs_reader = self.LogReader(process.stderr)
+
+    process.wait()
+    logs = logs_reader.get_next_characters()
+    err_logs = err_logs_reader.get_next_characters()
+    if len(logs) > 0:
+      self.P(f"Git clone logs: {logs}")
+    if len(err_logs) > 0:
+      self.P(f"Git clone errors: {err_logs}")
+    self.P(f"Git clone process finished with code {process.returncode}")
+
+    logs_reader.stop()
+    err_logs_reader.stop()
+
+    return repo_path
+
   def dict_to_str(self, dct:dict):
     """
     Transforms a dict into a pre-formatted strig without json package
