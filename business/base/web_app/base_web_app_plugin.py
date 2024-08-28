@@ -180,6 +180,33 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     return {}
 
   def _on_close(self):
+    if not any(self.start_commands_started):
+      self.P("Server was never started. Skipping teardown.")
+    else:
+      # Teardown server
+      for idx, process in enumerate(self.start_commands_processes):
+        try:
+          if process is not None:
+            self.P(f"Forcefully killing start command nr {idx}")
+            process.kill()
+            self.__wait_for_command(
+              process=process,
+              timeout=3,
+              lst_log_reader=[
+                self.dct_logs_reader[f"start_{idx}"],
+                self.dct_err_logs_reader[f"start_{idx}"]
+              ]
+            )
+            self.__maybe_print_key_logs(f"start_{idx}")
+            self.P(f"Killed start command nr {idx}")
+        except Exception as _:
+          self.P(f'Could not kill start command nr {idx}')
+      # endfor all start commands
+    # endif
+
+    # cleanup the temp directory
+    shutil.rmtree(self.script_temp_dir)
+
     port = self.port
 
     self.lock_resource('USED_PORTS')
@@ -587,33 +614,6 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     self.__maybe_print_all_logs()
 
     super(BaseWebAppPlugin, self)._process()
-    return
-
-  def on_close(self):
-    if not any(self.start_commands_started):
-      self.P("Server was never started. Skipping teardown.")
-      return
-
-    # Teardown server
-    for idx, process in enumerate(self.start_commands_processes):
-      try:
-        if process is not None:
-          self.P(f"Forcefully killing start command nr {idx}")
-          process.kill()
-          self.__wait_for_command(
-            process=process,
-            timeout=3,
-            lst_log_reader=[
-              self.dct_logs_reader[f"start_{idx}"],
-              self.dct_err_logs_reader[f"start_{idx}"]
-            ]
-          )
-          self.__maybe_print_key_logs(f"start_{idx}")
-          self.P(f"Killed start command nr {idx}")
-      except Exception as _:
-        self.P(f'Could not kill start command nr {idx}')
-
-    shutil.rmtree(self.script_temp_dir)
     return
 
   def __get_delta_logs(self):
