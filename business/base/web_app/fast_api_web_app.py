@@ -158,8 +158,6 @@ class FastApiWebAppPlugin(BasePlugin):
     self.P("manager address: {}", format(self._manager.address))
     _, self.manager_port = self._manager.address
 
-    self.prepared_env['PYTHONPATH'] = '.:' + os.getcwd() + ':' + self.prepared_env.get('PYTHONPATH', '')
-
     # Start the FastAPI app
     self.P('Starting FastAPI app...')
     super(FastApiWebAppPlugin, self).on_init()

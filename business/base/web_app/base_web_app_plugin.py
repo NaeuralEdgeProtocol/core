@@ -98,6 +98,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     # add mandatory keys
     prepared_env["PWD"] = self.script_temp_dir
     prepared_env["PORT"] = str(self.port)
+    prepared_env['PYTHONPATH'] = '.:' + os.getcwd() + ':' + prepared_env.get('PYTHONPATH', '')
 
     # add optional keys, found in `.env` file from assets
     env_file_path = self.os_path.join(assets_path, '.env')
