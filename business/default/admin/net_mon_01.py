@@ -17,8 +17,8 @@ _CONFIG = {
   
   "ALERT_RAISE_CONFIRMATION_TIME" : 1,
   "ALERT_LOWER_CONFIRMATION_TIME" : 2,
-  "ALERT_DATA_COUNT"              : 3,
-  "ALERT_RAISE_VALUE"             : 0.5,
+  "ALERT_DATA_COUNT"              : 2,
+  "ALERT_RAISE_VALUE"             : 0.75,
   "ALERT_LOWER_VALUE"             : 0.4,
   "ALERT_MODE"                    : 'mean',
   "ALERT_MODE_LOWER"              : 'max',
