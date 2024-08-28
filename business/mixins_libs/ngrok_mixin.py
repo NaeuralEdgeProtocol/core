@@ -23,7 +23,7 @@ class _NgrokMixinPlugin(object):
     except AttributeError:
       super_setup_commands = []
     if self.cfg_use_ngrok or self.cfg_ngrok_enabled:
-      return super_setup_commands + [self.__get_ngrok_auth_command()]
+      return [self.__get_ngrok_auth_command()] + super_setup_commands
     else:
       return super_setup_commands
 
@@ -33,7 +33,7 @@ class _NgrokMixinPlugin(object):
     except AttributeError:
       super_start_commands = []
     if self.cfg_use_ngrok or self.cfg_ngrok_enabled:
-      return super_start_commands + [self.__get_ngrok_start_command()]
+      return [self.__get_ngrok_start_command()] + super_start_commands
     else:
       return super_start_commands
 
