@@ -25,6 +25,7 @@ _CONFIG = {
 
   'SETUP_COMMANDS': [],
   'START_COMMANDS': [],
+  'ENV_VARS': {},
   'AUTO_START': True,
 
   'PORT': None,
@@ -82,7 +83,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     self.unlock_resource('USED_PORTS')
     return
 
-  def __prepare_env(self):
+  def __prepare_env(self, assets_path):
     # pop all `EE_` keys
     prepared_env = dict(self.os_environ)
     to_pop_keys = []
@@ -99,7 +100,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     prepared_env["PORT"] = str(self.port)
 
     # add optional keys, found in `.env` file from assets
-    env_file_path = self.os_path.join(self.cfg_assets, '.env')
+    env_file_path = self.os_path.join(assets_path, '.env')
     if self.os_path.exists(env_file_path):
       with open(env_file_path, 'r') as f:
         for line in f:
@@ -107,6 +108,10 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
             continue
           key, value = line.strip().split('=', 1)
           prepared_env[key] = value
+
+    # add optional keys, found in config
+    if self.cfg_env_vars is not None and isinstance(self.cfg_env_vars, dict):
+      prepared_env.update(self.cfg_env_vars)
 
     # write .env file in the target directory
     # environment variables are passed in subprocess.Popen, so this is not needed
@@ -129,7 +134,6 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
   def _on_init(self):
     self.__allocate_port()
     self.script_temp_dir = tempfile.mkdtemp()
-    self.prepared_env = self.__prepare_env()
 
     self.assets_initialized = False
 
@@ -345,6 +349,8 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
         shutil.copy2(src_file_path, dst_file_path)
       # endfor all files
     # endfor os.walk
+
+    self.prepared_env = self.__prepare_env(self.os_path.join(self.get_output_folder(), download_path))
 
     # now cleanup the output folder
     shutil.rmtree(self.os_path.join(self.get_output_folder(), 'downloaded_assets', self.plugin_id))
