@@ -602,8 +602,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
       except Exception as _:
         self.P(f'Could not kill start command nr {idx}')
 
-    # TODO remove temporary folder. For now it's useful
-    # to keep around for debugging purposes.
+    shutil.rmtree(self.script_temp_dir)
     return
 
   def __get_delta_logs(self):
