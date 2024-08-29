@@ -98,7 +98,8 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     # add mandatory keys
     prepared_env["PWD"] = self.script_temp_dir
     prepared_env["PORT"] = str(self.port)
-    prepared_env['PYTHONPATH'] = '.:' + os.getcwd() + ':' + prepared_env.get('PYTHONPATH', '')
+
+    self.base_env = prepared_env.copy()
 
     # add optional keys, found in `.env` file from assets
     env_file_path = self.os_path.join(assets_path, '.env')
@@ -109,17 +110,16 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
             continue
           key, value = line.strip().split('=', 1)
           prepared_env[key] = value
+      # endwith
+
+      # TODO: should we remove the .env file?
+    # endif env file
 
     # add optional keys, found in config
     if self.cfg_env_vars is not None and isinstance(self.cfg_env_vars, dict):
       prepared_env.update(self.cfg_env_vars)
 
-    # write .env file in the target directory
-    # environment variables are passed in subprocess.Popen, so this is not needed
-    # but it's useful for debugging
-    with open(self.os_path.join(self.script_temp_dir, '.env_used'), 'w') as f:
-      for key, value in prepared_env.items():
-        f.write(f"{key}={value}\n")
+    self.prepared_env = prepared_env
 
     return prepared_env
 
@@ -134,6 +134,10 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
   def _on_init(self):
     self.__allocate_port()
+
+    self.prepared_env = None
+    self.base_env = None
+
     self.script_temp_dir = tempfile.mkdtemp()
 
     self.assets_initialized = False
@@ -220,7 +224,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     return
 
   # Exposed methods
-  def __run_command(self, command, read_stdout=True, read_stderr=True):
+  def __run_command(self, command, env=None, read_stdout=True, read_stderr=True):
     if isinstance(command, list):
       command_args = command
     elif isinstance(command, str):
@@ -230,7 +234,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
     process = subprocess.Popen(
       command_args,
-      env=self.prepared_env,
+      env=env,
       cwd=self.script_temp_dir,
       stdout=subprocess.PIPE if read_stdout else None,
       stderr=subprocess.PIPE if read_stderr else None,
@@ -257,6 +261,87 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
     return process_finished, failed
 
+  def __maybe_download_assets(self):
+    """
+      self.cfg_assets = {
+        "url": "https://example.com/assets.zip",
+        "operation": "download",
+      }
+      self.cfg_assets = {
+        "url": "https://github.com/user/repo",
+        "username": "username",
+        "token": "token",
+        "operation": "clone",
+      }
+      self.cfg_assets = {
+        "url": "https://github.com/user/repo",
+        "username": null,
+        "token": null,
+        "operation": "clone",
+      }
+      self.cfg_assets = {
+        "url": "/path/to/local/dir",
+        "operation": "download",
+    """
+    # handle assets url: download, extract, then copy, then delete
+    relative_assets_path = self.os_path.join('downloaded_assets', self.plugin_id, 'assets')
+
+    operation = None
+
+    assets_path = None
+
+    # check if assets is a dict or a string
+    # and extract the url and operation
+    if isinstance(self.cfg_assets, dict):
+      dct_data = self.cfg_assets
+      operation = dct_data.get("operation", "download")
+      assets_path = dct_data.get("url", None)
+
+    elif isinstance(self.cfg_assets, str):
+      assets_path = self.cfg_assets
+      operation = "download"
+
+    if assets_path is None:
+      raise ValueError("No assets provided")
+
+    # now download the assets there
+    if operation == "clone":
+      self.git_clone(
+        repo_url=assets_path,
+        repo_dir=relative_assets_path,
+        target='output',
+        user=dct_data.get("username", None),
+        token=dct_data.get("token", None)
+      )
+    elif operation == "download":
+      self.maybe_download(
+        url=assets_path,
+        fn=relative_assets_path,
+        target='output'
+      )
+    else:
+      raise ValueError(f"Invalid operation {operation}")
+
+    # now check if it is a zip file
+    assets_path = self.os_path.join(self.get_output_folder(), relative_assets_path)
+    if self.os_path.isfile(assets_path):
+      if not assets_path.endswith('.zip'):
+        os.rename(assets_path, assets_path + '.zip')
+        assets_path += '.zip'
+
+      relative_assets_path = self.os_path.join('downloaded_assets', self.plugin_id, 'unzipped')
+      self.maybe_download(
+        url=assets_path,
+        fn=relative_assets_path,
+        target='output',
+        unzip=True
+      )
+      # remove zip file
+      os.remove(assets_path)
+
+    assets_path = self.os_path.join(self.get_output_folder(), relative_assets_path)
+    return assets_path
+
   def initialize_assets(self, src_dir, dst_dir, jinja_args):
     """
     Initialize and copy assets, expanding any jinja templates.
@@ -278,72 +363,6 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     -------
     None
     """
-
-    # handle assets url: download, extract, then copy, then delete
-    download_path = self.os_path.join('downloaded_assets', self.plugin_id, 'assets')
-
-    operation = "download"
-
-    if isinstance(src_dir, dict):
-      """
-      src_dir = {
-        "url": "https://example.com/assets.zip",
-        "operation": "download",
-      }
-      src_dir = {
-        "url": "https://github.com/user/repo",
-        "username": "username",
-        "token": "token",
-        "operation": "clone",
-      }
-      src_dir = {
-        "url": "https://github.com/user/repo",
-        "username": null,
-        "token": null,
-        "operation": "clone",
-      }
-      src_dir = {
-        "url": "/path/to/local/dir",
-        "operation": "download",
-      """
-      dct_data = src_dir
-      operation = dct_data.get("operation", "download")
-      src_dir = dct_data.get("url", None)
-
-    if src_dir is None:
-      raise ValueError("No assets provided")
-
-    # now download the assets there
-    if operation == "clone":
-      self.git_clone(
-        repo_url=src_dir,
-        repo_dir=download_path,
-        target='output',
-        user=dct_data.get("username", None),
-        token=dct_data.get("token", None)
-      )
-    elif operation == "download":
-      self.maybe_download(
-        url=src_dir,
-        fn=download_path,
-        target='output'
-      )
-
-    # now check if it is a zip file
-    folder_path = self.os_path.join(self.get_output_folder(), download_path)
-    if self.os_path.isfile(folder_path):
-      os.rename(folder_path, folder_path + '.zip')
-      download_path = self.os_path.join('downloaded_assets', self.plugin_id, 'unzipped')
-      self.maybe_download(
-        url=folder_path + '.zip',
-        fn=download_path,
-        target='output',
-        unzip=True
-      )
-      # remove zip file
-      os.remove(folder_path + '.zip')
-
-    src_dir = self.os_path.join(self.get_output_folder(), download_path)
 
     # now copy the assets to the destination
     self.P(f'Copying assets from {src_dir} to {dst_dir} with keys {jinja_args}')
@@ -382,7 +401,16 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
       # endfor all files
     # endfor os.walk
 
-    self.prepared_env = self.__prepare_env(self.os_path.join(self.get_output_folder(), download_path))
+    # write .env file in the target directory
+    # environment variables are passed in subprocess.Popen, so this is not needed
+    # but it's useful for debugging
+    with open(self.os_path.join(self.script_temp_dir, '.start_env_used'), 'w') as f:
+      for key, value in self.prepared_env.items():
+        f.write(f"{key}={value}\n")
+
+    with open(self.os_path.join(self.script_temp_dir, '.setup_env_used'), 'w') as f:
+      for key, value in self.base_env.items():
+        f.write(f"{key}={value}\n")
 
     # now cleanup the output folder
     shutil.rmtree(self.os_path.join(self.get_output_folder(), 'downloaded_assets', self.plugin_id))
@@ -455,8 +483,15 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     if self.assets_initialized:
       return
 
+    # download/clone/create/unzip assets
+    assets_path = self.__maybe_download_assets()
+
+    # prepare environment variables
+    self.__prepare_env(assets_path=assets_path)
+
+    # initialize assets -- copy them to the temp directory
     self.initialize_assets(
-      src_dir=self.cfg_assets,
+      src_dir=assets_path,
       dst_dir=self.script_temp_dir,
       jinja_args=self.jinja_args
     )
@@ -471,7 +506,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
     if not self.setup_commands_started[idx]:
       self.P(f"Running setup command nr {idx}: {self.get_setup_commands()[idx]}")
-      proc, logs_reader, err_logs_reader = self.__run_command(self.get_setup_commands()[idx])
+      proc, logs_reader, err_logs_reader = self.__run_command(self.get_setup_commands()[idx], self.base_env)
       self.setup_commands_processes[idx] = proc
       self.dct_logs_reader[f"setup_{idx}"] = logs_reader
       self.dct_err_logs_reader[f"setup_{idx}"] = err_logs_reader
@@ -547,7 +582,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
     if not self.start_commands_started[idx]:
       self.P(f"Running start command nr {idx}: {self.get_start_commands()[idx]}")
-      proc, logs_reader, err_logs_reader = self.__run_command(self.get_start_commands()[idx])
+      proc, logs_reader, err_logs_reader = self.__run_command(self.get_start_commands()[idx], self.prepared_env)
       self.start_commands_processes[idx] = proc
       self.dct_logs_reader[f"start_{idx}"] = logs_reader
       self.dct_err_logs_reader[f"start_{idx}"] = err_logs_reader

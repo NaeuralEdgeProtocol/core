@@ -79,6 +79,8 @@ class FastApiWebAppPlugin(BasePlugin):
     -------
     None
     """
+    self.prepared_env['PYTHONPATH'] = '.:' + os.getcwd() + ':' + self.prepared_env.get('PYTHONPATH', '')
+
     super(FastApiWebAppPlugin, self).initialize_assets(src_dir, dst_dir, jinja_args)
 
     env = Environment(loader=FileSystemLoader('.'))
