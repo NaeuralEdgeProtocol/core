@@ -282,6 +282,11 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
       self.cfg_assets = {
         "url": "/path/to/local/dir",
         "operation": "download",
+      }
+      self.cfg_assets = {
+        "url"=[["base64_encoded_file", "encoded_file_name"], ...],
+        "operation": "decode",
+      }
     """
     # handle assets url: download, extract, then copy, then delete
     relative_assets_path = self.os_path.join('downloaded_assets', self.plugin_id, 'assets')
@@ -319,6 +324,17 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
         fn=relative_assets_path,
         target='output'
       )
+    elif operation == "decode":
+      target_dir = self.os_path.join(self.get_output_folder(), relative_assets_path)
+      for base64_encoded_file, encoded_file_name in assets_path:
+        file_path = self.os_path.join(target_dir, encoded_file_name)
+        os.makedirs(self.os_path.dirname(file_path), exist_ok=True)
+
+        encoded_file = self.base64_to_str(base64_encoded_file, decompress=True)
+        with open(file_path, 'w') as f:
+          f.write(encoded_file)
+        # endwith
+      # endfor
     else:
       raise ValueError(f"Invalid operation {operation}")
 
