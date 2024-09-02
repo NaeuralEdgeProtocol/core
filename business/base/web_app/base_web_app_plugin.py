@@ -400,20 +400,24 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
         # Make sure the destination directory exists.
         os.makedirs(self.os_path.dirname(dst_file_path), exist_ok=True)
 
-        # If this file is a jinja template render it to a file with the
-        # .jinja suffix removed.
-        if src_file_path.endswith(('.jinja')):  # TODO: add .j2 to support both
+        is_jinja_template = False
+        if src_file_path.endswith(('.jinja')):
           dst_file_path = dst_file_path[:-len('.jinja')]
+          is_jinja_template = True
+        if src_file_path.endswith(('.j2')):
+          dst_file_path = dst_file_path[:-len('.j2')]
+          is_jinja_template = True
+
+        # If this file is a jinja template render it to a file with the .jinja suffix removed.
+        # Otherwise just copy the file to the destination directory.
+        if is_jinja_template:
           template = env.get_template(src_file_path)
           rendered_content = template.render(jinja_args)
           with open(dst_file_path, 'w') as f:
             f.write(rendered_content)
-          continue
-        # endif jinja template
-
-        # This is not a jinja template, just copy it do the destination
-        # folder as is.
-        shutil.copy2(src_file_path, dst_file_path)
+        else:
+          shutil.copy2(src_file_path, dst_file_path)
+        # endif is jinja template
       # endfor all files
     # endfor os.walk
 
