@@ -23,6 +23,9 @@ _CONFIG = {
   'API_SUMMARY': None,  # default is f"FastAPI created by {plugin signature}"
   'API_DESCRIPTION': None,  # default is plugin docstring
 
+  'PAGES': [],
+  'STATIC_DIRECTORY': 'assets',
+
   'VALIDATION_RULES': {
     **BasePlugin.CONFIG['VALIDATION_RULES']
   },
@@ -85,8 +88,9 @@ class FastApiWebAppPlugin(BasePlugin):
 
     env = Environment(loader=FileSystemLoader('.'))
 
-    # make sure assets folder exists
-    os.makedirs(self.os_path.join(dst_dir, 'assets'), exist_ok=True)
+    # make sure static directory folder exists
+    static_directory = self.cfg_jinja_args.get('static_directory', self.cfg_static_directory)
+    os.makedirs(self.os_path.join(dst_dir, static_directory), exist_ok=True)
 
     if self.cfg_template is not None:
       # Finally render main.py
@@ -144,9 +148,7 @@ class FastApiWebAppPlugin(BasePlugin):
         'params': params
       })
     # endfor all methods
-    self._node_comms_jinja_args = {
-      'node_comm_params': jinja_args
-    }
+    self._node_comms_jinja_args = jinja_args
     return
 
   def on_init(self):
@@ -201,15 +203,25 @@ class FastApiWebAppPlugin(BasePlugin):
 
   @property
   def jinja_args(self):
+    cfg_jinja_args = self.deepcopy(self.cfg_jinja_args)
+
+    dct_pages = cfg_jinja_args.pop('html_files', self.cfg_pages)
+    for page in dct_pages:
+      page['method'] = 'get'
+
+    static_directory = cfg_jinja_args.pop('static_directory', self.cfg_static_directory)
+
     return {
-      **self.cfg_jinja_args,
+      'static_directory': static_directory,
+      'html_files': dct_pages,
       'manager_port': self.manager_port,
       'manager_auth': self.manager_auth,
       'api_title': repr(self.cfg_api_title or self.get_signature()),
       'api_summary': repr(self.cfg_api_summary or f"FastAPI created by {self.get_signature()} plugin"),
       'api_description': repr(self.cfg_api_description or self.__doc__),
       'api_version': repr(self.__version__),
-      **self._node_comms_jinja_args
+      'node_comm_params': self._node_comms_jinja_args,
+      **cfg_jinja_args,
     }
 
   def get_start_commands(self):
