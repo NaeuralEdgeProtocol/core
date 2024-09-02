@@ -270,7 +270,12 @@ class AlertHelper:
           else:
             self._last_lower_timestamp = self._change_time
         #endif
-      elif self.in_confirmation:
+
+      # we do this check after each iteration because we need to extend the queue
+      # no matter what the current_state is. If we extend the queue only when the
+      # current state == last state then we discard observations that enforce the change
+      # after it has taken place (see the spike neg test)
+      if self.in_confirmation:
         if self._confirmation_time_passed():
           self._reset_queue()
         else:
@@ -426,10 +431,24 @@ if __name__ == '__main__':
     70,
     *([0] * (LOOP_RESOLUTION - 1)),
     ]
+  
+  DATA_TRAIN_SPIKE_NEG = [
+    *([100] * LOOP_RESOLUTION),
+    *([100] * LOOP_RESOLUTION),
+    *([0] * LOOP_RESOLUTION),
+    *([100] * LOOP_RESOLUTION),
+    *([100] * LOOP_RESOLUTION),
+    *([100] * LOOP_RESOLUTION),
+    *([0] * LOOP_RESOLUTION),
+    *([0] * LOOP_RESOLUTION),
+    *([100] * LOOP_RESOLUTION),
+  ]
+
   TEST_COUNTS = False
   TEST_BOOLS = False
   TEST_PERCENT = False
-  TEST_SPIKE = True
+  TEST_SPIKE = False
+  TEST_SPIKE_NEG = True
   
   if TEST_PERCENT:
     print("Testing percent alerts ...")
@@ -459,6 +478,12 @@ if __name__ == '__main__':
       sleep(LOOP_TIME)
   
   if TEST_SPIKE:
+    # in this test, there is a spike in the data train 
+    # that triggers a confirmation time check and another spike
+    # when the confirmation is almost over
+    
+    # this test checks that spikes do not trigger false alerts
+    # the alert should not be raised after the confirmation time
     print("Testing spike alerts ...")
     asm = AlertHelper(
       name='TEST_PLUGIN_01',
@@ -474,6 +499,41 @@ if __name__ == '__main__':
       )
     
     for i, value in enumerate(DATA_TRAIN_SPIKE):
+      t = time_to_str(time())
+      asm.add_observation(value)
+      if asm.is_new_alert():
+        msg = "[New alert]"
+      elif asm.is_new_lower():
+        msg = "[Lwr alert]"
+      elif not asm.is_alert():
+        msg = "[No change]"
+      print(f"{t} {msg} {asm.get_last_alert_duration()} {asm}")
+      sleep(LOOP_TIME)
+
+  if TEST_SPIKE_NEG:
+    # in this test, there is a spike in the data train 
+    # that temporarily lowers the alert status
+    
+    # this test checks that once a confirmation time starts, 
+    # all observations are added to the queue, regardless of 
+    # the current state of the alert, and the alert is computed 
+    # on the whole sequence
+    # the alert should be raised after the confirmation time
+    print("Testing negative spike alerts ...")
+    asm = AlertHelper(
+      name='TEST_PLUGIN_01',
+      values_count=5,
+      raise_confirmation_time=7,
+      lower_confirmation_time=30,
+      reduce_value=False,
+      reduce_threshold=0.5,
+      alert_mode='mean',
+      raise_alert_value=60,
+      lower_alert_value=30,
+      show_version=False,
+      )
+    
+    for i, value in enumerate(DATA_TRAIN_SPIKE_NEG):
       t = time_to_str(time())
       asm.add_observation(value)
       if asm.is_new_alert():
