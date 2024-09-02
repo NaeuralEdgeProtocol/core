@@ -142,6 +142,8 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
     self.assets_initialized = False
 
+    self.failed = False
+
     self.setup_commands_started = [False] * len(self.get_setup_commands())
     self.setup_commands_finished = [False] * len(self.get_setup_commands())
     self.setup_commands_processes = [None] * len(self.get_setup_commands())
@@ -520,6 +522,9 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     return
 
   def __maybe_run_nth_setup_command(self, idx, timeout=None):
+    if self.failed:
+      return
+
     if idx > 0 and not self.setup_commands_finished[idx - 1]:
       # Previous setup command has not finished yet. Skip this one.
       return
@@ -565,7 +570,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
           command_status="failed"
         )
         self.P(f"ERROR: Setup command nr {idx} finished with exit code {self.setup_commands_processes[idx].returncode}")
-        # TODO: stop all setup if error occurs
+        self.failed = True
       elif not finished and timeout is not None and timeout > 0:
         if self.time() - self.setup_commands_start_time[idx] > timeout:
           self.setup_commands_processes[idx].kill()
@@ -577,7 +582,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
             command_str=self.get_setup_commands()[idx],
             command_status="timeout"
           )
-          # TODO: stop all setup if error occurs
+          self.failed = True
     # endif setup command finished
     return
 
@@ -585,6 +590,9 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     return all(self.setup_commands_finished)
 
   def __maybe_run_all_setup_commands(self):
+    if self.failed:
+      return
+
     if self.__has_finished_setup_commands():
       return
 
@@ -596,6 +604,9 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     return all(self.start_commands_finished)
 
   def __maybe_run_nth_start_command(self, idx, timeout=5):
+    if self.failed:
+      return
+
     if idx > 0 and not self.start_commands_finished[idx - 1]:
       # Previous start command has not finished yet. Skip this one.
       return
@@ -641,11 +652,14 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
           command_status="success"
         )
         self.P(f"Start command nr {idx} is running")
-        # TODO: stop all start if error occurs
+        self.failed = True
     # endif setup command finished
     return
 
   def __maybe_run_all_start_commands(self):
+    if self.failed:
+      return
+
     if self.__has_finished_start_commands():
       return
 
