@@ -51,6 +51,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
   CONFIG = _CONFIG
 
+  # Port allocation
   def __check_port_valid(self):
     # Check the config as we're going to use it to start processes.
     if not isinstance(self.cfg_port, int):
@@ -92,7 +93,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     self.unlock_resource('USED_PORTS')
 
     self.P(f"Released port {port}")
-    return  
+    return
 
   def __prepare_env(self, assets_path):
     # pop all `EE_` keys
@@ -134,130 +135,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
     return prepared_env
 
-  @property
-  def port(self):
-    if 'USED_PORTS' not in self.plugins_shmem:
-      return None
-    if self.str_unique_identification not in self.plugins_shmem['USED_PORTS']:
-      return None
-    port = self.plugins_shmem['USED_PORTS'][self.str_unique_identification]
-    return port
-
-  def _on_init(self):
-    self.__allocate_port()
-
-    self.prepared_env = None
-    self.base_env = None
-
-    self.script_temp_dir = tempfile.mkdtemp()
-
-    self.assets_initialized = False
-
-    self.failed = False
-
-    self.setup_commands_started = [False] * len(self.get_setup_commands())
-    self.setup_commands_finished = [False] * len(self.get_setup_commands())
-    self.setup_commands_processes = [None] * len(self.get_setup_commands())
-    self.setup_commands_start_time = [None] * len(self.get_setup_commands())
-
-    self.start_commands_started = [False] * len(self.get_start_commands())
-    self.start_commands_finished = [False] * len(self.get_start_commands())
-    self.start_commands_processes = [None] * len(self.get_start_commands())
-    self.start_commands_start_time = [None] * len(self.get_start_commands())
-
-    self.logs = self.deque(maxlen=1000)
-    self.dct_logs_reader = {}
-
-    self.err_logs = self.deque(maxlen=1000)
-    self.dct_err_logs_reader = {}
-
-    self.P(f"Port: {self.port}")
-    self.P(f"Setup commands: {self.get_setup_commands()}")
-    self.P(f"Start commands: {self.get_start_commands()}")
-
-    self.can_run_start_commands = self.cfg_auto_start
-
-    super(BaseWebAppPlugin, self)._on_init()
-    return
-
-  def get_setup_commands(self):
-    try:
-      return super(BaseWebAppPlugin, self).get_setup_commands() + self.cfg_setup_commands
-    except AttributeError:
-      return self.cfg_setup_commands
-
-  def get_start_commands(self):
-    try:
-      return super(BaseWebAppPlugin, self).get_start_commands() + self.cfg_start_commands
-    except AttributeError:
-      return self.cfg_start_commands
-
-  @property
-  def jinja_args(self):
-    return {}
-
-  def __maybe_kill_process(self, process, key):
-    if process is None:
-      return
-
-    try:
-      self.P(f"Forcefully killing process {key}")
-      process.kill()
-      self.__wait_for_command(
-        process=process,
-        timeout=3,
-        lst_log_reader=[self.dct_logs_reader[key], self.dct_err_logs_reader[key]]
-      )
-      self.__maybe_print_key_logs(key)
-      self.P(f"Killed process {key}")
-    except Exception as exc:
-      self.P(f'Could not kill process {key}. Reason: {exc}')
-
-    return
-
-  def __maybe_close_setup_commands(self):
-    if not any(self.setup_commands_started):
-      self.P("No setup commands were started. Skipping teardown.")
-      return
-
-    if all(self.setup_commands_finished):
-      self.P("All setup commands have finished. Skipping teardown.")
-      return
-
-    for idx, process in enumerate(self.setup_commands_processes):
-      if self.setup_commands_started[idx] and not self.setup_commands_finished[idx]:
-        self.P(f"Setup command nr {idx} has not finished. Killing it.")
-        self.__maybe_kill_process(process, f"setup_{idx}")
-    # endfor all setup commands
-    return
-
-  def __maybe_close_start_commands(self):
-    if not any(self.start_commands_started):
-      self.P("Server was never started. Skipping teardown.")
-      return
-
-    for idx, process in enumerate(self.start_commands_processes):
-      self.__maybe_kill_process(process, f"start_{idx}")
-    # endfor all start commands
-
-  def _on_close(self):
-    self.__maybe_close_setup_commands()
-    self.__maybe_close_start_commands()
-
-    # close all log readers that are still running
-    # this should not have any effect, as the logs should have been
-    # closed during the teardown of the setup and start processes
-    self.__maybe_read_and_stop_all_log_readers()
-
-    # cleanup the temp directory
-    shutil.rmtree(self.script_temp_dir)
-
-    self.__deallocate_port()
-
-    super(BaseWebAppPlugin, self)._on_close()
-    return
-
-  # Exposed methods
+  # process handling methods
   def __run_command(self, command, env=None, read_stdout=True, read_stderr=True):
     if isinstance(command, list):
       command_args = command
@@ -295,6 +173,270 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
     return process_finished, failed
 
+  def __maybe_kill_process(self, process, key):
+    if process is None:
+      return
+
+    try:
+      self.P(f"Forcefully killing process {key}")
+      process.kill()
+      self.__wait_for_command(
+        process=process,
+        timeout=3,
+        lst_log_reader=[self.dct_logs_reader[key], self.dct_err_logs_reader[key]]
+      )
+      self.__maybe_print_key_logs(key)
+      self.P(f"Killed process {key}")
+    except Exception as exc:
+      self.P(f'Could not kill process {key}. Reason: {exc}')
+
+    return
+
+  # logs handling methods
+  def __maybe_print_all_logs(self):
+    for key, logs_reader in self.dct_logs_reader.items():
+      if logs_reader is not None:
+        logs = logs_reader.get_next_characters()
+        if len(logs) > 0:
+          self.P(f"[{key}]: {logs}")
+          self.logs.append(f"[{key}]: {logs}")
+
+    for key, err_logs_reader in self.dct_err_logs_reader.items():
+      if err_logs_reader is not None:
+        err_logs = err_logs_reader.get_next_characters()
+        if len(err_logs) > 0:
+          self.P(f"[{key}]: {err_logs}")
+          self.logs.append(f"[{key}]: {err_logs}")
+    return
+
+  def __maybe_print_key_logs(self, key):
+    logs_reader = self.dct_logs_reader.get(key)
+    if logs_reader is not None:
+      logs = logs_reader.get_next_characters()
+      if len(logs) > 0:
+        self.P(f"[{key}]: {logs}")
+        self.logs.append(f"[{key}]: {logs}")
+
+    err_logs_reader = self.dct_err_logs_reader.get(key)
+    if err_logs_reader is not None:
+      err_logs = err_logs_reader.get_next_characters()
+      if len(err_logs) > 0:
+        self.P(f"[{key}]: {err_logs}")
+        self.logs.append(f"[{key}]: {err_logs}")
+    return
+
+  def __get_delta_logs(self):
+    logs = list(self.logs)
+    logs = "".join(logs)
+    self.logs.clear()
+
+    err_logs = list(self.err_logs)
+    err_logs = "".join(err_logs)
+    self.err_logs.clear()
+
+    return logs, err_logs
+
+  def __maybe_read_and_stop_key_log_readers(self, key):
+    logs_reader = self.dct_logs_reader.get(key)
+    if logs_reader is not None:
+      logs_reader.stop()
+
+    err_logs_reader = self.dct_err_logs_reader.get(key)
+    if err_logs_reader is not None:
+      err_logs_reader.stop()
+
+    self.__maybe_print_key_logs(key)
+
+    self.dct_logs_reader.pop(key, None)
+    self.dct_err_logs_reader.pop(key, None)
+    return
+
+  def __maybe_read_and_stop_all_log_readers(self):
+    log_keys = set(self.dct_logs_reader.keys() + self.dct_err_logs_reader.keys())
+    for key in log_keys:
+      self.__maybe_read_and_stop_key_log_readers(key)
+    return
+
+  # setup commands methods
+  def __maybe_run_all_setup_commands(self):
+    if self.failed:
+      return
+
+    if self.__has_finished_setup_commands():
+      return
+
+    for idx in range(len(self.get_setup_commands())):
+      self.__maybe_run_nth_setup_command(idx)
+    return
+
+  def __maybe_close_setup_commands(self):
+    if not any(self.setup_commands_started):
+      self.P("No setup commands were started. Skipping teardown.")
+      return
+
+    if all(self.setup_commands_finished):
+      self.P("All setup commands have finished. Skipping teardown.")
+      return
+
+    for idx, process in enumerate(self.setup_commands_processes):
+      if self.setup_commands_started[idx] and not self.setup_commands_finished[idx]:
+        self.P(f"Setup command nr {idx} has not finished. Killing it.")
+        self.__maybe_kill_process(process, f"setup_{idx}")
+    # endfor all setup commands
+    return
+
+  def __maybe_run_nth_setup_command(self, idx, timeout=None):
+    if self.failed:
+      return
+
+    if idx > 0 and not self.setup_commands_finished[idx - 1]:
+      # Previous setup command has not finished yet. Skip this one.
+      return
+
+    if not self.setup_commands_started[idx]:
+      self.P(f"Running setup command nr {idx}: {self.get_setup_commands()[idx]}")
+      proc, logs_reader, err_logs_reader = self.__run_command(self.get_setup_commands()[idx], self.base_env)
+      self.setup_commands_processes[idx] = proc
+      self.dct_logs_reader[f"setup_{idx}"] = logs_reader
+      self.dct_err_logs_reader[f"setup_{idx}"] = err_logs_reader
+
+      self.setup_commands_started[idx] = True
+      self.setup_commands_start_time[idx] = self.time()
+    # endif setup command started
+
+    if not self.setup_commands_finished[idx]:
+      finished, failed = self.__wait_for_command(
+        process=self.setup_commands_processes[idx],
+        timeout=0.1,
+        lst_log_reader=[
+          self.dct_logs_reader[f"setup_{idx}"],
+          self.dct_err_logs_reader[f"setup_{idx}"]
+        ]
+      )
+
+      self.setup_commands_finished[idx] = finished
+
+      if finished and not failed:
+        self.__maybe_read_and_stop_key_log_readers(f"setup_{idx}")
+        self.add_payload_by_fields(
+          command_type="setup",
+          command_idx=idx,
+          command_str=self.get_setup_commands()[idx],
+          command_status="success"
+        )
+        self.P(f"Setup command nr {idx} finished successfully")
+      elif finished and failed:
+        self.__maybe_read_and_stop_key_log_readers(f"setup_{idx}")
+        self.add_payload_by_fields(
+          command_type="setup",
+          command_idx=idx,
+          command_str=self.get_setup_commands()[idx],
+          command_status="failed"
+        )
+        self.P(f"ERROR: Setup command nr {idx} finished with exit code {self.setup_commands_processes[idx].returncode}")
+        self.failed = True
+      elif not finished and timeout is not None and timeout > 0:
+        if self.time() - self.setup_commands_start_time[idx] > timeout:
+          self.setup_commands_processes[idx].kill()
+          self.__maybe_read_and_stop_key_log_readers(f"setup_{idx}")
+          self.P(f"ERROR: Setup command nr {idx} timed out")
+          self.add_payload_by_fields(
+            command_type="setup",
+            command_idx=idx,
+            command_str=self.get_setup_commands()[idx],
+            command_status="timeout"
+          )
+          self.failed = True
+    # endif setup command finished
+    return
+
+  def __has_finished_setup_commands(self):
+    return all(self.setup_commands_finished)
+
+  # start commands methods
+  def __maybe_run_all_start_commands(self):
+    if self.failed:
+      return
+
+    if self.__has_finished_start_commands():
+      return
+
+    if not self.__has_finished_setup_commands():
+      return
+
+    if not self.can_run_start_commands:
+      return
+
+    for idx in range(len(self.get_start_commands())):
+      self.__maybe_run_nth_start_command(idx)
+    return
+
+  def __maybe_close_start_commands(self):
+    if not any(self.start_commands_started):
+      self.P("Server was never started. Skipping teardown.")
+      return
+
+    for idx, process in enumerate(self.start_commands_processes):
+      self.__maybe_kill_process(process, f"start_{idx}")
+    # endfor all start commands
+
+  def __maybe_run_nth_start_command(self, idx, timeout=5):
+    if self.failed:
+      return
+
+    if idx > 0 and not self.start_commands_finished[idx - 1]:
+      # Previous start command has not finished yet. Skip this one.
+      return
+
+    if not self.start_commands_started[idx]:
+      self.P(f"Running start command nr {idx}: {self.get_start_commands()[idx]}")
+      proc, logs_reader, err_logs_reader = self.__run_command(self.get_start_commands()[idx], self.prepared_env)
+      self.start_commands_processes[idx] = proc
+      self.dct_logs_reader[f"start_{idx}"] = logs_reader
+      self.dct_err_logs_reader[f"start_{idx}"] = err_logs_reader
+
+      self.start_commands_started[idx] = True
+      self.start_commands_start_time[idx] = self.time()
+    # endif start command started
+
+    if not self.start_commands_finished[idx]:
+      finished, _ = self.__wait_for_command(
+        process=self.start_commands_processes[idx],
+        timeout=0.1,
+        lst_log_reader=[
+          self.dct_logs_reader[f"start_{idx}"],
+          self.dct_err_logs_reader[f"start_{idx}"]
+        ]
+      )
+
+      self.start_commands_finished[idx] = finished
+
+      if finished:
+        self.__maybe_read_and_stop_key_log_readers(f"start_{idx}")
+        self.add_payload_by_fields(
+          command_type="start",
+          command_idx=idx,
+          command_str=self.get_start_commands()[idx],
+          command_status="failed"
+        )
+        self.P(f"Start command nr {idx} finished unexpectedly. Please check the logs.")
+      elif self.time() - self.start_commands_start_time[idx] > timeout:
+        self.start_commands_finished[idx] = True
+        self.add_payload_by_fields(
+          command_type="start",
+          command_idx=idx,
+          command_str=self.get_start_commands()[idx],
+          command_status="success"
+        )
+        self.P(f"Start command nr {idx} is running")
+        self.failed = True
+    # endif setup command finished
+    return
+
+  def __has_finished_start_commands(self):
+    return all(self.start_commands_finished)
+
+  # assets handling methods
   def __maybe_download_assets(self):
     """
       self.cfg_assets = {
@@ -392,6 +534,141 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     assets_path = self.os_path.join(self.get_output_folder(), relative_assets_path)
     return assets_path
 
+  def __maybe_init_assets(self):
+    if self.assets_initialized:
+      return
+
+    # download/clone/create/unzip assets
+    assets_path = self.__maybe_download_assets()
+
+    # prepare environment variables
+    self.__prepare_env(assets_path=assets_path)
+
+    # initialize assets -- copy them to the temp directory
+    self.initialize_assets(
+      src_dir=assets_path,
+      dst_dir=self.script_temp_dir,
+      jinja_args=self.jinja_args
+    )
+
+    self.assets_initialized = True
+    return
+
+  # plugin default methods
+  def _on_init(self):
+    self.__allocate_port()
+
+    self.prepared_env = None
+    self.base_env = None
+
+    self.script_temp_dir = tempfile.mkdtemp()
+
+    self.assets_initialized = False
+
+    self.failed = False
+
+    self.setup_commands_started = [False] * len(self.get_setup_commands())
+    self.setup_commands_finished = [False] * len(self.get_setup_commands())
+    self.setup_commands_processes = [None] * len(self.get_setup_commands())
+    self.setup_commands_start_time = [None] * len(self.get_setup_commands())
+
+    self.start_commands_started = [False] * len(self.get_start_commands())
+    self.start_commands_finished = [False] * len(self.get_start_commands())
+    self.start_commands_processes = [None] * len(self.get_start_commands())
+    self.start_commands_start_time = [None] * len(self.get_start_commands())
+
+    self.logs = self.deque(maxlen=1000)
+    self.dct_logs_reader = {}
+
+    self.err_logs = self.deque(maxlen=1000)
+    self.dct_err_logs_reader = {}
+
+    self.P(f"Port: {self.port}")
+    self.P(f"Setup commands: {self.get_setup_commands()}")
+    self.P(f"Start commands: {self.get_start_commands()}")
+
+    self.can_run_start_commands = self.cfg_auto_start
+
+    super(BaseWebAppPlugin, self)._on_init()
+    return
+
+  def _process(self):
+    self.__maybe_init_assets()
+
+    self.__maybe_run_all_setup_commands()
+
+    self.__maybe_run_all_start_commands()
+
+    self.__maybe_print_all_logs()
+
+    super(BaseWebAppPlugin, self)._process()
+    return
+
+  def _on_close(self):
+    self.__maybe_close_setup_commands()
+    self.__maybe_close_start_commands()
+
+    # close all log readers that are still running
+    # this should not have any effect, as the logs should have been
+    # closed during the teardown of the setup and start processes
+    self.__maybe_read_and_stop_all_log_readers()
+
+    # cleanup the temp directory
+    shutil.rmtree(self.script_temp_dir)
+
+    self.__deallocate_port()
+
+    super(BaseWebAppPlugin, self)._on_close()
+    return
+
+  def _on_command(self, data, delta_logs=None, full_logs=None, **kwargs):
+    super(BaseWebAppPlugin, self)._on_command(data, **kwargs)
+    if (isinstance(data, str) and data.upper() == 'DELTA_LOGS') or delta_logs:
+      logs, err_logs = self.__get_delta_logs()
+      self.add_payload_by_fields(
+        on_command_request=data,
+        logs=logs,
+        err_logs=err_logs,
+      )
+    if (isinstance(data, str) and data.upper() == 'FULL_LOGS') or full_logs:
+      # TODO: Implement full logs
+      self.add_payload_by_fields(
+        on_command_request=data,
+        logs=[]
+      )
+
+    if (isinstance(data, str) and data.upper() == 'START'):
+      self.can_run_start_commands = True
+      self.P("Starting server")
+
+    return
+
+  # Exposed methods
+  @property
+  def port(self):
+    if 'USED_PORTS' not in self.plugins_shmem:
+      return None
+    if self.str_unique_identification not in self.plugins_shmem['USED_PORTS']:
+      return None
+    port = self.plugins_shmem['USED_PORTS'][self.str_unique_identification]
+    return port
+
+  @property
+  def jinja_args(self):
+    return {}
+
+  def get_setup_commands(self):
+    try:
+      return super(BaseWebAppPlugin, self).get_setup_commands() + self.cfg_setup_commands
+    except AttributeError:
+      return self.cfg_setup_commands
+
+  def get_start_commands(self):
+    try:
+      return super(BaseWebAppPlugin, self).get_start_commands() + self.cfg_start_commands
+    except AttributeError:
+      return self.cfg_start_commands
+
   def initialize_assets(self, src_dir, dst_dir, jinja_args):
     """
     Initialize and copy assets, expanding any jinja templates.
@@ -470,274 +747,5 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     shutil.rmtree(self.os_path.join(self.get_output_folder(), 'downloaded_assets', self.plugin_id))
 
     self.P("Assets copied successfully")
-
-    return
-
-  def __maybe_print_key_logs(self, key):
-    logs_reader = self.dct_logs_reader.get(key)
-    if logs_reader is not None:
-      logs = logs_reader.get_next_characters()
-      if len(logs) > 0:
-        self.P(f"[{key}]: {logs}")
-        self.logs.append(f"[{key}]: {logs}")
-
-    err_logs_reader = self.dct_err_logs_reader.get(key)
-    if err_logs_reader is not None:
-      err_logs = err_logs_reader.get_next_characters()
-      if len(err_logs) > 0:
-        self.P(f"[{key}]: {err_logs}")
-        self.logs.append(f"[{key}]: {err_logs}")
-    return
-
-  def __maybe_print_all_logs(self):
-    for key, logs_reader in self.dct_logs_reader.items():
-      if logs_reader is not None:
-        logs = logs_reader.get_next_characters()
-        if len(logs) > 0:
-          self.P(f"[{key}]: {logs}")
-          self.logs.append(f"[{key}]: {logs}")
-
-    for key, err_logs_reader in self.dct_err_logs_reader.items():
-      if err_logs_reader is not None:
-        err_logs = err_logs_reader.get_next_characters()
-        if len(err_logs) > 0:
-          self.P(f"[{key}]: {err_logs}")
-          self.logs.append(f"[{key}]: {err_logs}")
-    return
-
-  def __maybe_read_and_stop_key_log_readers(self, key):
-    logs_reader = self.dct_logs_reader.get(key)
-    if logs_reader is not None:
-      logs_reader.stop()
-
-    err_logs_reader = self.dct_err_logs_reader.get(key)
-    if err_logs_reader is not None:
-      err_logs_reader.stop()
-
-    self.__maybe_print_key_logs(key)
-
-    self.dct_logs_reader.pop(key, None)
-    self.dct_err_logs_reader.pop(key, None)
-    return
-
-  def __maybe_read_and_stop_all_log_readers(self):
-    log_keys = set(self.dct_logs_reader.keys() + self.dct_err_logs_reader.keys())
-    for key in log_keys:
-      self.__maybe_read_and_stop_key_log_readers(key)
-    return
-
-  def __maybe_init_assets(self):
-    if self.assets_initialized:
-      return
-
-    # download/clone/create/unzip assets
-    assets_path = self.__maybe_download_assets()
-
-    # prepare environment variables
-    self.__prepare_env(assets_path=assets_path)
-
-    # initialize assets -- copy them to the temp directory
-    self.initialize_assets(
-      src_dir=assets_path,
-      dst_dir=self.script_temp_dir,
-      jinja_args=self.jinja_args
-    )
-
-    self.assets_initialized = True
-    return
-
-  def __maybe_run_nth_setup_command(self, idx, timeout=None):
-    if self.failed:
-      return
-
-    if idx > 0 and not self.setup_commands_finished[idx - 1]:
-      # Previous setup command has not finished yet. Skip this one.
-      return
-
-    if not self.setup_commands_started[idx]:
-      self.P(f"Running setup command nr {idx}: {self.get_setup_commands()[idx]}")
-      proc, logs_reader, err_logs_reader = self.__run_command(self.get_setup_commands()[idx], self.base_env)
-      self.setup_commands_processes[idx] = proc
-      self.dct_logs_reader[f"setup_{idx}"] = logs_reader
-      self.dct_err_logs_reader[f"setup_{idx}"] = err_logs_reader
-
-      self.setup_commands_started[idx] = True
-      self.setup_commands_start_time[idx] = self.time()
-    # endif setup command started
-
-    if not self.setup_commands_finished[idx]:
-      finished, failed = self.__wait_for_command(
-        process=self.setup_commands_processes[idx],
-        timeout=0.1,
-        lst_log_reader=[
-          self.dct_logs_reader[f"setup_{idx}"],
-          self.dct_err_logs_reader[f"setup_{idx}"]
-        ]
-      )
-
-      self.setup_commands_finished[idx] = finished
-
-      if finished and not failed:
-        self.__maybe_read_and_stop_key_log_readers(f"setup_{idx}")
-        self.add_payload_by_fields(
-          command_type="setup",
-          command_idx=idx,
-          command_str=self.get_setup_commands()[idx],
-          command_status="success"
-        )
-        self.P(f"Setup command nr {idx} finished successfully")
-      elif finished and failed:
-        self.__maybe_read_and_stop_key_log_readers(f"setup_{idx}")
-        self.add_payload_by_fields(
-          command_type="setup",
-          command_idx=idx,
-          command_str=self.get_setup_commands()[idx],
-          command_status="failed"
-        )
-        self.P(f"ERROR: Setup command nr {idx} finished with exit code {self.setup_commands_processes[idx].returncode}")
-        self.failed = True
-      elif not finished and timeout is not None and timeout > 0:
-        if self.time() - self.setup_commands_start_time[idx] > timeout:
-          self.setup_commands_processes[idx].kill()
-          self.__maybe_read_and_stop_key_log_readers(f"setup_{idx}")
-          self.P(f"ERROR: Setup command nr {idx} timed out")
-          self.add_payload_by_fields(
-            command_type="setup",
-            command_idx=idx,
-            command_str=self.get_setup_commands()[idx],
-            command_status="timeout"
-          )
-          self.failed = True
-    # endif setup command finished
-    return
-
-  def __has_finished_setup_commands(self):
-    return all(self.setup_commands_finished)
-
-  def __maybe_run_all_setup_commands(self):
-    if self.failed:
-      return
-
-    if self.__has_finished_setup_commands():
-      return
-
-    for idx in range(len(self.get_setup_commands())):
-      self.__maybe_run_nth_setup_command(idx)
-    return
-
-  def __has_finished_start_commands(self):
-    return all(self.start_commands_finished)
-
-  def __maybe_run_nth_start_command(self, idx, timeout=5):
-    if self.failed:
-      return
-
-    if idx > 0 and not self.start_commands_finished[idx - 1]:
-      # Previous start command has not finished yet. Skip this one.
-      return
-
-    if not self.start_commands_started[idx]:
-      self.P(f"Running start command nr {idx}: {self.get_start_commands()[idx]}")
-      proc, logs_reader, err_logs_reader = self.__run_command(self.get_start_commands()[idx], self.prepared_env)
-      self.start_commands_processes[idx] = proc
-      self.dct_logs_reader[f"start_{idx}"] = logs_reader
-      self.dct_err_logs_reader[f"start_{idx}"] = err_logs_reader
-
-      self.start_commands_started[idx] = True
-      self.start_commands_start_time[idx] = self.time()
-    # endif start command started
-
-    if not self.start_commands_finished[idx]:
-      finished, _ = self.__wait_for_command(
-        process=self.start_commands_processes[idx],
-        timeout=0.1,
-        lst_log_reader=[
-          self.dct_logs_reader[f"start_{idx}"],
-          self.dct_err_logs_reader[f"start_{idx}"]
-        ]
-      )
-
-      self.start_commands_finished[idx] = finished
-
-      if finished:
-        self.__maybe_read_and_stop_key_log_readers(f"start_{idx}")
-        self.add_payload_by_fields(
-          command_type="start",
-          command_idx=idx,
-          command_str=self.get_start_commands()[idx],
-          command_status="failed"
-        )
-        self.P(f"Start command nr {idx} finished unexpectedly. Please check the logs.")
-      elif self.time() - self.start_commands_start_time[idx] > timeout:
-        self.start_commands_finished[idx] = True
-        self.add_payload_by_fields(
-          command_type="start",
-          command_idx=idx,
-          command_str=self.get_start_commands()[idx],
-          command_status="success"
-        )
-        self.P(f"Start command nr {idx} is running")
-        self.failed = True
-    # endif setup command finished
-    return
-
-  def __maybe_run_all_start_commands(self):
-    if self.failed:
-      return
-
-    if self.__has_finished_start_commands():
-      return
-
-    if not self.__has_finished_setup_commands():
-      return
-
-    if not self.can_run_start_commands:
-      return
-
-    for idx in range(len(self.get_start_commands())):
-      self.__maybe_run_nth_start_command(idx)
-    return
-
-  def _process(self):
-    self.__maybe_init_assets()
-
-    self.__maybe_run_all_setup_commands()
-
-    self.__maybe_run_all_start_commands()
-
-    self.__maybe_print_all_logs()
-
-    super(BaseWebAppPlugin, self)._process()
-    return
-
-  def __get_delta_logs(self):
-    logs = list(self.logs)
-    logs = "".join(logs)
-    self.logs.clear()
-
-    err_logs = list(self.err_logs)
-    err_logs = "".join(err_logs)
-    self.err_logs.clear()
-
-    return logs, err_logs
-
-  def on_command(self, data, delta_logs=None, full_logs=None, **kwargs):
-    if (isinstance(data, str) and data.upper() == 'DELTA_LOGS') or delta_logs:
-      logs, err_logs = self.__get_delta_logs()
-      self.add_payload_by_fields(
-        on_command_request=data,
-        logs=logs,
-        err_logs=err_logs,
-      )
-    if (isinstance(data, str) and data.upper() == 'FULL_LOGS') or full_logs:
-      # TODO: Implement full logs
-      self.add_payload_by_fields(
-        on_command_request=data,
-        logs=[]
-      )
-
-    if (isinstance(data, str) and data.upper() == 'START'):
-      self.can_run_start_commands = True
-      self.P("Starting server")
 
     return
