@@ -83,6 +83,17 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     self.unlock_resource('USED_PORTS')
     return
 
+  def __deallocate_port(self):
+    port = self.port
+
+    self.lock_resource('USED_PORTS')
+    if 'USED_PORTS' in self.plugins_shmem:
+      self.plugins_shmem['USED_PORTS'].pop(self.str_unique_identification, None)
+    self.unlock_resource('USED_PORTS')
+
+    self.P(f"Released port {port}")
+    return  
+
   def __prepare_env(self, assets_path):
     # pop all `EE_` keys
     prepared_env = dict(self.os_environ)
@@ -185,42 +196,63 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
   def jinja_args(self):
     return {}
 
-  def _on_close(self):
+  def __maybe_kill_process(self, process, key):
+    if process is None:
+      return
+
+    try:
+      self.P(f"Forcefully killing process {key}")
+      process.kill()
+      self.__wait_for_command(
+        process=process,
+        timeout=3,
+        lst_log_reader=[self.dct_logs_reader[key], self.dct_err_logs_reader[key]]
+      )
+      self.__maybe_print_key_logs(key)
+      self.P(f"Killed process {key}")
+    except Exception as exc:
+      self.P(f'Could not kill process {key}. Reason: {exc}')
+
+    return
+
+  def __maybe_close_setup_commands(self):
+    if not any(self.setup_commands_started):
+      self.P("No setup commands were started. Skipping teardown.")
+      return
+
+    if all(self.setup_commands_finished):
+      self.P("All setup commands have finished. Skipping teardown.")
+      return
+
+    for idx, process in enumerate(self.setup_commands_processes):
+      if self.setup_commands_started[idx] and not self.setup_commands_finished[idx]:
+        self.P(f"Setup command nr {idx} has not finished. Killing it.")
+        self.__maybe_kill_process(process, f"setup_{idx}")
+    # endfor all setup commands
+    return
+
+  def __maybe_close_start_commands(self):
     if not any(self.start_commands_started):
       self.P("Server was never started. Skipping teardown.")
-    else:
-      # Teardown server
-      for idx, process in enumerate(self.start_commands_processes):
-        try:
-          if process is not None:
-            self.P(f"Forcefully killing start command nr {idx}")
-            process.kill()
-            self.__wait_for_command(
-              process=process,
-              timeout=3,
-              lst_log_reader=[
-                self.dct_logs_reader[f"start_{idx}"],
-                self.dct_err_logs_reader[f"start_{idx}"]
-              ]
-            )
-            self.__maybe_print_key_logs(f"start_{idx}")
-            self.P(f"Killed start command nr {idx}")
-        except Exception as _:
-          self.P(f'Could not kill start command nr {idx}')
-      # endfor all start commands
-    # endif
+      return
+
+    for idx, process in enumerate(self.start_commands_processes):
+      self.__maybe_kill_process(process, f"start_{idx}")
+    # endfor all start commands
+
+  def _on_close(self):
+    self.__maybe_close_setup_commands()
+    self.__maybe_close_start_commands()
+
+    # close all log readers that are still running
+    # this should not have any effect, as the logs should have been
+    # closed during the teardown of the setup and start processes
+    self.__maybe_read_and_stop_all_log_readers()
 
     # cleanup the temp directory
     shutil.rmtree(self.script_temp_dir)
 
-    port = self.port
-
-    self.lock_resource('USED_PORTS')
-    if 'USED_PORTS' in self.plugins_shmem:
-      self.plugins_shmem['USED_PORTS'].pop(self.str_unique_identification, None)
-    self.unlock_resource('USED_PORTS')
-
-    self.P(f"Released port {port}")
+    self.__deallocate_port()
 
     super(BaseWebAppPlugin, self)._on_close()
     return
@@ -489,16 +521,9 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     return
 
   def __maybe_read_and_stop_all_log_readers(self):
-    # TODO: refactor this to stop all log readers
-    if self.log_reader is not None:
-      self.log_reader.stop()
-    if self.error_log_reader is not None:
-      self.error_log_reader.stop()
-
-    self.__maybe_print_logs()
-
-    self.log_reader = None
-    self.error_log_reader = None
+    log_keys = set(self.dct_logs_reader.keys() + self.dct_err_logs_reader.keys())
+    for key in log_keys:
+      self.__maybe_read_and_stop_key_log_readers(key)
     return
 
   def __maybe_init_assets(self):
