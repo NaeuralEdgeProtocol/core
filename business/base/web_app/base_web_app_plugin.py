@@ -420,6 +420,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
           command_status="failed"
         )
         self.P(f"Start command nr {idx} finished unexpectedly. Please check the logs.")
+        self.failed = True
       elif self.time() - self.start_commands_start_time[idx] > timeout:
         self.start_commands_finished[idx] = True
         self.add_payload_by_fields(
@@ -429,7 +430,6 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
           command_status="success"
         )
         self.P(f"Start command nr {idx} is running")
-        self.failed = True
     # endif setup command finished
     return
 
