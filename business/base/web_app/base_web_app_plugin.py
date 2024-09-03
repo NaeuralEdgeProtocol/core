@@ -252,7 +252,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     return
 
   def __maybe_read_and_stop_all_log_readers(self):
-    log_keys = set(self.dct_logs_reader.keys() + self.dct_err_logs_reader.keys())
+    log_keys = set(list(self.dct_logs_reader.keys()) + list(self.dct_err_logs_reader.keys()))
     for key in log_keys:
       self.__maybe_read_and_stop_key_log_readers(key)
     return
