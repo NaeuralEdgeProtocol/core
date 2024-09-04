@@ -53,6 +53,14 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
     return
   
   @property
+  def should_bypass_commands_to_self(self):
+    return self._environment_variables.get("LOCAL_COMMAND_BYPASS", True)
+  
+  @property
+  def save_received_commands(self):
+    return self._environment_variables.get("SAVE_RECEIVED_COMMANDS", False)
+  
+  @property
   def blockchain_manager(self) -> DefaultBlockEngine:
     return self.shmem[ct.BLOCKCHAIN_MANAGER]
   
@@ -278,10 +286,9 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
     if event_type == 'COMMAND':
       receiver_id, receiver_addr, local_only, command_type, command_content = data
 
-      should_bypass_commands_to_self = self._environment_variables.get("LOCAL_COMMAND_BYPASS", True)
       is_command_to_self = receiver_addr == self.blockchain_manager.address
 
-      if should_bypass_commands_to_self and is_command_to_self:
+      if self.should_bypass_commands_to_self and is_command_to_self:
         # if we are the receiver, we bypass sending and receiving the command to the network
         self.P("Bypassing network communication for {} local command to self".format(command_type), color='y')
         self.__lst_commands_from_self.append((command_type, command_content))
@@ -444,11 +451,11 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
     return
 
   def _save_input_command(self, payload):
-    fn = '{}.txt'.format(self.log.now_str())
+    fn = '{}.json'.format(self.log.now_str())
     self.log.save_output_json(
       data_json=payload,
       fname=fn,
-      subfolder_path='input_commands',
+      subfolder_path='received_commands',
       verbose=False
     )
     return
@@ -520,7 +527,6 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
       else:
         # each command is a tuple as below
         self._command_queues[action].append((payload, sender_addr, initiator_id, session_id))
-        # self._save_input_command(payload)
       # endif
     else:
       self.P('  Message does not contain action. Nothing to process...', color='y')
@@ -534,6 +540,11 @@ class CommunicationManager(Manager, _ConfigHandlerMixin):
     initiator_id = json_msg.get(ct.COMMS.COMM_RECV_MESSAGE.K_INITIATOR_ID, None)
     session_id = json_msg.get(ct.COMMS.COMM_RECV_MESSAGE.K_SESSION_ID, None)
     sender_addr = json_msg.get(ct.COMMS.COMM_RECV_MESSAGE.K_SENDER_ADDR, None)
+    
+    if self.save_received_commands:
+      self.P("Saving received command ...")
+      self._save_input_command(json_msg)
+    #endif save_received_commands
 
     self.P("Received message with action '{}' from <{}:{}>".format(
       action, initiator_id, session_id),
