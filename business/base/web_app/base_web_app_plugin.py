@@ -735,6 +735,10 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     # write .env file in the target directory
     # environment variables are passed in subprocess.Popen, so this is not needed
     # but it's useful for debugging
+    with open(self.os_path.join(self.script_temp_dir, '.env'), 'w') as f:
+      for key, value in self.prepared_env.items():
+        f.write(f"{key}={value}\n")
+
     with open(self.os_path.join(self.script_temp_dir, '.start_env_used'), 'w') as f:
       for key, value in self.prepared_env.items():
         f.write(f"{key}={value}\n")
