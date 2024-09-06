@@ -1337,9 +1337,14 @@ class _UtilsBaseMixin(
     """
 
     np_image = np.array(image)
-    np_marg = np.histogramdd(np.ravel(np_image), bins=256)[0] / np_image.size
-    np_marg = np_marg[np.where(np_marg > 0)]
-    entropy = -np.sum(np.multiply(np_marg, np.log2(np_marg)))
+    try:
+      np_marg = np.histogramdd(np.ravel(np_image), bins=256)[0] / np_image.size
+      np_marg = np_marg[np.where(np_marg > 0)]
+      entropy = -np.sum(np.multiply(np_marg, np.log2(np_marg)))
+    except Exception as exc:
+      import pickle
+      pickle.dump(np_image, open('error_image.pkl', 'wb'))
+      self.P(f"Error computing entropy {exc}.\nImage saved as error_image.pkl", color='r')
 
     return entropy
 
