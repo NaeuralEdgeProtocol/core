@@ -1337,6 +1337,7 @@ class _UtilsBaseMixin(
     """
 
     np_image = np.array(image)
+    entropy = 0
     try:
       np_marg = np.histogramdd(np.ravel(np_image), bins=256)[0] / np_image.size
       np_marg = np_marg[np.where(np_marg > 0)]
