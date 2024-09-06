@@ -38,7 +38,7 @@ _CONFIG = {
   "ANALYSIS_IGNORE_MAX_PERSON_AREA": 70,  # percent
   "ANALYSIS_IGNORE_MIN_PERSON_AREA": 0.5,  # percent
   "MIN_ENTROPY_THRESHOLD": 2,
-  "PEOPLE_IN_FRAME_COOLDOWN_FRAMES": 10, # <= 0 means no cooldown
+  "PEOPLE_IN_FRAME_COOLDOWN_FRAMES": 10,  # <= 0 means no cooldown
 
   "DEMO_MODE": False,
   "ANCHOR_RELOAD_PERIOD": 10 * 60,  # second
@@ -115,7 +115,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     valid, reason = self._validate_image_as_anchor(image, object_detection_inferences)
     if valid:
-      self.P("Saving new anchor. Reason: {}".format(reason))
+      self.P("Saving anchor. {}".format(reason))
       self._anchor = image
       self._anchor_last_save_time = self.time()
       self._force_save_anchor = False
@@ -234,18 +234,19 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     total_area = sum(people_areas) * 100
 
-    return total_area <= self.cfg_anchor_max_sum_person_area, "Total people area occupied in scene {}".format(total_area)
+    return total_area <= self.cfg_anchor_max_sum_person_area, "People area {:.02f}".format(total_area)
 
   def __validate_image_as_anchor_check_people_cooldown(self):
     people_cooldown_ok = self._people_in_frame_cooldown_counter <= 0
-    people_cooldown_validation_msg = "People cooldown {} frames".format(self._people_in_frame_cooldown_counter)    
+    people_cooldown_validation_msg = "People cd {} frames".format(self._people_in_frame_cooldown_counter)
     return people_cooldown_ok, people_cooldown_validation_msg
 
   def __validate_image_as_anchor_check_entropy(self, image):
     entropy = self.image_entropy(image)
-    return entropy >= self.cfg_min_entropy_threshold, f"Entropy of the image is {entropy:.02f}"
+    return entropy >= self.cfg_min_entropy_threshold, f"Entropy {entropy:.02f}"
 
   def _validate_image_as_anchor(self, image, object_detection_inferences):
+    # Saving anchor. People: 0 (0 frames), Entopy:  7.54
     people_ok, people_validation_msg = self.__validate_image_as_anchor_check_people(image, object_detection_inferences)
     people_cooldown_ok, people_cooldown_validation_msg = self.__validate_image_as_anchor_check_people_cooldown()
     entropy_ok, entropy_validation_msg = self.__validate_image_as_anchor_check_entropy(image)
@@ -486,8 +487,8 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     human_readable_last_anchor_time = self.datetime.fromtimestamp(self._anchor_last_save_time)
     human_readable_last_anchor_time = self.datetime.strftime(human_readable_last_anchor_time, "%Y-%m-%d %H:%M:%S")
 
-    frame_entropy = self.image_entropy(img) if img is not None else 0 # image should never be None
-    anchor_entropy = self.image_entropy(self._anchor) if self._anchor is not None else 0 # anchor can be None
+    frame_entropy = self.image_entropy(img) if img is not None else 0  # image should never be None
+    anchor_entropy = self.image_entropy(self._anchor) if self._anchor is not None else 0  # anchor can be None
 
     debug_info = [
       {'value': "A <{} F <{} >{}: {}  (E {:.02f})".format(
