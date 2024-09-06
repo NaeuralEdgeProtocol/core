@@ -1336,16 +1336,16 @@ class _UtilsBaseMixin(
         the entropy of the image
     """
 
+    if image is None:
+      # self.P("Image is None")
+      return 0
+
     np_image = np.array(image)
     entropy = 0
-    try:
-      np_marg = np.histogramdd(np.ravel(np_image), bins=256)[0] / np_image.size
-      np_marg = np_marg[np.where(np_marg > 0)]
-      entropy = -np.sum(np.multiply(np_marg, np.log2(np_marg)))
-    except Exception as exc:
-      import pickle
-      pickle.dump(np_image, open('error_image.pkl', 'wb'))
-      self.P(f"Error computing entropy {exc}.\nImage saved as error_image.pkl", color='r')
+
+    np_marg = np.histogramdd(np.ravel(np_image), bins=256)[0] / np_image.size
+    np_marg = np_marg[np.where(np_marg > 0)]
+    entropy = -np.sum(np.multiply(np_marg, np.log2(np_marg)))
 
     return entropy
 

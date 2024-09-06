@@ -486,16 +486,19 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     human_readable_last_anchor_time = self.datetime.fromtimestamp(self._anchor_last_save_time)
     human_readable_last_anchor_time = self.datetime.strftime(human_readable_last_anchor_time, "%Y-%m-%d %H:%M:%S")
 
+    frame_entropy = self.image_entropy(img) if img is not None else 0 # image should never be None
+    anchor_entropy = self.image_entropy(self._anchor) if self._anchor is not None else 0 # anchor can be None
+
     debug_info = [
       {'value': "A <{} F <{} >{}: {}  (E {:.02f})".format(
         self.cfg_anchor_max_sum_person_area,
         self.cfg_analysis_ignore_min_person_area,
         self.cfg_analysis_ignore_max_person_area,
         self.__people_areas_prc(img, object_detector_inferences, 2),
-        self.image_entropy(img)
+        frame_entropy,
       )},
       {'value': "Last Anchor Time: {}   Anchor Save Period (s): {} Anchor E: {:.02f}".format(
-        human_readable_last_anchor_time, self.serving_anchor_reload_period, self.image_entropy(self._anchor))},
+        human_readable_last_anchor_time, self.serving_anchor_reload_period, anchor_entropy)},
     ]
     if self.cfg_demo_mode:
       if self.cfg_forced_lower:
