@@ -1522,6 +1522,22 @@ class _UtilsBaseMixin(
 
     """
     return bs4
+  
+  def get_gpu_info(self, device_id=0):
+    """
+    Returns the GPU information
+    
+    Parameters
+    ----------
+    device_id : int, optional
+      The device id. The default is 0.
+      
+    Returns
+    -------
+    dict
+      The dictionary containing the GPU information
+    """
+    return self.log.get_gpu_info(device_id=device_id)
 
 
 if __name__ == '__main__':
@@ -1553,6 +1569,7 @@ if __name__ == '__main__':
   print(d2)
   print(d2.k0)
   print(d2.k1.k12[0].k112)
+  
   
   
   d3 = defaultdict(lambda: DefaultDotDict({'timestamp' : None, 'data' : None}))

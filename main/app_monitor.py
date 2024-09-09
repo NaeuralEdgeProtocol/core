@@ -310,6 +310,7 @@ class ApplicationMonitor(DecentrAIObject):
       gpu_mem = dct_gpu.get(ct.GPU_INFO.ALLOCATED_MEM)
       gpu_total_mem = dct_gpu.get(ct.GPU_INFO.TOTAL_MEM)
       gpu_temp = dct_gpu.get(ct.GPU_INFO.GPU_TEMP)
+      fan_speed = dct_gpu.get(ct.GPU_INFO.GPU_FAN_SPEED)
       if (gpu_used is not None) and (None not in gpu_used):
         str_info += "\n  Used GPU: [{}] '{}'".format(cuda, gpu_name)
         cuda_loads = np.array(gpu_used).astype('float16')
@@ -346,12 +347,14 @@ class ApplicationMonitor(DecentrAIObject):
 
     for i, dct_gpu in self.gpu_log.items():
       gpu_load_mean = round(np.mean(list(dct_gpu[ct.GPU_INFO.GPU_USED])[-last_n:]), 1)
-      str_gpu_info = "cuda:{} {}%, mem {}/{}GB, {}°C".format(
+      str_gpu_info = "cuda:{} {}%, mem {}/{}GB, {}°C, gpu fan {}{}".format(
         i,
         gpu_load_mean,
         round(dct_gpu[ct.GPU_INFO.ALLOCATED_MEM][-1], 1),
         round(dct_gpu[ct.GPU_INFO.TOTAL_MEM], 1),
         round(dct_gpu[ct.GPU_INFO.GPU_TEMP][-1], 1),
+        round(dct_gpu[ct.GPU_INFO.GPU_FAN_SPEED][-1], 1),
+        dct_gpu[ct.GPU_INFO.GPU_FAN_SPEED_UNIT]
       )
       gpu_info_list.append(str_gpu_info)
       if gpu_load is None:
@@ -359,6 +362,8 @@ class ApplicationMonitor(DecentrAIObject):
         gpu_total_mem = round(dct_gpu[ct.GPU_INFO.TOTAL_MEM], 1)
         gpu_occupied_memory = round(dct_gpu[ct.GPU_INFO.ALLOCATED_MEM][-1], 1)
         gpu_temp = round(dct_gpu[ct.GPU_INFO.GPU_TEMP][-1], 1)
+        gpu_fan = round(dct_gpu[ct.GPU_INFO.GPU_FAN_SPEED][-1], 1)
+        gpu_fan_unit = dct_gpu[ct.GPU_INFO.GPU_FAN_SPEED_UNIT]
 
     str_gpu_info_list = ", ".join(gpu_info_list) if len(gpu_info_list) > 0 else "no gpu"
 
@@ -400,10 +405,13 @@ class ApplicationMonitor(DecentrAIObject):
           ct.GPU_INFO.GPU_USED : deque(maxlen=MAX_LOG_SIZE),
           ct.GPU_INFO.ALLOCATED_MEM : deque(maxlen=MAX_LOG_SIZE),
           ct.GPU_INFO.GPU_TEMP : deque(maxlen=MAX_LOG_SIZE),
-          }
+          ct.GPU_INFO.GPU_FAN_SPEED : deque(maxlen=MAX_LOG_SIZE),
+          ct.GPU_INFO.GPU_FAN_SPEED_UNIT : gpu[ct.GPU_INFO.GPU_FAN_SPEED_UNIT],
+        }
       self.gpu_log[i][ct.GPU_INFO.GPU_USED].append(gpu[ct.GPU_INFO.GPU_USED])
       self.gpu_log[i][ct.GPU_INFO.ALLOCATED_MEM].append(gpu[ct.GPU_INFO.ALLOCATED_MEM])
       self.gpu_log[i][ct.GPU_INFO.GPU_TEMP].append(gpu[ct.GPU_INFO.GPU_TEMP])
+      self.gpu_log[i][ct.GPU_INFO.GPU_FAN_SPEED].append(gpu[ct.GPU_INFO.GPU_FAN_SPEED])      
     return
       
 

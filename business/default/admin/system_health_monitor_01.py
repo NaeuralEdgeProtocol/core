@@ -1,3 +1,9 @@
+"""
+
+This plugin uses low-level system info to check the health of the system (does not use the hb data).
+
+"""
+
 import subprocess
 
 from core.business.base import BasePluginExecutor
@@ -12,6 +18,8 @@ _CONFIG = {
   'PROCESS_DELAY'       : 180,
   'KERNEL_LOG_LEVEL'    : 'emerg,alert,crit,err',
   'MAX_TEMPERATURE'     : None,
+  
+  'SYSTEM_HEALTH_MONITOR_DEBUG': True,
 
   'VALIDATION_RULES': {
     **BasePluginExecutor.CONFIG['VALIDATION_RULES'],
@@ -36,6 +44,9 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
   CONFIG = _CONFIG
 
   def on_init(self):
+    
+    self.__debug_info = []
+    
     # Initialize the set of monitor hooks. Each monitor hook is a method
     # starting with _system_health_monitor, should have only self as the argument as
     # should return a string.
@@ -109,9 +120,14 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
       out = self._get_kernel_errors(minutes=minutes, level=level)
       if len(out) > 0:
         msg = f"Found the following kernel errors:\n{out}\n"
+      self.__debug_info.append(
+        msg if len(msg) > 0 else "No kernel errors found."
+      )
     except Exception as E:
-      self.P(f"Could not retrieve kernel errors, {E}", color="red")
-
+      e_msg = f"Could not retrieve kernel errors, {E}"
+      self.P(e_msg, color="red")
+      self.__debug_info.append(e_msg)
+      
     return msg
 
   def _system_health_monitor_temperatures(self) -> str:
@@ -129,7 +145,9 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
     temperature_info = self.get_temperature_sensors(as_dict=True)
     temps = temperature_info[MonCT.TEMP_DATA_TEMP]
     if temps in [None, {}]:
-      self.P(temperature_info[MonCT.TEMP_DATA_MSG], color='r')
+      emsg = temperature_info[MonCT.TEMP_DATA_MSG]
+      self.__debug_info.append(emsg)
+      self.P(emsg, color='r')
       return ""
     #endif no sensor data
 
@@ -148,9 +166,50 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
     if len(msg) > 0:
       msg = f"Found the following temperature issues:\n{msg}"
 
+    self.__debug_info.append(
+      msg if len(msg) > 0 else "No temperature issues found."
+    )
+      
     return msg
+  
+  
+  def _system_health_monitor_gpu_health(self) -> str:
+    """
+    Get a string list GPU issues found on the device.
+
+    Returns
+    -------
+    str
+        all GPU issues since if any
+    """
+    gpu_id = 0
+    msg = ""
+    gpu_info = self.get_gpu_info(device_id=0)
+    
+    if len(gpu_info) > 0:
+      fan_speed = gpu_info['GPU_FAN_SPEED']
+      gpu_load = gpu_info['GPU_USED']
+      mem_load = round(gpu_info['ALLOCATED_MEM'] / gpu_info['TOTAL_MEM'] * 100, 1)
+      if fan_speed == 0:
+        msg = "GPU fan is not spinning. This could be critical issue."
+    
+    self.__debug_info.append(
+      f"GPU {gpu_id} load {gpu_load}%, memory load {mem_load}, fan speed {fan_speed}%"
+    )
+        
+    return msg
+        
+      
+  def maybe_show_debug_info(self):
+    if self.cfg_system_health_monitor_debug:
+      info = ["    - " + x for x in self.__debug_info]
+      str_info = "\n".join(info)
+      self.P(f"System health monitoring debug info:\n{str_info}", color='green')
+    return
+    
 
   def process(self):
+    self.__debug_info = []
     current_time = self.time()
 
     # Run all monitoring hooks. We concatenate any interesting messages
@@ -165,6 +224,7 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
       self.P(msg, color='red')
       self.add_payload_by_fields(is_alert=True, status=msg)
     #endif signal found errors
+    self.maybe_show_debug_info()
 
     # Finally update the last run time.
     self.last_exec_time = current_time

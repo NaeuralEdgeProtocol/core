@@ -1,3 +1,10 @@
+"""
+
+This plugin uses external info (the hb data) in order to check the health of the system. 
+
+
+"""
+
 from core.business.base import BasePluginExecutor
 
 __VER__ = '0.1.1.0'
