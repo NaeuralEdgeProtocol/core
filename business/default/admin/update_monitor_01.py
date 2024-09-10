@@ -216,8 +216,7 @@ class UpdateMonitor01Plugin(BasePluginExecutor):
   
   ###
 
-  def _on_command(self, data, **kwargs):
-    super(UpdateMonitor01Plugin, self)._on_command(data)
+  def on_command(self, data, **kwargs):
     self.P("Update Monitor on {} received: {}".format(self.eeid, str(data)[:100]))
     command = 'UPDATE_CHECK'
     target_id = None

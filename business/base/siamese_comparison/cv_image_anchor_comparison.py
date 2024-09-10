@@ -669,6 +669,8 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     return payload
 
   def _on_command(self, data, get_last_witness=None, reset_anchor=None, **kwargs):
+    super(CvImageAnchorComparisonPlugin, self)._on_command(data, **kwargs)
+
     if (isinstance(data, str) and data.upper() == 'GET_LAST_WITNESS') or get_last_witness:
       last_witness = self.get_last_witness_image()
       self.add_payload_by_fields(

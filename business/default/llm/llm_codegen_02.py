@@ -109,7 +109,7 @@ class LlmCodegen02Plugin(BasePlugin):
       result = static_result
     return result
   
-  def _on_command(self, data, **kwargs):
+  def on_command(self, data, **kwargs):
     self._nr_requests += 1
     request = data.get('request', None)
     request_id = data.get('request_id', None)

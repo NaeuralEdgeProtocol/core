@@ -623,6 +623,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
   def _on_command(self, data, delta_logs=None, full_logs=None, **kwargs):
     super(BaseWebAppPlugin, self)._on_command(data, **kwargs)
+
     if (isinstance(data, str) and data.upper() == 'DELTA_LOGS') or delta_logs:
       logs, err_logs = self.__get_delta_logs()
       self.add_payload_by_fields(

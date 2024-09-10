@@ -72,8 +72,8 @@ class NetMon01Plugin(
     self.netmon.network_load_status()
     return
   
-  def _on_command(self, data, **kwargs):
-    super(NetMon01Plugin, self)._on_command(data)
+  def on_command(self, data, **kwargs):
+
     request_type = 'history' #default to history
     target_node = None
     target_addr = None

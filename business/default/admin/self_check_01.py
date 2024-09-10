@@ -50,8 +50,7 @@ class SelfCheck01Plugin(BasePluginExecutor):
     super().startup()
     return
   
-  def _on_command(self, data, **kwargs):
-    super(SelfCheck01Plugin, self)._on_command(data)
+  def on_command(self, data, **kwargs):
     self.P("Self check monitor on {} received: {}".format(self.eeid, data))
     return
   

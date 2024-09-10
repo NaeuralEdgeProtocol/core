@@ -94,11 +94,12 @@ class ViewScene01Plugin(BaseClass):
     self.config_data['ALLOW_EMPTY_INPUTS'] = False
     return
   
-  def _on_command(self, data, **kwargs):
+  def on_command(self, data, **kwargs):
     """
     Although we could send a witness image on command using self.add_payload() 
     we prefer to postpone the normal process and send the image on the next process hit. 
     """
+
     self.__view_scene_command_data = data
     if self.__last_valid_timestamp is None:
       last_msg = "No previous image - command will probably fail!"

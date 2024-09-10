@@ -120,7 +120,7 @@ class LlmCodegen01Plugin(BasePlugin):
       result = static_result
     return result
   
-  def _on_command(self, data, **kwargs):
+  def on_command(self, data, **kwargs):
     request = data.get('request', None)
     request_id = data.get('request_id', None)
     history = data.get('history', [])
