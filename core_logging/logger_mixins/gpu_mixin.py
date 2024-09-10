@@ -158,6 +158,7 @@ class _GPUMixin(object):
             gpu_temp_max = dct_gpu['temperature']['gpu_temp_max_threshold']
             
             fan_speed = dct_gpu.get('fan_speed', -1)
+            fan_speed = -1 if fan_speed == 'N/A' else fan_speed
             fan_speed_unit = dct_gpu.get('fan_speed_unit', "N/A")
 
             handle = pynvml.nvmlDeviceGetHandleByIndex(device_id)
