@@ -552,7 +552,7 @@ class CVPluginExecutor(BasePluginExecutor,
       self.add_payload_by_fields(
         img=images,
         last_witness_count=self.__last_witness_count,
-        on_command_request=data,
+        command_params=data,
       )
     return
 

@@ -75,7 +75,7 @@ class Device(BasePluginExecutor):
     self._create_error_notification(msg)
     return None
 
-  def _create_error_payload(self, message, on_command_params=None):
+  def _create_error_payload(self, message, command_params=None):
     """
     Create error payload
     Parameters
@@ -88,7 +88,7 @@ class Device(BasePluginExecutor):
     """
     payload = {"device_error": message, "status": "device_error"}
     self.add_payload_by_fields(
-      on_command_params=on_command_params, **payload
+      command_params=command_params, **payload
     )
     return
 

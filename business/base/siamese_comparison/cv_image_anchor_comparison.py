@@ -675,7 +675,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
       last_witness = self.get_last_witness_image()
       self.add_payload_by_fields(
         img=[last_witness, self.__last_capture_image, self._anchor],
-        on_command_request=data,
+        command_params=data,
       )
     if (isinstance(data, str) and data.upper() == 'RESET_ANCHOR') or reset_anchor:
       self.P("Received command to reset anchor. This will also reset the alerter.")

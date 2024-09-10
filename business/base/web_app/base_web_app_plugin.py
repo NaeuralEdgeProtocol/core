@@ -627,14 +627,14 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     if (isinstance(data, str) and data.upper() == 'DELTA_LOGS') or delta_logs:
       logs, err_logs = self.__get_delta_logs()
       self.add_payload_by_fields(
-        on_command_request=data,
+        command_params=data,
         logs=logs,
         err_logs=err_logs,
       )
     if (isinstance(data, str) and data.upper() == 'FULL_LOGS') or full_logs:
       # TODO: Implement full logs
       self.add_payload_by_fields(
-        on_command_request=data,
+        command_params=data,
         logs=[]
       )
 

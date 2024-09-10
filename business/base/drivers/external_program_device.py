@@ -205,7 +205,7 @@ class ExternalProgramDevice(Device):
       self._create_action_payload(
         action="RUN_EXTERNAL_PROGRAM", 
         message="command executed", 
-        on_command_params=kwargs,
+        command_params=kwargs,
       )
       return
     except Exception as e:
