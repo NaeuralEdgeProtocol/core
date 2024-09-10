@@ -1033,6 +1033,18 @@ class ServingManager(Manager):
         self._cleanup_server(server_name)
     return
   
+  def get_plugin_default_config(self, signature):
+    _module_name, _class_name, _cls_def, _config_dict = self._get_module_name_and_class(
+      locations=ct.PLUGIN_SEARCH.LOC_SERVING_PLUGINS,
+      name=signature,
+      verbose=0,
+      safety_check=True, # TODO: should we do this?
+      suffix=ct.PLUGIN_SEARCH.SUFFIX_SERVING_PLUGINS,
+      safe_locations=ct.PLUGIN_SEARCH.SAFE_LOC_SERVING_PLUGINS,     
+      safe_imports=ct.PLUGIN_SEARCH.SERVING_SAFE_IMPORTS,
+    )
+
+    return _config_dict
   
   
   def get_predict_time(self, server_name):

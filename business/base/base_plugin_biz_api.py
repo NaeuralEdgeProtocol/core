@@ -145,11 +145,6 @@ class _BasePluginAPIMixin:
 
     """
     self.P("Default plugin `_on_command`...")
-    # TODO: add command to return entire config dict
-    # either defaults
-    # or current
-    # self._default_config
-    # self._upstream_config
 
     if (isinstance(data, str) and data.upper() == 'DEFAULT_CONFIGURATION') or default_configuration:
       self.P("Received \"DEFAULT_CONFIGURATION\" command...")

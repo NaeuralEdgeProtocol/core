@@ -513,6 +513,18 @@ class BusinessManager(Manager):
         )
     return lst_overloaded
 
+  def get_plugin_default_config(self, signature):
+    _module_name, _class_name, _cls_def, _config_dict = self._get_module_name_and_class(
+      locations=ct.PLUGIN_SEARCH.LOC_BIZ_PLUGINS,
+      name=signature,
+      suffix=ct.PLUGIN_SEARCH.SUFFIX_BIZ_PLUGINS,
+      verbose=0,
+      safety_check=True, # perform safety check on custom biz plugins # TODO: should we do this?
+      safe_locations=ct.PLUGIN_SEARCH.SAFE_BIZ_PLUGINS,
+      safe_imports=ct.PLUGIN_SEARCH.SAFE_BIZ_IMPORTS
+    )
+
+    return _config_dict
 
 
   def execute_all_plugins(self, dct_business_inputs):

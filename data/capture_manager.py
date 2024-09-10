@@ -637,3 +637,16 @@ class CaptureManager(Manager, _ConfigHandlerMixin):
       if (obj is None or (obj.can_delete or obj.alive_until_passed))
     ]
     return lst
+
+  def get_plugin_default_config(self, signature):
+    _module_name, _class_name, _cls_def, _config_dict = self._get_module_name_and_class(
+      locations=ct.PLUGIN_SEARCH.LOC_DATA_ACQUISITION_PLUGINS,
+      name=signature,
+      verbose=0,
+      suffix=ct.PLUGIN_SEARCH.SUFFIX_DATA_ACQUISITION_PLUGINS,
+      safe_locations=ct.PLUGIN_SEARCH.SAFE_LOC_DATA_ACQUISITION_PLUGINS,
+      safe_imports=ct.PLUGIN_SEARCH.SAFE_LOC_DATA_ACQUISITION_IMPORTS,
+      safety_check=True, # TODO: should we do this?
+    )
+
+    return _config_dict

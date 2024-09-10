@@ -74,6 +74,8 @@ class _ManagersInitMixin(object):
       DEBUG=self.DEBUG,
       environment_variables=self.cfg_capture_environment,
     )
+
+    self.app_shmem["capture_manager"] = self._capture_manager
     return
 
   def _initialize_serving_manager(self):
@@ -88,6 +90,8 @@ class _ManagersInitMixin(object):
       log_timeouts_period=self.cfg_serving_environment.get('LOG_TIMEOUTS_PERIOD', 3600),
       owner=self,
     )
+
+    self.app_shmem["serving_manager"] = self._serving_manager
     return
 
   def _initialize_business_manager(self):
@@ -102,6 +106,8 @@ class _ManagersInitMixin(object):
       environment_variables=self.cfg_plugins_environment,
       DEBUG=self.DEBUG
     )
+
+    self.app_shmem["business_manager"] = self._business_manager
     return
 
   def _initialize_io_formatter_manager(self):
