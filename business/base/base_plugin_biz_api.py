@@ -130,7 +130,7 @@ class _BasePluginAPIMixin:
     """
     return
 
-  def _on_command(self, data, **kwargs):
+  def _on_command(self, data, default_configuration=None, current_configuration=None, **kwargs):
     """
     Called when the instance receives new INSTANCE_COMMAND
 
@@ -145,6 +145,27 @@ class _BasePluginAPIMixin:
 
     """
     self.P("Default plugin `_on_command`...")
+    # TODO: add command to return entire config dict
+    # either defaults
+    # or current
+    # self._default_config
+    # self._upstream_config
+
+    if (isinstance(data, str) and data.upper() == 'DEFAULT_CONFIGURATION') or default_configuration:
+      self.P("Received \"DEFAULT_CONFIGURATION\" command...")
+      self.add_payload_by_fields(
+        default_configuration=self._default_config,
+        command_params=data,
+      )
+      return
+    if (isinstance(data, str) and data.upper() == 'CURRENT_CONFIGURATION') or current_configuration:
+      self.P("Received \"CURRENT_CONFIGURATION\" command...")
+      self.add_payload_by_fields(
+        current_configuration=self._upstream_config,
+        command_params=data,
+      )
+      return
+
     self.on_command(data, **kwargs)
     return
 
