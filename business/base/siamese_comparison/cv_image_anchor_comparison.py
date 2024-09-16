@@ -80,7 +80,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
   def _can_save_newer_anchor(self):
     """
-    Check if we can save a new anchor. 
+    Check if we can save a new anchor.
     We check if the anchor is expired, if there are alerts raised, if the anchor is not saved yet, etc.
 
     Returns
@@ -641,19 +641,22 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
       # we have people in the image
       # and we have a valid comparison result,
       # so we do not consider this observation
-      # and we lower the mean alerter value because the people in the image
-      # generate a lot of false positives
-      self.alerter_add_observation(0)
+      # if the alerter is raised, we add the middle value (no need to lower if people are in the image)
+      # if the alerter is not raised, we add 0 (people generate a lot of noise in the alerter series)
+      if self.alerter_is_alert():
+        # if we add 0, we can risk lowering the alert because of the people in the image
+        # and so we generate a lot of false positives
+        middle_value = (self.cfg_alert_raise_value + self.cfg_alert_lower_value) / 2
+        self.alerter_add_observation(middle_value)
+      else:
+        self.alerter_add_observation(0)
     # endif
 
-    if not result_ok and validation_ok and not self.cfg_discard_failed_analysis:
-      # we don't have people in the image, or they occupy the whole image,
-      # but our analysis failed
+    if not result_ok and not self.cfg_discard_failed_analysis:
+      # indifferent to the presence of people in the image, our analysis failed
       # if we do not discard failed analysis, we consider this observation
-      # and so we keep the alerter in the middle until we have the analysis running
-      # to make a good decision
-      middle_value = (self.cfg_alert_raise_value + self.cfg_alert_lower_value) / 2
-      self.alerter_add_observation(middle_value)
+      # and so we lower the alerter no matter what
+      self.alerter_add_observation(0)
     # endif
 
     alerter_status_changed, current_alerter_status = self._custom_alerter_status_changed()
@@ -665,6 +668,16 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
       payload = self._get_payload(
         alerter_status=current_alerter_status,
       )
+    # endif
+
+    if alerter_status_changed:
+      # when alerter changes, we add a dummy value in the alerter train to make sure
+      # we generate a single alert status change event
+      # If we do not do this, then we can raise the same alert multiple times
+      # if there are people in the frame and the analysis fails
+      middle_value = (self.cfg_alert_raise_value + self.cfg_alert_lower_value) / 2
+      self.alerter_add_observation(middle_value)
+    # endif
 
     return payload
 
@@ -690,7 +703,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
   def serving_anchor_reload_period(self):
     """
     The serving anchor reload period. This is the period after which the anchor will be reloaded.
-    This property can be used to add custom logic for the anchor reload period. 
+    This property can be used to add custom logic for the anchor reload period.
     (Like in the IQA case where this period is taken from serving config)
 
     Returns
