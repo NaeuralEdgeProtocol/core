@@ -73,7 +73,8 @@ class Orchestrator(DecentrAIObject,
     self.__main_loop_stopped = False
     self.__main_loop_stopped_count = 0 
     self.__main_loop_stopped_time = None
-    self.__main_loop_stop_stage = None
+    self.__main_loop_stop_at_stage = None
+    self.__main_loop_last_stage_change = time()
     self.__main_loop_stoplog = []
 
 
@@ -125,6 +126,9 @@ class Orchestrator(DecentrAIObject,
   def set_loop_stage(self, stage, is_dangerous=True):
     with self.log.managed_lock_resource('set_loop_stage_for_logging'):
       self.__is_mlstop_dangerous = is_dangerous
+      if not self.__loop_stage != stage:
+        self.__main_loop_last_stage_change = time()
+      # endif main loop stopped
       self.__loop_stage = stage
     # endwith lock
     return
@@ -648,7 +652,9 @@ class Orchestrator(DecentrAIObject,
       'NR'          : cnt,
       'FROM_START'  : self.log.elapsed_to_str(self.running_time, show_days=False),
       'WHEN'        : self.log.time_to_str(start),
-      'STAGE'       : self.__main_loop_stop_stage,
+      'STOP_STAGE'  : self.__main_loop_stop_at_stage,
+      'CURR_STAGE'  : self.__loop_stage,
+      'LAST_CHANGE' : self.__main_loop_last_stage_change,
       'RESUME'      : None if end is None else self.log.time_to_str(end),
       'DURATION'    : self.log.elapsed_to_str(elapsed, show_days=False),
       'ITER'        : self._main_loop_counts['ITER'],
@@ -741,15 +747,17 @@ class Orchestrator(DecentrAIObject,
           self.__main_loop_stopped_count = 1
         if not self.__main_loop_stopped:
           self.__main_loop_stopped_time = time()
-          self.__main_loop_stop_stage = self.__loop_stage
+          self.__main_loop_stop_at_stage = self.__loop_stage
           self.__log_main_loop_stop()
         self.__main_loop_stopped = True
+        stage_last_change = time() - self.__main_loop_last_stage_change
         timer, elapsed = self.log.get_opened_timer()
-        msg = "{} MLSTOP @ {} from start, stage '{}', {} stops so far, {:.0f}s since stop, timer `{}={:.1f}s`,(E2 loop avg/last time {:.1f}s/{:.1f}s)".format(
+        msg = "{} MLSTOP @ {} from start, stage stop '{}', now '{}', {} stops so far, {:.0f}s since stop, {:.0f}s since last, timer `{}={:.1f}s`,(E2 loop avg/last time {:.1f}s/{:.1f}s)".format(
           "WARNING:" if self.__is_mlstop_dangerous else "Normal (start/stop)", 
           self.log.elapsed_to_str(self.running_time), 
-          self.__main_loop_stop_stage, self.__main_loop_stopped_count, time() - self.__main_loop_stopped_time, 
-          timer, elapsed, self.avg_loop_timings, self._get_last_timing()
+          self.__main_loop_stop_at_stage, self.__loop_stage,
+          self.__main_loop_stopped_count, time() - self.__main_loop_stopped_time, 
+          stage_last_change, timer, elapsed, self.avg_loop_timings, self._get_last_timing()
         )
         self.P(msg, color='error' if self.__is_mlstop_dangerous else 'r')
         self._create_notification(
@@ -762,11 +770,10 @@ class Orchestrator(DecentrAIObject,
         self.__main_loop_stopped = False
         msg = "{} main loop resumed after {:.0f}s from stage '{}', {} stop-resumes so far! (E2 loop avg/last {:.1f}s/{:.1f}s)".format(
           "WARNING:" if self.__is_mlstop_dangerous else "Normal (start/stop)", 
-          time() - self.__main_loop_stopped_time, self.__main_loop_stop_stage,
-          self.__main_loop_stopped_count,
-          self.avg_loop_timings, self._get_last_timing()
+          time() - self.__main_loop_stopped_time, self.__main_loop_stop_at_stage,
+          self.__main_loop_stopped_count, self.avg_loop_timings, self._get_last_timing()
         )
-        self.__main_loop_stop_stage = None
+        self.__main_loop_stop_at_stage = None
         self.__main_loop_stopped_count += 1
         self.P(msg, color='error')
         self._create_notification(
