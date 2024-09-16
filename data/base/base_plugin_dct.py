@@ -824,6 +824,8 @@ class DataCaptureThread(BaseDataCapture,
       defaults = [None] * len(keys)
     assert len(defaults) == len(keys), "Default values must be provided for all keys"
     all_keys = keys.copy()
+    # TODO: maybe ignore if LAST_PIPELINE_COMMAND contained 'IMG' key or if too large
+
     for i, key in enumerate(keys):
       archive_key = self.ct.CONFIG_STREAM.LAST_PIPELINE_COMMAND
       self.config_data[archive_key] = self.config_data[key]

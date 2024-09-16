@@ -152,6 +152,7 @@ class GeneralTrainingProcessPlugin(BasePlugin):
     assert 'STATUS' in self.training_output
     has_finished = self.training_output.get('HAS_FINISHED', False)
     payload_kwargs = {
+      'is_status': True,
       'train_status': self.training_output,
       'description': self.cfg_description,
       'objective_name': self.cfg_objective_name,
@@ -160,21 +161,26 @@ class GeneralTrainingProcessPlugin(BasePlugin):
       payload_kwargs['job_status'] = 'Training' if not has_finished else 'Trained'
     save_payload_json = False
     model_id = None
-    if has_finished and not self.performed_final:
-      self.P("Training has finished", color='g')
-      model_id = '{}_{}'.format(self.log.session_id, self.training_output['METADATA']['MODEL_NAME'])
-      save_payload_json = True
-      self.on_training_finish(model_id=model_id)
-      payload_kwargs['MODEL_URI'] = self.weights_uri  #
-      payload_kwargs['TRACE_URI'] = self.trace_uri
-      payload_kwargs['TRAINING_OUTPUT_URI'] = self.training_output_uri
-      payload_kwargs['INFERENCE_CONFIG_URI'] = self.inference_config_uri
+    if has_finished:
+      if not self.performed_final:
+        self.P("Training has finished", color='g')
+        model_id = '{}_{}'.format(self.log.session_id, self.training_output['METADATA']['MODEL_NAME'])
+        save_payload_json = True
+        self.on_training_finish(model_id=model_id)
 
-      if bool(self.cfg_auto_deploy):
-        self.auto_deploy()
+        if bool(self.cfg_auto_deploy):
+          self.auto_deploy()
 
-      self.performed_final = True
-    #endif
+        self.performed_final = True
+      # endif performed final
+      train_final_kwargs = {
+        'MODEL_URI': self.weights_uri,
+        'TRACE_URI': self.trace_uri,
+        'TRAINING_OUTPUT_URI': self.training_output_uri,
+        'INFERENCE_CONFIG_URI': self.inference_config_uri,
+      }
+      payload_kwargs['TRAIN_FINAL'] = train_final_kwargs
+    # endif training finished
 
     payload = self._create_payload(**payload_kwargs)
     if save_payload_json:

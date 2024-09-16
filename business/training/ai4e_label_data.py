@@ -1,11 +1,11 @@
-import os.path
-
 from core.business.base import BasePluginExecutor as BaseClass
+from core.business.mixins_libs.ai4e_mixin import _Ai4eMixin, AI4E_MIXIN_CONFIG
 from os import walk
 
 
 _CONFIG = {
   **BaseClass.CONFIG,
+  **AI4E_MIXIN_CONFIG,
   # TODO: add job initiator here and in crop_data
   'ALLOW_EMPTY_INPUTS': True,
   'RUN_WITHOUT_IMAGE': True,
@@ -16,25 +16,16 @@ _CONFIG = {
 
   "LABEL_BACKUP_PERIOD": 10,
   'CLOUD_PATH': 'DATASETS/',
-  'OBJECTIVE_NAME': None,
-  'REPORT_PERIOD': 10*60,
-
-  # These values are only for data transfer purposes
-  "DESCRIPTION": "",
-  "REWARDS": {},
-  "DATASET": {},
-  "CREATION_DATE": None,
-  "DATA_SOURCES": [],
-
-  'PROCESS_DELAY': 1,
+  'LABEL_UNTIL': None,
 
   'VALIDATION_RULES': {
     **BaseClass.CONFIG['VALIDATION_RULES'],
+    **AI4E_MIXIN_CONFIG['VALIDATION_RULES'],
   },
 }
 
 
-class Ai4eLabelDataPlugin(BaseClass):
+class Ai4eLabelDataPlugin(BaseClass, _Ai4eMixin):
   _CONFIG = _CONFIG
 
   def debug_log(self, msg, **kwargs):
@@ -175,6 +166,8 @@ class Ai4eLabelDataPlugin(BaseClass):
       status = "Labeling"
     if self.done_labeling:
       status = "Done Labeling"
+    if self.publish_status != 0:
+      status = "Publishing labels"
     return status
 
   def get_training_subdir(self):
@@ -194,17 +187,6 @@ class Ai4eLabelDataPlugin(BaseClass):
     choice = self.np.random.choice([0, 1], p=[1 - train_size, train_size])
     train_subdir = 'dev' if choice == 0 else 'train'
     return train_subdir
-
-  def get_ds_classes(self):
-    classes = self.cfg_classes
-    if classes is None:
-      classes = self.cfg_object_type
-    if not isinstance(classes, (list, dict)):
-      classes = [classes]
-    if not isinstance(classes, dict):
-      classes = {k: k for k in classes}
-      return classes
-    return classes
 
   def default_classes_stats(self):
     return {
@@ -307,10 +289,7 @@ class Ai4eLabelDataPlugin(BaseClass):
       if is_decided:
         self.maybe_add_decision(filename, decision)
       else:
-        if filename in self.filename_decisions.keys():
-          del self.filename_decisions[filename]
-          self.decision_stats[decision] -= 1
-        # endif decision is no longer valid
+        self.maybe_remove_decision(filename)
       # endif is decided
       max_votes_classes = [k for k, v in votes.items() if v == max_votes]
       if len(max_votes_classes) == 1:
@@ -349,6 +328,8 @@ class Ai4eLabelDataPlugin(BaseClass):
       return True
 
     def finalize_labels(self):
+      if self.done_labeling:
+        return
       self.P("Finalizing labels", color='g')
       self.accepting_votes = False
       self.started_label_finish = True
@@ -375,6 +356,12 @@ class Ai4eLabelDataPlugin(BaseClass):
 
   """COMMAND SECTION"""
   if True:
+    def label_until_passed(self):
+      label_until = self.cfg_label_until
+      if label_until is None:
+        return False
+      return self.datetime.fromtimestamp(label_until) < self.datetime.now()
+
     def maybe_handle_datapoint_label(self, datapoint: dict, worker_id: str):
       """
       Method for handling the vote from a worker_id about a datapoint.
@@ -389,7 +376,7 @@ class Ai4eLabelDataPlugin(BaseClass):
 
       """
       # If the voting is done, no more votes are accepted.
-      if not self.accepting_votes:
+      if not self.accepting_votes or self.label_until_passed():
         return
       # No datapoint is present, nothing is done.
       if datapoint is None:
@@ -480,23 +467,13 @@ class Ai4eLabelDataPlugin(BaseClass):
       return
   """END COMMAND SECTION"""
 
-  def maybe_report_status(self):
-    if self.time() - self.last_payload_time > self.cfg_report_period:
-      status_payload_kwargs = {
-        'is_status': True,
-        'classes': self.get_ds_classes(),
-        'rewards': self.cfg_rewards,
-        'dataset': self.cfg_dataset,
-        'job_status': self.get_job_status(),
-        'worker_count': self.get_present_workers(),
-
-        'total_files_voted': len(self.filename_votes.keys()),
-        'total_files_decided': len(self.filename_decisions.keys()),
-        'decided_stats': self.decision_stats,
-      }
-      self.add_payload_by_fields(**status_payload_kwargs)
-    # endif time to report
-    return
+  def get_status_payload_additional_kwargs(self, **kwargs):
+    return {
+      'worker_count': self.get_present_workers(),
+      'total_files_voted': len(self.filename_votes.keys()),
+      'total_files_decided': len(self.filename_decisions.keys()),
+      'decided_stats': self.decision_stats,
+    }
 
   def maybe_publish_final(self):
     if self.publish_status == 1:
@@ -519,6 +496,13 @@ class Ai4eLabelDataPlugin(BaseClass):
         self.P('Labeling not finished yet, cannot publish the dataset.')
     return
 
+  def maybe_finalize_labels(self):
+    if self.done_labeling:
+      return
+    if self.label_until_passed():
+      self.finalize_labels()
+    return
+
   def _process(self):
     self.maybe_report_status()
     ds_status = self.dataapi_struct_data()
@@ -528,6 +512,7 @@ class Ai4eLabelDataPlugin(BaseClass):
     if not is_dataset_ready:
       return
 
+    self.maybe_finalize_labels()
     self.maybe_publish_final()
     self.maybe_read_filenames(root_path=ds_status.get('dataset_path'))
     return

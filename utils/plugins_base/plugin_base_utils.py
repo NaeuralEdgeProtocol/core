@@ -1297,7 +1297,21 @@ class _UtilsBaseMixin(
     b_encoded = base64.b64encode(b_code)
     str_encoded = b_encoded.decode('utf-8')
     return str_encoded
-  
+
+
+  def base64_to_img(self, b64):
+    """
+    Transforms a base64 encoded image into a np.ndarray
+    Parameters
+    ----------
+    b64 : str
+      the base64 image
+    Returns
+    -------
+    np.ndarray: the decoded image
+    """
+    return self.log.base64_to_np_image(b64)
+
   
   def base64_to_str(self, b64, decompress=False):
     """Transforms a base64 encoded string into a normal string

@@ -131,6 +131,7 @@ _CONFIG = {
   'REWARDS': {},
   'DATASET': {},
   'CREATION_DATE': None,
+  'TRAINING_REWARDS': {},
 
   'START_TRAINING': False,
   'TRAINING': {},
@@ -354,6 +355,7 @@ class Ai4eEndToEndTrainingPlugin(BasePlugin):
                 'AUTO_DEPLOY': self.get_auto_deploy(),
                 "DESCRIPTION": self.cfg_description,
                 "OBJECTIVE_NAME": self.cfg_objective_name,
+                "REWARDS": self.cfg_training_rewards
               }
             ]
           }

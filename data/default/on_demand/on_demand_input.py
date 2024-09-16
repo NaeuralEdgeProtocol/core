@@ -95,9 +95,11 @@ class OnDemandInputDataCapture(
   
   def _on_pipeline_command(self, cmd_data, payload_context=None, **kwargs):
     _obs = cmd_data.get('STRUCT_DATA', None)
-    _img = cmd_data.get('IMG', None)
+    _base64_img = cmd_data.get('IMG', None)
     _train = None
-    if _img is not None:
+    if _base64_img is not None:
+      _img = self.base64_to_img(_base64_img)
+
       self._add_inputs(
         [
           self._new_input(img=_img, struct_data=None, metadata=self._metadata.__dict__.copy(), init_data=None),
