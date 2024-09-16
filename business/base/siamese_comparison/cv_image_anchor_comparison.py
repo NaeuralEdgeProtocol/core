@@ -34,6 +34,10 @@ _CONFIG = {
   #############################
 
   # User config
+  "IS_ATM": False,
+  "ATM_ANALYSIS_IGNORE_MAX_PERSON_AREA": 101,  # percent
+  "ATM_PEOPLE_IN_FRAME_COOLDOWN_FRAMES": 20,  # <= 0 means no cooldown
+
   "ANCHOR_MAX_SUM_PERSON_AREA": 0,  # percent
   "ANALYSIS_IGNORE_MAX_PERSON_AREA": 70,  # percent
   "ANALYSIS_IGNORE_MIN_PERSON_AREA": 0.5,  # percent
@@ -81,6 +85,20 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     self._maybe_load_anchor()
     return
+
+  @property
+  def cfg_analysis_ignore_max_person_area(self):
+    if self.cfg_is_atm:
+      # increase the max person area for ATM, because people will occupy the full frame most of the time
+      return self._instance_config.get('ATM_ANALYSIS_IGNORE_MAX_PERSON_AREA', 101)
+    return self._instance_config.get('ANALYSIS_IGNORE_MAX_PERSON_AREA', 70)
+
+  @property
+  def cfg_people_in_frame_cooldown_frames(self):
+    if self.cfg_is_atm:
+      # increase the cooldown for ATM, because people can stay in front of the camera in strange positions
+      return self._instance_config.get('ATM_PEOPLE_IN_FRAME_COOLDOWN_FRAMES', 20)
+    return self._instance_config.get('PEOPLE_IN_FRAME_COOLDOWN_FRAMES', 10)
 
   def _can_save_newer_anchor(self):
     """
