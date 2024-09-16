@@ -37,6 +37,10 @@ _CONFIG = {
   "ANCHOR_MAX_SUM_PERSON_AREA": 0,  # percent
   "ANALYSIS_IGNORE_MAX_PERSON_AREA": 70,  # percent
   "ANALYSIS_IGNORE_MIN_PERSON_AREA": 0.5,  # percent
+
+  "PERSON_MIN_AREA_THRESHOLD": 0.02,  # percent
+  "PERSON_MIN_AREA_PROB_THRESHOLD": 0.5,  # percent
+
   "MIN_ENTROPY_THRESHOLD": 4,
   "PEOPLE_IN_FRAME_COOLDOWN_FRAMES": 10,  # <= 0 means no cooldown
 
@@ -369,8 +373,8 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
             left=l,
             bottom=b,
             right=r,
-            label=str(dct_inference['TRACK_ID']),
-            color=self.consts.GREEN
+            label=f"conf {100*dct_inference['PROB_PRC']:.0f}%",
+            color=self.consts.GREEN if self.__get_person_prc_area(img, dct_inference) is not None else self.consts.RED,
         )
     return img
 
@@ -453,21 +457,35 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     return payload
 
-  def __people_areas_prc(self, image, lst_obj_inferences, round_digits=4):
+  def __get_person_prc_area(self, image, dct_inference):
     if self._coords_type == self.ct.COORDS_NONE:
       H, W = image.shape[:2]
       image_area = H * W
     else:
       image_area = (self._bottom - self._top) * (self._right - self._left)
 
-    person_areas = []
-    for dct_inference in lst_obj_inferences:
-      if dct_inference['TYPE'] == 'person':
+    area_prc = None
+    if dct_inference['TYPE'] == 'person':
         t, l, b, r = dct_inference['TLBR_POS']
         area = (r - l) * (b - t)
-        person_areas.append(area)
+        area_prc = area / image_area
 
-    return [round(area / image_area, round_digits) for area in person_areas]
+        area_too_small = area_prc < self.cfg_person_min_area_threshold
+        confident_in_detection = dct_inference['PROB_PRC'] >= self.cfg_person_min_area_prob_threshold
+        if area_too_small and not confident_in_detection:
+          # ignore small detections with low confidence
+          area_prc = None
+    
+    return area_prc
+
+  def __people_areas_prc(self, image, lst_obj_inferences, round_digits=None):
+    people_areas_prc = [self.__get_person_prc_area(image, dct_inference) for dct_inference in lst_obj_inferences]
+    people_areas_prc = [area for area in people_areas_prc if area is not None]
+
+    if round_digits is not None:
+      people_areas_prc = [round(area, round_digits) for area in people_areas_prc]
+
+    return people_areas_prc
 
   def _validate_image_for_analysis(self, image, lst_obj_inferences):
     return self._validate_detections_for_analysis(image, lst_obj_inferences) and self.custom_image_validation(image)
@@ -495,7 +513,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
         self.cfg_anchor_max_sum_person_area,
         self.cfg_analysis_ignore_min_person_area,
         self.cfg_analysis_ignore_max_person_area,
-        self.__people_areas_prc(img, object_detector_inferences, 2),
+        [area * 100 for area in self.__people_areas_prc(img, object_detector_inferences, 2)],
         frame_entropy,
       )},
       {'value': "Last Anchor Time: {}   Anchor Save Period (s): {} Anchor E: {:.02f}".format(
