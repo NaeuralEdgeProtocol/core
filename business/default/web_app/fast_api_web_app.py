@@ -4,6 +4,7 @@ from jinja2 import Environment, FileSystemLoader
 
 from core.business.base.web_app.base_web_app_plugin import BaseWebAppPlugin as BasePlugin
 from core.utils.uvicorn_fast_api_ipc_manager import get_server_manager
+from core.utils.fastapi_utils import PostponedRequest
 
 __VER__ = '0.0.0.0'
 
@@ -167,8 +168,73 @@ class FastApiWebAppPlugin(BasePlugin):
     super(FastApiWebAppPlugin, self).on_init()
     return
 
+  def create_postponed_request(self, solver_method, method_kwargs={}):
+    """
+    Create a postponed request to be processed by the plugin in the next loop.
+    Parameters
+    ----------
+    solver_method : method
+        The method that will solve the postponed request.
+    method_kwargs : dict
+        The keyword arguments to be passed to the solver_method.
+    Returns
+    -------
+    res : PostponedRequest
+        The postponed request object.
+    """
+    return PostponedRequest(
+      solver_method=solver_method,
+      method_kwargs=method_kwargs
+    )
+
+  def get_postponed_dict(self, request_id, request_value, endpoint_name):
+    return {
+      'id': request_id,
+      'value': request_value,
+      'endpoint_name': endpoint_name
+    }
+
+  def parse_postponed_dict(self, request):
+    return request['id'], request['value'], request['endpoint_name']
+
   def _process(self):
     super(FastApiWebAppPlugin, self)._process()
+    new_postponed_requests = []
+    while not self._manager.get_postponed_queue().empty():
+      request = self._manager.get_postponed_queue().get()
+      id, value, endpoint_name = self.parse_postponed_dict(request)
+
+      method = value.get_solver_method(self)
+      args = value.get_method_kwargs()
+
+      try:
+        value = method(**args)
+      except Exception as _:
+        self.P(
+          f'Exception occurred while processing postponed request for {endpoint_name} with method {method.__name__} '
+          f'and args:\n{args}\nException:\n{self.get_exception()}',
+          color='r'
+        )
+        value = None
+
+      if isinstance(value, PostponedRequest):
+        self.P("Further postponing request: {}".format(method))
+        new_postponed_requests.append(self.get_postponed_dict(
+          request_id=id,
+          request_value=value,
+          endpoint_name=endpoint_name
+        ))
+      else:
+        response = {
+          'id': id,
+          'value': value
+        }
+        self._manager.get_client_queue().put(response)
+      # endif request is postponed
+    # end while there are postponed requests
+    for request in new_postponed_requests:
+      self._manager.get_postponed_queue().put(request)
+    # endfor all new postponed requests
     while not self._manager.get_server_queue().empty():
       request = self._manager.get_server_queue().get()
       id = request['id']
@@ -185,11 +251,20 @@ class FastApiWebAppPlugin(BasePlugin):
                    method, args, self.get_exception()), color='r')
         value = None
 
-      response = {
-        'id': id,
-        'value': value
-      }
-      self._manager.get_client_queue().put(response)
+      if isinstance(value, PostponedRequest):
+        self.P("Postponing request: {}".format(method))
+        self._manager.get_postponed_queue().put(self.get_postponed_dict(
+          request_id=id,
+          request_value=value,
+          endpoint_name=method
+        ))
+      else:
+        response = {
+          'id': id,
+          'value': value
+        }
+        self._manager.get_client_queue().put(response)
+      # endif request is postponed
     # end while
 
     return None
