@@ -17,6 +17,7 @@ _CONFIG = {
   "MAX_INPUTS_QUEUE_SIZE": 1,  # slow plugin - must process only current state/input
   "WARNING_ANCHOR_SAVE_FAIL_SEND_INTERVAL": 60,  # seconds
   "IMG_ORIG": False,
+  'ADD_ORIGINAL_IMAGE': False,
   #############################
 
   # Alerter config
@@ -40,7 +41,7 @@ _CONFIG = {
 
   "ANCHOR_MAX_SUM_PERSON_AREA": 0,  # percent
   "ANALYSIS_IGNORE_MAX_PERSON_AREA": 70,  # percent
-  "ANALYSIS_IGNORE_MIN_PERSON_AREA": 0.5,  # percent
+  "ANALYSIS_IGNORE_MIN_PERSON_AREA": 0,  # percent
 
   "PERSON_MIN_AREA_THRESHOLD": 0.02,  # percent
   "PERSON_MIN_AREA_PROB_THRESHOLD": 0.5,  # percent

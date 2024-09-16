@@ -35,15 +35,23 @@ _CONFIG = {
   #############################
 
   # User config
-  "ANCHOR_MAX_SUM_PERSON_AREA": 10,  # percent
+  "IS_ATM": False,
+  "ATM_ANALYSIS_IGNORE_MAX_PERSON_AREA": 101,  # percent
+  "ATM_PEOPLE_IN_FRAME_COOLDOWN_FRAMES": 20,  # <= 0 means no cooldown
+
+  "ANCHOR_MAX_SUM_PERSON_AREA": 0,  # percent
   "ANALYSIS_IGNORE_MAX_PERSON_AREA": 70,  # percent
-  "ANALYSIS_IGNORE_MIN_PERSON_AREA": 10,  # percent
+  "ANALYSIS_IGNORE_MIN_PERSON_AREA": 0,  # percent
+
+  "PERSON_MIN_AREA_THRESHOLD": 0.02,  # percent
+  "PERSON_MIN_AREA_PROB_THRESHOLD": 0.5,  # percent
+
+  "MIN_ENTROPY_THRESHOLD": 4,
+  "PEOPLE_IN_FRAME_COOLDOWN_FRAMES": 10,  # <= 0 means no cooldown
 
   "DEMO_MODE": False,
   "ANCHOR_URL": None,
   'WITNESS_BEFORE_CROP': True,
-  'ADD_ORIGINAL_IMAGE': True,
-
   #############################
 }
 
