@@ -428,7 +428,7 @@ class EpochsManager(Singleton):
     available_prc, current_epoch = self.__recalculate_current_epoch_for_node(self.owner.node_addr)
     self.stop_timer('recalc_node_epoch')
     record_value = self.__data[self.owner.node_addr][EPCT.EPOCHS][current_epoch]
-    was_current_node_up_throughout_current_epoch = record_value < EPOCH_MAX_VALUE
+    was_current_node_up_throughout_current_epoch = (int(record_value) == EPOCH_MAX_VALUE)
 
     if not was_current_node_up_throughout_current_epoch:
       msg = "Current node was {}%, not 100%, available in epoch {} and so cannot compute " \
