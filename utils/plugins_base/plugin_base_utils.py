@@ -1271,33 +1271,6 @@ class _UtilsBaseMixin(
     str: base64 encoded image
     """
     return self.log.np_image_to_base64(img)
-  
-  
-
-  def str_to_base64(self, txt, compress=False):
-    """Transforms a string into a base64 encoded string
-
-    Parameters
-    ----------
-    txt : str
-        the input string
-        
-    compress : bool, optional
-        if True, the string will be compressed before encoding. The default is False.
-
-    Returns
-    -------
-    str: base64 encoded string
-    """
-    b_text = bytes(txt, 'utf-8')    
-    if compress:
-      b_code = zlib.compress(b_text, level=9)
-    else:
-      b_code = b_text
-    b_encoded = base64.b64encode(b_code)
-    str_encoded = b_encoded.decode('utf-8')
-    return str_encoded
-
 
   def base64_to_img(self, b64):
     """

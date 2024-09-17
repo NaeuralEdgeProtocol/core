@@ -91,20 +91,26 @@ class OnDemandInputDataCapture(
       return    
     self.has_connection = True
     return  
-  
-  
+
+
   def _on_pipeline_command(self, cmd_data, payload_context=None, **kwargs):
     _obs = cmd_data.get('STRUCT_DATA', None)
     _base64_img = cmd_data.get('IMG', None)
     _train = None
     if _base64_img is not None:
       _img = self.base64_to_img(_base64_img)
-
       self._add_inputs(
         [
           self._new_input(img=_img, struct_data=None, metadata=self._metadata.__dict__.copy(), init_data=None),
         ]
       )
+      # This is done in order to not have the image received saved in the plugin config
+      if 'LAST_PIPELINE_COMMAND' in self.config_data:
+        obj_size = self.log.get_obj_size(self.config_data['LAST_PIPELINE_COMMAND'])
+        self.P(f"Last pipeline command had size {obj_size} bytes")
+        self.config_data['LAST_PIPELINE_COMMAND'] = None
+        self.archive_config_keys(keys=['PIPELINE_COMMAND'], defaults=[{}])
+      # endif reset last pipeline command
     else:
       self._add_inputs(
         [
