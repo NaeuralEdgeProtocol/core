@@ -425,14 +425,14 @@ class EpochsManager(Singleton):
 
     # if current node was not 100% available, do not compute availability for other nodes
     self.start_timer('recalc_node_epoch')
-    _, current_epoch = self.__recalculate_current_epoch_for_node(self.owner.node_addr)
+    available_prc, current_epoch = self.__recalculate_current_epoch_for_node(self.owner.node_addr)
     self.stop_timer('recalc_node_epoch')
     record_value = self.__data[self.owner.node_addr][EPCT.EPOCHS][current_epoch]
     was_current_node_up_throughout_current_epoch = record_value < EPOCH_MAX_VALUE
 
     if not was_current_node_up_throughout_current_epoch:
-      msg = "Current node was not 100% available in epoch {} and so cannot compute " \
-            "availability scores for other nodes".format(current_epoch)
+      msg = "Current node was {}%, not 100%, available in epoch {} and so cannot compute " \
+            "availability scores for other nodes".format(available_prc, current_epoch)
       self.P(msg, color='r')
     else:
       self.start_timer('recalc_all_nodes_epoch')
