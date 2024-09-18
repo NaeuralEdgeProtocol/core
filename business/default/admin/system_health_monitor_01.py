@@ -184,7 +184,8 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
     """
     gpu_id = 0
     msg = ""
-    gpu_info = self.get_gpu_info(device_id=0)
+    gpu_info = self.get_gpu_info(device_id=gpu_id)
+    gpu_load, mem_load, fan_speed = None, None, None
     
     if len(gpu_info) > 0:
       fan_speed = gpu_info['GPU_FAN_SPEED']
@@ -192,6 +193,8 @@ class SystemHealthMonitor01Plugin(BasePluginExecutor):
       mem_load = round(gpu_info['ALLOCATED_MEM'] / gpu_info['TOTAL_MEM'] * 100, 1)
       if fan_speed == 0:
         msg = "GPU fan is not spinning. This could be critical issue."
+    else:
+      gpu_id = None
     
     self.__debug_info.append(
       f"GPU {gpu_id} load {gpu_load}%, memory load {mem_load}, fan speed {fan_speed}%"
