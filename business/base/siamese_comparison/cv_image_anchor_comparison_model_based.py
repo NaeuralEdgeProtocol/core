@@ -102,11 +102,11 @@ class CvImageAnchorComparisonModelBasedPlugin(BasePlugin):
     if dct_inferences is None:
       return False
 
-    dct_inferences = dct_inferences.get(self.str_unique_identification)
-    if dct_inferences is None:
+    self_inferences = dct_inferences.get(self.str_unique_identification)
+    if self_inferences is None:
       return False
 
-    if dct_inferences[self.ct.ThAnchor.PREDICTIONS] is None:
+    if self_inferences[self.ct.ThAnchor.PREDICTIONS] is None:
       return False
 
     return self.custom_inference_validation()
@@ -138,7 +138,7 @@ class CvImageAnchorComparisonModelBasedPlugin(BasePlugin):
     if abs(self._anchor_last_save_time - anchor_last_save_time) > 1:
       if self.time() - self.__last_warning_anchor_not_synchronized > self.cfg_warning_anchor_not_synchronized_time:
         msg = "Ignoring inference because anchor reload time is not correct. " + \
-              "Expected {}, got {}".format(self._anchor_last_save_time, anchor_last_save_time)
+              f"Expected {self._anchor_last_save_time}, got {anchor_last_save_time}"
         if self.__last_warning_anchor_not_synchronized == 0:
           self._create_abnormal_notification(
             msg=msg,

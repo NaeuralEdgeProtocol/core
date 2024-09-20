@@ -13,6 +13,7 @@ _CONFIG = {
 
   'ANCHOR_RELOAD_PERIOD': 24 * 60 * 60,  # seconds
   'ANCHOR_CHECK_NEWER_PERIOD': 1 * 60,  # seconds
+  'ANCHOR_MAX_OLD_TIME': 3 * 24 * 60 * 60,  # seconds
   'DATE_FORMAT': '%Y/%m/%d_%H:%M:%S',
   'DEFAULT_DATE': '1000/10/10_00:00',
 
@@ -74,6 +75,18 @@ class BasicThAnchor(BaseServingProcess):
       'update_time': update_time,
       'metadata': metadata
     }
+    return
+
+  def _save_known_anchor(self, known_anchor_images, unique_instance_identifier):
+    cached_entry = known_anchor_images[unique_instance_identifier]
+
+    self._anchor_images[unique_instance_identifier] = {
+      'image': cached_entry['image'],
+      'encoding': cached_entry['encoding'],
+      'update_time': cached_entry['update_time'],
+      'metadata': cached_entry['metadata']
+    }
+    return
 
   def _maybe_load_anchors_startup(self):
     """
@@ -81,18 +94,7 @@ class BasicThAnchor(BaseServingProcess):
     """
     if self.cfg_load_previous_serialization:
       saved_data = self.persistence_serialization_load(default={})
-
-      dct_stream_anchor_metadata = saved_data.get(self.ct.ThAnchor.ANCHOR_METADATA, {})
-
-      for unique_instance_identifier, stream_anchor in saved_data.get(self.ct.ThAnchor.ANCHOR_IMAGES, {}).items():
-        self._save_anchor(
-          unique_instance_identifier=unique_instance_identifier,
-          anchor=stream_anchor,
-          update_time=dct_stream_anchor_metadata[unique_instance_identifier].get(
-            self.ct.ThAnchor.ANCHOR_UPDATED_AT, self.cfg_default_date),
-          metadata=dct_stream_anchor_metadata[unique_instance_identifier]
-        )
-      # endfor
+      self._maybe_reset_anchors(saved_data)
     # endif
     return
 
@@ -123,12 +125,14 @@ class BasicThAnchor(BaseServingProcess):
     seconds_since_last_update = (update_time - last_recorded_update_time).seconds
     return seconds_since_last_update >= self.cfg_anchor_reload_period
 
-  def _new_anchor_available(self, anchor_images, unique_instance_identifier, update_time):
+  def _new_anchor_available(self, known_anchor_images, unique_instance_identifier, update_time):
     """
     This method checks if a new anchor is available for an instance.
 
     Parameters
     ----------
+    known_anchor_images: dict
+        The dictionary containing the known anchor images from previous iteration.
     unique_instance_identifier : str
         The unique instance identifier for which we check the anchor.
     update_time : datetime
@@ -139,14 +143,19 @@ class BasicThAnchor(BaseServingProcess):
     bool
         True if a new anchor is available, False otherwise.
     """
-    # we check if the cached anchor and the saved anchor have different save times
-    if unique_instance_identifier not in anchor_images:
+    # if the anchor is not in known, we load it
+    if unique_instance_identifier not in known_anchor_images:
       return True
 
     last_recorded_update_time = self.datetime.strptime(
-      anchor_images[unique_instance_identifier]['update_time'], self.cfg_date_format)
+      known_anchor_images[unique_instance_identifier]['update_time'], self.cfg_date_format)
 
-    return (update_time - last_recorded_update_time).seconds != 0
+    # if the anchor is newer than the last recorded update time, we load it
+    if (update_time - last_recorded_update_time).seconds > 0:
+      return True
+
+    return False
+
 
   def _ready_2_check_newer_anchor(self):
     """
@@ -171,7 +180,7 @@ class BasicThAnchor(BaseServingProcess):
         The saved data from the previous serialization. (The data loaded from disk)
     """
 
-    anchor_images = self._anchor_images
+    known_anchor_images = self._anchor_images
     self._anchor_images = {}
 
     # this method now resets only changes, not all images
@@ -179,17 +188,28 @@ class BasicThAnchor(BaseServingProcess):
     dct_stream_anchor_metadata = saved_data.get(self.ct.ThAnchor.ANCHOR_METADATA, {})
 
     for unique_instance_identifier, stream_metadata in dct_stream_anchor_metadata.items():
+      # anchor image does not exist, discard entry
+      if unique_instance_identifier not in dct_stream_anchors_images:
+        continue
+
+      # anchor is too old, discard entry
       str_stream_last_update_time = stream_metadata.get(self.ct.ThAnchor.ANCHOR_UPDATED_AT, self.cfg_default_date)
       stream_last_update_time = self.datetime.strptime(str_stream_last_update_time, self.cfg_date_format)
+      if self.cfg_anchor_max_old_time is not None and (self.datetime.now() - stream_last_update_time).seconds > self.cfg_anchor_max_old_time:
+        continue
 
-      if self._new_anchor_available(anchor_images, unique_instance_identifier, stream_last_update_time):
-        if unique_instance_identifier in dct_stream_anchors_images:
-          self._save_anchor(
-            unique_instance_identifier=unique_instance_identifier,
-            anchor=dct_stream_anchors_images[unique_instance_identifier],
-            update_time=str_stream_last_update_time,
-            metadata=stream_metadata
-          )
+      # anchor is new, compute embedding and save
+      if self._new_anchor_available(known_anchor_images, unique_instance_identifier, stream_last_update_time):
+        self._save_anchor(
+          unique_instance_identifier=unique_instance_identifier,
+          anchor=dct_stream_anchors_images[unique_instance_identifier],
+          update_time=str_stream_last_update_time,
+          metadata=stream_metadata
+        )
+      # anchor is not new but is known, load from cache
+      else:
+        self._save_known_anchor(known_anchor_images, unique_instance_identifier)
+        
     return
 
   def _comment_reason_for_spam(self, verbose):
