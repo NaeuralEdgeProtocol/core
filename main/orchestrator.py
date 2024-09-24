@@ -123,10 +123,10 @@ class Orchestrator(DecentrAIObject,
 
 
   def set_loop_stage(self, stage, is_dangerous=True):
-    self.log.lock_resource('set_loop_stage_for_logging')
-    self.__is_mlstop_dangerous = is_dangerous
-    self.__loop_stage = stage
-    self.log.unlock_resource('set_loop_stage_for_logging')
+    with self.log.managed_lock_resource('set_loop_stage_for_logging'):
+      self.__is_mlstop_dangerous = is_dangerous
+      self.__loop_stage = stage
+    # endwith lock
     return
 
   
@@ -977,32 +977,31 @@ class Orchestrator(DecentrAIObject,
     None.
 
     """
-    self.log.lock_resource(ct.LOCK_CMD)
+    with self.log.managed_lock_resource(ct.LOCK_CMD):
 
-    try:
-      if self.cfg_sequential_streams:
-        streams = list(self._config_manager.dct_config_streams.keys())
-        if len(streams) > 0:
-          s = streams[0]
-          self._current_dct_config_streams = {s : deepcopy(self._config_manager.dct_config_streams[s])}
+      try:
+        if self.cfg_sequential_streams:
+          streams = list(self._config_manager.dct_config_streams.keys())
+          if len(streams) > 0:
+            s = streams[0]
+            self._current_dct_config_streams = {s : deepcopy(self._config_manager.dct_config_streams[s])}
+          else:
+            self._current_dct_config_streams = {}
+          #endif
         else:
-          self._current_dct_config_streams = {}
+          if self._current_dct_config_streams != self._config_manager.dct_config_streams:
+            self._current_dct_config_streams = deepcopy(self._config_manager.dct_config_streams)
         #endif
-      else:
-        if self._current_dct_config_streams != self._config_manager.dct_config_streams:
-          self._current_dct_config_streams = deepcopy(self._config_manager.dct_config_streams)
-      #endif
-    except:
-      msg = "CRITICAL error in `choose_current_running_streams`"      
-      self.P(msg, color='r')
-      self._create_notification(
-        notif=ct.STATUS_TYPE.STATUS_EXCEPTION, 
-        msg=msg, autocomplete_info=True,
-        displayed=True,
-      )
-    #end try-except
-
-    self.log.unlock_resource(ct.LOCK_CMD)
+      except:
+        msg = "CRITICAL error in `choose_current_running_streams`"      
+        self.P(msg, color='r')
+        self._create_notification(
+          notif=ct.STATUS_TYPE.STATUS_EXCEPTION, 
+          msg=msg, autocomplete_info=True,
+          displayed=True,
+        )
+      #end try-except
+    # endwith lock
     return
 
   def collect_data(self):
@@ -1177,41 +1176,39 @@ class Orchestrator(DecentrAIObject,
     received_commands = self._comm_manager.maybe_process_incoming()
     return_code, status = None, None
     for command_type, (command_content, sender_addr, initiator_id, session_id) in received_commands:
-      # first lock resource
-      self.log.lock_resource(ct.LOCK_CMD)
-      try:
-        if isinstance(command_content, dict):
-          sender_addr = command_content.get(ct.COMMS.COMM_RECV_MESSAGE.K_SENDER_ADDR, None)
-          initiator_id = command_content.get(ct.PAYLOAD_DATA.INITIATOR_ID)
-          session_id = command_content.get(ct.PAYLOAD_DATA.SESSION_ID)
-        #endif
-        self.P("'{}' cmd from <{}:{}>".format(        
-          command_type, initiator_id, sender_addr), color='y', boxed=True,
-        )
-        if True:
-          self.P("  Command content: {}".format(str(command_content)[:250]), color='y')
-        res = self.run_cmd(
-          # command string
-          cmd=command_type, 
-          # **kwargs
-          command_content=command_content, 
-          initiator_id=initiator_id,
-          session_id=session_id,
-        )
-        if res is not None:
-          self.P("  Command '{}' returned: {}".format(command_type, res), color='y')
-          return_code, status = res
-      except:
-        msg = "CRITICAL error in `communicate_recv_and_handle` for command: '{}' originating from {}:{}\nContent: {}".format(
-          command_type, initiator_id, session_id, command_content)
-        self.P(msg, color='r')
-        self._create_notification(
-          notif=ct.STATUS_TYPE.STATUS_EXCEPTION, msg=msg, autocomplete_info=True,
-          initiator_id=initiator_id, session_id=session_id,
-        )
-      #end try-except
-      # finally unlock resources
-      self.log.unlock_resource(ct.LOCK_CMD)
+      with self.log.managed_lock_resource(ct.LOCK_CMD):
+        try:
+          if isinstance(command_content, dict):
+            sender_addr = command_content.get(ct.COMMS.COMM_RECV_MESSAGE.K_SENDER_ADDR, None)
+            initiator_id = command_content.get(ct.PAYLOAD_DATA.INITIATOR_ID)
+            session_id = command_content.get(ct.PAYLOAD_DATA.SESSION_ID)
+          #endif
+          self.P("'{}' cmd from <{}:{}>".format(        
+            command_type, initiator_id, sender_addr), color='y', boxed=True,
+          )
+          if True:
+            self.P("  Command content: {}".format(str(command_content)[:250]), color='y')
+          res = self.run_cmd(
+            # command string
+            cmd=command_type, 
+            # **kwargs
+            command_content=command_content, 
+            initiator_id=initiator_id,
+            session_id=session_id,
+          )
+          if res is not None:
+            self.P("  Command '{}' returned: {}".format(command_type, res), color='y')
+            return_code, status = res
+        except:
+          msg = "CRITICAL error in `communicate_recv_and_handle` for command: '{}' originating from {}:{}\nContent: {}".format(
+            command_type, initiator_id, session_id, command_content)
+          self.P(msg, color='r')
+          self._create_notification(
+            notif=ct.STATUS_TYPE.STATUS_EXCEPTION, msg=msg, autocomplete_info=True,
+            initiator_id=initiator_id, session_id=session_id,
+          )
+        #end try-except
+      # endwith lock
     #endfor
 
     return return_code, status

@@ -61,36 +61,36 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     return
 
   def __allocate_port(self):
-    self.lock_resource('USED_PORTS')
-    if 'USED_PORTS' not in self.plugins_shmem:
-      self.plugins_shmem['USED_PORTS'] = {}
-    dct_shmem_ports = self.plugins_shmem['USED_PORTS']
-    used_ports = dct_shmem_ports.values()
+    with self.managed_lock_resource('USED_PORTS'):
+      if 'USED_PORTS' not in self.plugins_shmem:
+        self.plugins_shmem['USED_PORTS'] = {}
+      dct_shmem_ports = self.plugins_shmem['USED_PORTS']
+      used_ports = dct_shmem_ports.values()
 
-    if self.cfg_port is not None:
-      self.__check_port_valid()
+      if self.cfg_port is not None:
+        self.__check_port_valid()
 
-      if self.cfg_port in used_ports:
-        raise Exception("Port {} is already in use.".format(self.cfg_port))
+        if self.cfg_port in used_ports:
+          raise Exception("Port {} is already in use.".format(self.cfg_port))
+        else:
+          dct_shmem_ports[self.str_unique_identification] = self.cfg_port
       else:
-        dct_shmem_ports[self.str_unique_identification] = self.cfg_port
-    else:
-      port = self.np.random.randint(49152, 65535)
-      while port in used_ports:
         port = self.np.random.randint(49152, 65535)
-      # endwhile
-      dct_shmem_ports[self.str_unique_identification] = port
-    # endif port
-    self.unlock_resource('USED_PORTS')
+        while port in used_ports:
+          port = self.np.random.randint(49152, 65535)
+        # endwhile
+        dct_shmem_ports[self.str_unique_identification] = port
+      # endif port
+    # endwith lock
     return
 
   def __deallocate_port(self):
     port = self.port
 
-    self.lock_resource('USED_PORTS')
-    if 'USED_PORTS' in self.plugins_shmem:
-      self.plugins_shmem['USED_PORTS'].pop(self.str_unique_identification, None)
-    self.unlock_resource('USED_PORTS')
+    with self.managed_lock_resource('USED_PORTS'):
+      if 'USED_PORTS' in self.plugins_shmem:
+        self.plugins_shmem['USED_PORTS'].pop(self.str_unique_identification, None)
+    # endwith lock
 
     self.P(f"Released port {port}")
     return

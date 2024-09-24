@@ -165,11 +165,9 @@ class EpochsManager(Singleton):
   def _save_status(self):
     self.P("Saving epochs status...")
     
-    # start critical section
-    self.log.lock_resource(EPOCHMON_MUTEX)  
-    _data_copy = deepcopy(self.__data)
-    self.log.unlock_resource(EPOCHMON_MUTEX)
-    # end critical section
+    with self.log.managed_lock_resource(EPOCHMON_MUTEX):
+      _data_copy = deepcopy(self.__data)
+    # endwith lock
     
     self.log.save_pickle_to_data(
       data=_data_copy, 
@@ -418,32 +416,31 @@ class EpochsManager(Singleton):
     This method recalculates the current epoch availability for all nodes using the recorded 
     timestamps.
     """
-    self.log.lock_resource(EPOCHMON_MUTEX)
-    self.P("Recalculating epoch {} availability for all nodes during epoch {}...".format(
-      self.__current_epoch, self.get_time_epoch()
-    ))
+    with self.log.managed_lock_resource(EPOCHMON_MUTEX):
+      self.P("Recalculating epoch {} availability for all nodes during epoch {}...".format(
+        self.__current_epoch, self.get_time_epoch()
+      ))
 
-    # if current node was not 100% available, do not compute availability for other nodes
-    self.start_timer('recalc_node_epoch')
-    available_prc, current_epoch = self.__recalculate_current_epoch_for_node(self.owner.node_addr)
-    self.stop_timer('recalc_node_epoch')
-    record_value = self.__data[self.owner.node_addr][EPCT.EPOCHS][current_epoch]
-    was_current_node_up_throughout_current_epoch = (int(record_value) == EPOCH_MAX_VALUE)
+      # if current node was not 100% available, do not compute availability for other nodes
+      self.start_timer('recalc_node_epoch')
+      available_prc, current_epoch = self.__recalculate_current_epoch_for_node(self.owner.node_addr)
+      self.stop_timer('recalc_node_epoch')
+      record_value = self.__data[self.owner.node_addr][EPCT.EPOCHS][current_epoch]
+      was_current_node_up_throughout_current_epoch = (int(record_value) == EPOCH_MAX_VALUE)
 
-    if not was_current_node_up_throughout_current_epoch:
-      msg = "Current node was {}%, not 100%, available in epoch {} and so cannot compute " \
-            "availability scores for other nodes".format(available_prc, current_epoch)
-      self.P(msg, color='r')
-    else:
-      self.start_timer('recalc_all_nodes_epoch')
-      for node_addr in self.__data:
-        self.start_timer('recalc_node_epoch')
-        self.__recalculate_current_epoch_for_node(node_addr)
-        self.stop_timer('recalc_node_epoch')
-      self.stop_timer('recalc_all_nodes_epoch')
-    # endif current node was not 100% available
-
-    self.log.unlock_resource(EPOCHMON_MUTEX)
+      if not was_current_node_up_throughout_current_epoch:
+        msg = "Current node was {}%, not 100%, available in epoch {} and so cannot compute " \
+              "availability scores for other nodes".format(available_prc, current_epoch)
+        self.P(msg, color='r')
+      else:
+        self.start_timer('recalc_all_nodes_epoch')
+        for node_addr in self.__data:
+          self.start_timer('recalc_node_epoch')
+          self.__recalculate_current_epoch_for_node(node_addr)
+          self.stop_timer('recalc_node_epoch')
+        self.stop_timer('recalc_all_nodes_epoch')
+      # endif current node was not 100% available
+    # endwith lock
     return
 
 
@@ -511,11 +508,11 @@ class EpochsManager(Singleton):
     remote_epoch = self.get_epoch_id(dt_remote_utc)     
     if remote_epoch == local_epoch:
       # the remote epoch is the same as the local epoch so we can register the heartbeat
-      self.log.lock_resource(EPOCHMON_MUTEX)
-      # add the heartbeat timestamp for the current epoch
-      self.__data[node_addr][EPCT.CURRENT_EPOCH][EPCT.HB_TIMESTAMPS].add(dt_remote_utc)
-      self.__data[node_addr][EPCT.LAST_SEEN] = str_date
-      self.log.unlock_resource(EPOCHMON_MUTEX)
+      with self.log.managed_lock_resource(EPOCHMON_MUTEX):
+        # add the heartbeat timestamp for the current epoch
+        self.__data[node_addr][EPCT.CURRENT_EPOCH][EPCT.HB_TIMESTAMPS].add(dt_remote_utc)
+        self.__data[node_addr][EPCT.LAST_SEEN] = str_date
+      # endwith lock
     else:
       self.P("Received invalid epoch {} from node {} on epoch {}".format(
         remote_epoch, node_addr, local_epoch

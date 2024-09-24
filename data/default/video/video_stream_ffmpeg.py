@@ -473,51 +473,44 @@ class VideoStreamFfmpegDataCapture(DataCaptureThread, _VideoConfigMixin):
       self.sleep(1)
       nr_retry += 1
       self.nr_connection_issues += 1
-      try:
-        if str(self.cfg_use_lock_when_reconnecting).upper() == 'TRUE':
-          self.log.lock_resource(self.cfg_lock_resource)
-          if self.cfg_show_ffmpeg_log:
-            self.P("Acquired lock for resource '{}', trying to connect...".format(self.cfg_lock_resource))
-        if self._ffmpeg_process:
-          self._release()
-        self.P("  Connection retry {}/{} of connect session {}, total retries {}:".format(
-          nr_retry, self.cfg_max_retries, self.nr_connection_issues // self.cfg_max_retries, self.nr_connection_issues,
-        ))
+      with self.managed_lock_resource(self.cfg_lock_resource, condition=(str(self.cfg_use_lock_when_reconnecting).upper() == 'TRUE')):
+        try:
+          if self._ffmpeg_process:
+            self._release()
+          self.P("  Connection retry {}/{} of connect session {}, total retries {}:".format(
+            nr_retry, self.cfg_max_retries, self.nr_connection_issues // self.cfg_max_retries, self.nr_connection_issues,
+          ))
 
-        self._create_ffmpeg_subprocess()
+          self._create_ffmpeg_subprocess()
 
-        if self._ffmpeg_frame_reader is not None:
-          frame = None
-          initial_time = self.time()
-          while frame is None and self.time() - initial_time < self.cfg_initial_max_time_no_read:
-            self.sleep(0.01)
-            frame = self._read_frame()
-          # end while
+          if self._ffmpeg_frame_reader is not None:
+            frame = None
+            initial_time = self.time()
+            while frame is None and self.time() - initial_time < self.cfg_initial_max_time_no_read:
+              self.sleep(0.01)
+              frame = self._read_frame()
+            # end while
 
-          if frame is None:
-            self.P("    Capture read failed.", color='r')
-            continue
+            if frame is None:
+              self.P("    Capture read failed.", color='r')
+              continue
 
-          # We comment this out because we can set ffmpeg to scale the image for us
-          height, width = frame.shape[:2]
+            # We comment this out because we can set ffmpeg to scale the image for us
+            height, width = frame.shape[:2]
 
-          # universal video stream code
-          self._maybe_configure_frame_crop_resize(
-            height=height,
-            width=width,
-          )
-          # end universal video stream code
+            # universal video stream code
+            self._maybe_configure_frame_crop_resize(
+              height=height,
+              width=width,
+            )
+            # end universal video stream code
 
-          self.has_connection = True
-      except:
-        str_e = self.trace_info()
-        self.P('`_maybe_reconnect` exception: {}'.format(str_e), color='r')
-      finally:
-        if str(self.cfg_use_lock_when_reconnecting).upper() == 'TRUE':
-          if self.cfg_show_ffmpeg_log:
-            self.P("Released lock for resource '{}'".format(self.cfg_lock_resource))
-          self.log.unlock_resource(self.cfg_lock_resource)
-      # end try-except-finally
+            self.has_connection = True
+        except:
+          str_e = self.trace_info()
+          self.P('`_maybe_reconnect` exception: {}'.format(str_e), color='r')
+        # end try-except
+      # endwith conditional lock
 
       if self.has_connection:
         break

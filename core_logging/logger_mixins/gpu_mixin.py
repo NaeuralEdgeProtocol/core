@@ -229,9 +229,9 @@ class _GPUMixin(object):
 
     # if multiple threads call at the same time the method `log.gpu_info`, then `pynvml_avail` will be False
     #   (most probably due to the queries that are performed using nvidia_smi)
-    self.lock_resource('gpu_info')
-    res = _main_func()
-    self.unlock_resource('gpu_info')
+    with self.managed_lock_resource('gpu_info'):
+      res = _main_func()
+    # endwith lock
     return res
   
   

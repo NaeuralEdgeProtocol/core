@@ -1412,6 +1412,40 @@ class _UtilsBaseMixin(
       new_size = size / 1024**3
     return new_size  
   
+  def managed_lock_resource(self, str_res, condition=True):
+    """
+    Managed lock resource. Will lock and unlock resource automatically. 
+    To be used in a with statement.
+    The condition parameter allows users to disable the lock if desired.
+
+    Parameters
+    ----------
+    str_res : str
+      The resource to lock.
+    condition : bool, optional
+      If False the lock will not be acquired. The default is True.
+
+    Returns
+    -------
+    LockResource
+      The lock resource object.
+
+    Example
+    -------
+    ```
+    with self.managed_lock_resource('my_resource'):
+      # do something
+    ```
+
+    ```
+    # will control if the following operation is locked or not based on this flag
+    locking = False
+    with self.managed_lock_resource('my_resource', condition=locking):
+      # do something
+    ```
+    """
+    return self.log.managed_lock_resource(resource=str_res, condition=condition)
+
   def lock_resource(self, str_res):
     """
     Locks a resource given a string. Alias to `self.log.lock_resource`

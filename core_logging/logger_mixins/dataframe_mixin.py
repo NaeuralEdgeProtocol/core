@@ -258,38 +258,37 @@ class _DataFrameMixin(object):
       self.P("update_dataframe_from_data failed due to missing {}".format(datafile), color='error')
       return False
 
-    self.lock_resource(datafile)
-    result = None
-    try:
-      data = self.load_dataframe(
-        fn=fn,
-        subfolder_path=subfolder_path,
-        timestamps=None,
-        folder=output_folder,
-        decompress=compress
-      )
-
-      if data is not None or force_update:
-        if data is None and force_update:
-          data = delta_df
-        else:
-          data = pd.concat([data, delta_df])
-
-        self.save_dataframe(
-          df=data, fn=fn,
-          folder=output_folder,
-          ignore_index=True, compress=compress,
-          mode='w', header=True,
+    with self.managed_lock_resource(datafile):
+      result = None
+      try:
+        data = self.load_dataframe(
+          fn=fn,
           subfolder_path=subfolder_path,
-          verbose=True,
-          as_parquet=as_parquet,
+          timestamps=None,
+          folder=output_folder,
+          decompress=compress
         )
-        result = True
-    except Exception as e:
-      self.P("update_pickle_from_data failed: {}".format(e), color='error')
-      result = False
 
-    self.unlock_resource(datafile)
+        if data is not None or force_update:
+          if data is None and force_update:
+            data = delta_df
+          else:
+            data = pd.concat([data, delta_df])
+
+          self.save_dataframe(
+            df=data, fn=fn,
+            folder=output_folder,
+            ignore_index=True, compress=compress,
+            mode='w', header=True,
+            subfolder_path=subfolder_path,
+            verbose=True,
+            as_parquet=as_parquet,
+          )
+          result = True
+      except Exception as e:
+        self.P("update_pickle_from_data failed: {}".format(e), color='error')
+        result = False
+    # endwith lock
     return result
 
   def update_dataframe_from_output(self, fn, delta_df, subfolder_path, compress=False, force_update=False):

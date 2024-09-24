@@ -97,44 +97,41 @@ class NetworkMonitor(DecentrAIObject):
 
   
   def _set_network_heartbeats(self, network_heartbeats):
-    # begin mutexed section
-    self.log.lock_resource(NETMON_MUTEX)
+    with self.log.managed_lock_resource(NETMON_MUTEX):
 
-    new_network_heartbeats = {}
-    need_sorting = []
+      new_network_heartbeats = {}
+      need_sorting = []
 
-    if isinstance(network_heartbeats, dict):
-      for addr in network_heartbeats:
-        __addr_no_prefix = self.__remove_address_prefix(addr) 
+      if isinstance(network_heartbeats, dict):
+        for addr in network_heartbeats:
+          __addr_no_prefix = self.__remove_address_prefix(addr) 
 
-        if __addr_no_prefix not in new_network_heartbeats:
-          new_network_heartbeats[__addr_no_prefix] = []
-        else:
-          self.P("Found multiple entries for address with no prefix: {}. This entry will require sorting".format(__addr_no_prefix), color='r')
-          need_sorting.append(__addr_no_prefix)
-        new_network_heartbeats[__addr_no_prefix].extend(network_heartbeats[addr])
-      # endfor loop through network heartbeats entries
+          if __addr_no_prefix not in new_network_heartbeats:
+            new_network_heartbeats[__addr_no_prefix] = []
+          else:
+            self.P("Found multiple entries for address with no prefix: {}. This entry will require sorting".format(__addr_no_prefix), color='r')
+            need_sorting.append(__addr_no_prefix)
+          new_network_heartbeats[__addr_no_prefix].extend(network_heartbeats[addr])
+        # endfor loop through network heartbeats entries
 
-      for addr_no_prefix in need_sorting:
-        # sort the heartbeats by sent time
-        new_network_heartbeats[addr_no_prefix] = sorted(
-          new_network_heartbeats[addr_no_prefix], 
-          key=lambda x: x[ct.HB.CURRENT_TIME],
-        )
-      # end for sort required entries
+        for addr_no_prefix in need_sorting:
+          # sort the heartbeats by sent time
+          new_network_heartbeats[addr_no_prefix] = sorted(
+            new_network_heartbeats[addr_no_prefix], 
+            key=lambda x: x[ct.HB.CURRENT_TIME],
+          )
+        # end for sort required entries
 
-      for addr_no_prefix in new_network_heartbeats:
-        for hb in new_network_heartbeats[addr_no_prefix][:-1]:
-          self.__pop_repeating_info_from_heartbeat(hb)
-        new_network_heartbeats[addr_no_prefix] = deque(new_network_heartbeats[addr_no_prefix], maxlen=self.HB_HISTORY)
-      # endfor pop repeating info
+        for addr_no_prefix in new_network_heartbeats:
+          for hb in new_network_heartbeats[addr_no_prefix][:-1]:
+            self.__pop_repeating_info_from_heartbeat(hb)
+          new_network_heartbeats[addr_no_prefix] = deque(new_network_heartbeats[addr_no_prefix], maxlen=self.HB_HISTORY)
+        # endfor pop repeating info
 
-      self.__network_heartbeats = new_network_heartbeats
-    else:
-      self.P("Error setting network heartbeats. Invalid type: {}".format(type(network_heartbeats)), color='r')
-
-    # end mutexed section
-    self.log.unlock_resource(NETMON_MUTEX)
+        self.__network_heartbeats = new_network_heartbeats
+      else:
+        self.P("Error setting network heartbeats. Invalid type: {}".format(type(network_heartbeats)), color='r')
+    # endwith lock
     return 
 
   def __remove_address_prefix(self, addr):
@@ -198,16 +195,14 @@ class NetworkMonitor(DecentrAIObject):
     __eeid = data.get(ct.EE_ID, MISSING_ID)
     __addr_no_prefix = self.__remove_address_prefix(addr) 
 
-    # begin mutexed section
-    self.log.lock_resource(NETMON_MUTEX)
-    if __addr_no_prefix not in self.__network_heartbeats:
-      self.P("Box alive: {}:{}.".format(addr, __eeid), color='y')
-      self.__network_heartbeats[__addr_no_prefix] = deque(maxlen=self.HB_HISTORY)
-    #endif
-    self.__network_heartbeats[__addr_no_prefix].append(data)
-    self.__pop_repeating_info_from_previous_heartbeat(addr)
-    self.log.unlock_resource(NETMON_MUTEX)
-    # end mutexed section
+    with self.log.managed_lock_resource(NETMON_MUTEX):
+      if __addr_no_prefix not in self.__network_heartbeats:
+        self.P("Box alive: {}:{}.".format(addr, __eeid), color='y')
+        self.__network_heartbeats[__addr_no_prefix] = deque(maxlen=self.HB_HISTORY)
+      #endif
+      self.__network_heartbeats[__addr_no_prefix].append(data)
+      self.__pop_repeating_info_from_previous_heartbeat(addr)
+    # endwith lock
     return
 
 
@@ -1017,18 +1012,16 @@ class NetworkMonitor(DecentrAIObject):
     
     def network_save_status(self):
       self.P("Saving network map status...")
-      # begin mutexed section
-      self.log.lock_resource(NETMON_MUTEX)
+      with self.log.managed_lock_resource(NETMON_MUTEX):
 
-      self.start_timer("network_save_status")
-      self.log.save_pickle_to_data(
-        data=self.__network_heartbeats, 
-        fn='db.pkl',
-        subfolder_path='network_monitor'
-      )
-      self.end_timer("network_save_status")
-      # end mutexed section
-      self.log.unlock_resource(NETMON_MUTEX)
+        self.start_timer("network_save_status")
+        self.log.save_pickle_to_data(
+          data=self.__network_heartbeats, 
+          fn='db.pkl',
+          subfolder_path='network_monitor'
+        )
+        self.end_timer("network_save_status")
+      # endwith lock
       return
     
     
