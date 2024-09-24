@@ -6,6 +6,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from pathlib import Path
 import json
 import re
+from pydantic import BaseModel
 from os import path as file_path
 
 from core.utils.uvicorn_fast_api_ipc_manager import UvicornPluginComms
@@ -20,19 +21,32 @@ app = FastAPI(
 STATIC_DIR = "{{ static_directory }}"
 
 {% for item in node_comm_params %}
-{% if item['method'] is not none %}@app.{{ item['method'] }}("/{{ item['name'] }}"){% endif %}
-async def {{ item['name'] }}({% if item['method']=='post' %}request: Request, {% endif %}{% for arg in item['args'] %}{{ arg }}{% if not loop.last %}, {% endif %}{% endfor %}):
-  {% if item['method']=='post' %}
-  try:
-    body = await request.json()
-  except json.JSONDecodeError:
-    body = None
-  result = await eng.call_plugin("{{ item['name'] }}"{% for param in item['params'] %}, {{ param }}{% endfor %}, body)
-  {% else %}
+{% if item['method']=='post' %}
+
+class {{ item['name'] }}Model(BaseModel):
+  {% for arg in item['args'] %}
+  {{ arg }}
+  {% endfor %}
+
+@app.post("/{{ item['name'] }}")
+async def {{ item['name'] }}(request: {{ item['name'] }}Model):
+  {% for param in item['params'] %}
+  {{ param }} = request.{{ param }}
+  {% endfor %}
+
   result = await eng.call_plugin("{{ item['name'] }}"{% for param in item['params'] %}, {{ param }}{% endfor %})
-  {% endif %}
   return result
+
+{% else %}
+
+{% if item['method'] is not none %}@app.{{ item['method'] }}("/{{ item['name'] }}"){% endif %}
+async def {{ item['name'] }}({% for arg in item['args'] %}{{ arg }}{% if not loop.last %}, {% endif %}{% endfor %}):
+  result = await eng.call_plugin("{{ item['name'] }}"{% for param in item['params'] %}, {{ param }}{% endfor %})
+  return result
+
+{% endif %}
 {% endfor %}
+
 
 {% for item in html_files %}
 @app.{{ item['method'] }}('{{ item['route'] }}')
