@@ -170,7 +170,7 @@ class UvicornPluginComms:
 
       # We've done all the work for now. Yield and look again for messages in
       # 0.1 seconds
-      await asyncio.sleep(0.1)
+      await asyncio.sleep(0.001)
     #endwhile communicator loop
     return
 

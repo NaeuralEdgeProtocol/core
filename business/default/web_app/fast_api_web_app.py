@@ -27,6 +27,8 @@ _CONFIG = {
   'PAGES': [],
   'STATIC_DIRECTORY': 'assets',
 
+  'PROCESS_DELAY': 0,
+
   'VALIDATION_RULES': {
     **BasePlugin.CONFIG['VALIDATION_RULES']
   },
