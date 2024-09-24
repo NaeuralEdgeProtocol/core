@@ -207,14 +207,14 @@ class FastApiWebAppPlugin(BasePlugin):
       id, value, endpoint_name = self.parse_postponed_dict(request)
 
       method = value.get_solver_method(self)
-      args = value.get_method_kwargs()
+      kwargs = value.get_method_kwargs()
 
       try:
-        value = method(**args)
+        value = method(**kwargs)
       except Exception as _:
         self.P(
           f'Exception occurred while processing postponed request for {endpoint_name} with method {method.__name__} '
-          f'and args:\n{args}\nException:\n{self.get_exception()}',
+          f'and args:\n{kwargs}\nException:\n{self.get_exception()}',
           color='r'
         )
         value = None
@@ -229,7 +229,10 @@ class FastApiWebAppPlugin(BasePlugin):
       else:
         response = {
           'id': id,
-          'value': value
+          'value': {
+            'result': value,
+            'node_addr': self.e2_addr,
+          }
         }
         self._manager.get_client_queue().put(response)
       # endif request is postponed
@@ -263,7 +266,10 @@ class FastApiWebAppPlugin(BasePlugin):
       else:
         response = {
           'id': id,
-          'value': value
+          'value': {
+            'result': value,
+            'node_addr': self.e2_addr,
+          }
         }
         self._manager.get_client_queue().put(response)
       # endif request is postponed
