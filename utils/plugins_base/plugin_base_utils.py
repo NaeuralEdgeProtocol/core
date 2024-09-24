@@ -1444,7 +1444,7 @@ class _UtilsBaseMixin(
       # do something
     ```
     """
-    return self.log.managed_lock_resource(resource=str_res, condition=condition)
+    return self.log.managed_lock_resource(str_res=str_res, condition=condition)
 
   def lock_resource(self, str_res):
     """
