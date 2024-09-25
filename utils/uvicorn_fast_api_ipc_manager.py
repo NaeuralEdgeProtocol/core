@@ -24,17 +24,10 @@ def get_client_queue():
     client_queue = multiprocessing.Queue()
   return client_queue
 
-postponed_queue = None
-def get_postponed_queue():
-  global postponed_queue
-  if postponed_queue is None:
-    postponed_queue = multiprocessing.Queue()
-  return postponed_queue
 
 def get_server_manager(auth):
     CommsServerManager.register('get_server_queue', callable=get_server_queue)
     CommsServerManager.register('get_client_queue', callable=get_client_queue)
-    CommsServerManager.register('get_postponed_queue', callable=get_postponed_queue)
     manager = CommsServerManager(
       address=('127.0.0.1', 0),
       authkey=auth
@@ -45,7 +38,6 @@ def get_server_manager(auth):
 def get_client_manager(port, auth):
     CommsClientManager.register('get_server_queue')
     CommsClientManager.register('get_client_queue')
-    CommsClientManager.register('get_postponed_queue')
     manager = CommsClientManager(
       address=('127.0.0.1', port),
       authkey=auth

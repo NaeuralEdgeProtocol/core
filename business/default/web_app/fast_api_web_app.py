@@ -161,6 +161,7 @@ class FastApiWebAppPlugin(BasePlugin):
     # FIXME: move to setup_manager method
     self.manager_auth = b'abc'
     self._manager = get_server_manager(self.manager_auth)
+    self.postponed_requests = self.deque()
 
     self.P("manager address: {}", format(self._manager.address))
     _, self.manager_port = self._manager.address
@@ -202,11 +203,11 @@ class FastApiWebAppPlugin(BasePlugin):
   def _process(self):
     super(FastApiWebAppPlugin, self)._process()
     new_postponed_requests = []
-    while not self._manager.get_postponed_queue().empty():
-      request = self._manager.get_postponed_queue().get()
+    while len(self.postponed_requests) > 0:
+      request = self.postponed_requests.popleft()
       id, value, endpoint_name = self.parse_postponed_dict(request)
 
-      method = value.get_solver_method(self)
+      method = value.get_solver_method()
       kwargs = value.get_method_kwargs()
 
       try:
@@ -238,7 +239,7 @@ class FastApiWebAppPlugin(BasePlugin):
       # endif request is postponed
     # end while there are postponed requests
     for request in new_postponed_requests:
-      self._manager.get_postponed_queue().put(request)
+      self.postponed_requests.append(request)
     # endfor all new postponed requests
     while not self._manager.get_server_queue().empty():
       request = self._manager.get_server_queue().get()
@@ -258,7 +259,7 @@ class FastApiWebAppPlugin(BasePlugin):
 
       if isinstance(value, PostponedRequest):
         self.P("Postponing request: {}".format(method))
-        self._manager.get_postponed_queue().put(self.get_postponed_dict(
+        self.postponed_requests.append(self.get_postponed_dict(
           request_id=id,
           request_value=value,
           endpoint_name=method
