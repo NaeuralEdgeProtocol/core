@@ -1158,19 +1158,18 @@ class NetworkMonitor(DecentrAIObject):
               
       """
       result = None
-      device_id = self.__network_node_default_cuda(addr=addr)
-      if device_id is not None:
-        lst_heartbeats = self.__network_node_past_heartbeats_by_interval(
-          addr=addr, minutes=minutes, dt_now=dt_now, reverse_order=reverse_order,
-        )
-        temperatures = [x[ct.HB.TEMPERATURE_INFO] for x in lst_heartbeats]
-        max_temps = [x['max_temp'] for x in temperatures]
-        temps = [x['temperatures'] for x in temperatures]
-        result = {
-          'all_sensors' : temperatures,
-          'max_temp'   : max_temps,
-          'max_temp_sensor' :  temperatures[-1]['max_temp_sensor'],
-        }
+
+      lst_heartbeats = self.__network_node_past_heartbeats_by_interval(
+        addr=addr, minutes=minutes, dt_now=dt_now, reverse_order=reverse_order,
+      )
+      temperatures = [x[ct.HB.TEMPERATURE_INFO] for x in lst_heartbeats]
+      max_temps = [x['max_temp'] for x in temperatures]
+      temps = [x['temperatures'] for x in temperatures]
+      result = {
+        'all_sensors' : temperatures,
+        'max_temp'   : max_temps,
+        'max_temp_sensor' :  temperatures[-1]['max_temp_sensor'] if len(temperatures) > 0 else None,
+      }
       return result
       
       
