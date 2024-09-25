@@ -232,7 +232,7 @@ class PLUGIN_SEARCH:
   SAFE_LOC_COMM_PLUGINS = ['core.comm.default',]
 
   # DATA
-  LOC_DATA_ACQUISITION_PLUGINS = 'plugins.data'
+  LOC_DATA_ACQUISITION_PLUGINS = ['plugins.data', 'extensions.data']
   SAFE_LOC_DATA_ACQUISITION_PLUGINS = ['core.data.default', 'core.data.training', 'extensions.data']
   SUFFIX_DATA_ACQUISITION_PLUGINS = 'DataCapture'
   SAFE_LOC_DATA_ACQUISITION_IMPORTS = ['core.data', 'extensions.data']
