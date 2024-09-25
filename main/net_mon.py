@@ -259,9 +259,13 @@ class NetworkMonitor(DecentrAIObject):
       lst_heartbeats = []
       box_heartbeats = self.get_box_heartbeats(addr)
       for heartbeat in reversed(box_heartbeats):
-        remote_time = heartbeat[ct.HB.CURRENT_TIME]
-        remote_tz = heartbeat.get(ct.PAYLOAD_DATA.EE_TIMEZONE)
-        ts = self.log.utc_to_local(remote_time, remote_utc=remote_tz, fmt=ct.HB.TIMESTAMP_FORMAT)
+        ts = heartbeat.get(ct.HB.RECEIVED_TIME)
+        if ts is None:
+          remote_time = heartbeat[ct.HB.CURRENT_TIME]
+          remote_tz = heartbeat.get(ct.PAYLOAD_DATA.EE_TIMEZONE)
+          ts = self.log.utc_to_local(remote_time, remote_utc=remote_tz, fmt=ct.HB.TIMESTAMP_FORMAT)
+        else:
+          ts = dt.strptime(ts, ct.HB.TIMESTAMP_FORMAT)
         passed_minutes = (dt_now - ts).total_seconds() / 60.0
         if passed_minutes < 0 or passed_minutes > minutes:
           break
