@@ -291,7 +291,7 @@ class _GPUMixin(object):
     if not vars(self).get('__no_gpu_avail', False):
       device_info = self.get_gpu_info(device_id=device_id)
       if device_info is not None and len(device_info) > 0:
-        res = device_info['FAN_SPEED']
+        res = device_info['GPU_FAN_SPEED']
     return res
     
 

@@ -1352,7 +1352,36 @@ class NetworkMonitor(DecentrAIObject):
       
       trust_info = 'NORMAL_EVAL'
 
+      # Cpu temperature history analysis
+      temp_hist = self.network_node_past_temperatures_history(
+        addr=addr, minutes=60, dt_now=dt_now,
+        reverse_order=True,
+      )
+
+      max_temperature = temp_hist['max_temp'] # get pre-processed max temperatures
+
+      cpu_temp = max_temperature[-1] if len(max_temperature) > 0 else -1
+      cpu_temp_past1h = np.mean(max_temperature) if len(max_temperature) > 0 else -1
       
+      # Gpu temperature history analysis
+      gpu_hist = self.network_node_default_gpu_history(
+        addr=addr, minutes=60, dt_now=dt_now, reverse_order=True)
+
+      gpu_temp_hist = [x['GPU_TEMP'] for x in gpu_hist]
+      gpu_temp = gpu_temp_hist[-1] if len(gpu_temp_hist) > 0 else None
+      gpu_temp_past1h = np.mean(gpu_temp_hist) if len(gpu_temp_hist) > 0 else None
+      
+      gpu_fan_hist = [x.get('GPU_FAN_SPEED', None) for x in gpu_hist]
+      if None in gpu_fan_hist:
+        gpu_fan = None
+        gpu_fan_past1h = None
+      elif len(gpu_fan_hist) == 0:
+        gpu_fan = None
+        gpu_fan_past1h = None
+      else:
+        gpu_fan = gpu_fan_hist[-1]
+        gpu_fan_past1h = np.mean(gpu_fan_hist)
+
       is_secured = self.network_node_is_secured(addr)
       trusted = is_secured and trusted
       
@@ -1375,6 +1404,8 @@ class NetworkMonitor(DecentrAIObject):
         main_loop_avg_time=main_loop_time,
         main_loop_freq=round(main_loop_freq, 2),
         
+        pipelines_count=len(self.network_node_pipelines(addr)) - 1,
+        
         # main_loop_cap
         uptime=self.log.elapsed_to_str(uptime_sec),
         last_seen_sec=round(self.network_node_last_seen(addr, as_sec=True, dt_now=dt_now),2),
@@ -1388,8 +1419,18 @@ class NetworkMonitor(DecentrAIObject):
         is_alert_ram=is_alert_ram,    
         
         cpu_past1h=cpu_past1h,        
+        cpu_temp=cpu_temp,
+        cpu_temp_past1h=cpu_temp_past1h,
+
         gpu_load_past1h=self.network_node_default_gpu_average_load(addr=addr, minutes=60, dt_now=dt_now),
         gpu_mem_past1h=self.network_node_default_gpu_average_avail_mem(addr=addr, minutes=60, dt_now=dt_now),
+
+        gpu_temp=gpu_temp,
+        gpu_temp_past1h=gpu_temp_past1h,
+
+        gpu_fan=gpu_fan,
+        gpu_fan_past1h=gpu_fan_past1h,
+
         gpu_name=gpu_name,
         SCORE=score,        
         #comms:
@@ -1490,6 +1531,7 @@ class NetworkMonitor(DecentrAIObject):
         gpu_mem_avail_hist=gpu_mem_avail_hist,
         gpu_temp_hist=gpu_temp_hist,
         gpu_temp_max_allowed=gpu_temp_max_allowed,
+        temperatures=temperatures, # should we add this ?
         max_temperature=max_temperature,
         max_temp_sensor=max_temp_sensor,
         timestamps=timestamps,
