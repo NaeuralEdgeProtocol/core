@@ -200,6 +200,8 @@ class NetMon01Plugin(
       ))
       self.P("Alerter status: {}".format(self.get_alerter_status()))
     if self.alerter_is_new_alert():
-      self.P("NetMon anomaly reported:\n********************\nAnomaly reported for: {}\n********************".format(alerted_nodes))
+      self.P("NetMon anomaly:\n********************\nAnomaly reported for {} nodes:\n{}\n ********************".format(
+        len(alerted_nodes), self.json_dumps(alerted_nodes, indent=2)
+      ))
     #endif show alerts
     return payload
