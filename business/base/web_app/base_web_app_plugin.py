@@ -564,7 +564,6 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     self.script_temp_dir = tempfile.mkdtemp()
 
     self.assets_initialized = False
-
     self.failed = False
 
     self.setup_commands_started = [False] * len(self.get_setup_commands())
@@ -621,7 +620,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     super(BaseWebAppPlugin, self)._on_close()
     return
 
-  def _on_command(self, data, delta_logs=None, full_logs=None, **kwargs):
+  def _on_command(self, data, delta_logs=None, full_logs=None, start=None, reload=None, **kwargs):
     super(BaseWebAppPlugin, self)._on_command(data, **kwargs)
 
     if (isinstance(data, str) and data.upper() == 'DELTA_LOGS') or delta_logs:
@@ -638,9 +637,29 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
         logs=[]
       )
 
-    if (isinstance(data, str) and data.upper() == 'START'):
+    if (isinstance(data, str) and data.upper() == 'START') or start:
       self.can_run_start_commands = True
       self.P("Starting server")
+
+    if (isinstance(data, str) and data.upper() == 'RELOAD') or reload:
+      self.__maybe_close_setup_commands()
+      self.__maybe_close_start_commands()
+      self.__maybe_read_and_stop_all_log_readers()
+
+      self.assets_initialized = False
+      self.failed = False
+
+      self.setup_commands_started = [False] * len(self.get_setup_commands())
+      self.setup_commands_finished = [False] * len(self.get_setup_commands())
+      self.setup_commands_processes = [None] * len(self.get_setup_commands())
+      self.setup_commands_start_time = [None] * len(self.get_setup_commands())
+
+      self.start_commands_started = [False] * len(self.get_start_commands())
+      self.start_commands_finished = [False] * len(self.get_start_commands())
+      self.start_commands_processes = [None] * len(self.get_start_commands())
+      self.start_commands_start_time = [None] * len(self.get_start_commands())
+
+      self.P("Reloading server")
 
     return
 
