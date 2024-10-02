@@ -1162,9 +1162,9 @@ class NetworkMonitor(DecentrAIObject):
       lst_heartbeats = self.__network_node_past_heartbeats_by_interval(
         addr=addr, minutes=minutes, dt_now=dt_now, reverse_order=reverse_order,
       )
-      temperatures = [x[ct.HB.TEMPERATURE_INFO] for x in lst_heartbeats]
-      max_temps = [x['max_temp'] for x in temperatures]
-      temps = [x['temperatures'] for x in temperatures]
+      temperatures = [x[ct.HB.TEMPERATURE_INFO] for x in lst_heartbeats if x is not None]
+      max_temps = [x['max_temp'] for x in temperatures if x is not None]
+      temps = [x['temperatures'] for x in temperatures if x is not None]
       result = {
         'all_sensors' : temperatures,
         'max_temp'   : max_temps,
