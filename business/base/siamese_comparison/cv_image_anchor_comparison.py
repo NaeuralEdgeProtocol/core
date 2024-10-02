@@ -43,8 +43,8 @@ _CONFIG = {
   "ANALYSIS_IGNORE_MAX_PERSON_AREA": 70,  # percent
   "ANALYSIS_IGNORE_MIN_PERSON_AREA": 0,  # percent
 
-  "PERSON_MIN_AREA_THRESHOLD": 0.02,  # percent
-  "PERSON_MIN_AREA_PROB_THRESHOLD": 0.5,  # percent
+  "PERSON_MIN_AREA_THRESHOLD": 0.02,  # between 0 and 1
+  "PERSON_MIN_AREA_PROB_THRESHOLD": 0.5,  # between 0 and 1
 
   "MIN_ENTROPY_THRESHOLD": 4,
   "PEOPLE_IN_FRAME_COOLDOWN_FRAMES": 10,  # <= 0 means no cooldown
@@ -120,15 +120,16 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     is_alert = self.alerter_is_alert()
     last_alert_value = self.alerter_get_last_value()
 
-    # the alerter should be lowered and the last value in the alerter should not be higher than the lower value
-    # if we compare with the raise value, we might hit a situation where the alerter can be potentially raised in the future
-    alerter_ok = not is_alert and (last_alert_value is None or last_alert_value < self.cfg_alert_lower_value)
+    # the alerter should be lowered and the last value in the alerter should not be higher than the raise value
+    # if we compare with the lower value, we might hit a situation where the plugin can never recover from a 
+    # faulty anchor without the need of a forced lower
+    alerter_ok = not is_alert and (last_alert_value is None or last_alert_value < self.cfg_alert_raise_value)
 
-    if self.serving_anchor_reload_period is None:
+    if self.anchor_reload_period is None:
       # we will never reload the anchor
       return False
 
-    anchor_expired = self.time() - self._anchor_last_save_time > self.serving_anchor_reload_period
+    anchor_expired = self.time() - self._anchor_last_save_time > self.anchor_reload_period
 
     return anchor_expired and alerter_ok
 
@@ -409,19 +410,14 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
   def _get_payload(self, alerter_status, **kwargs):
     # choose the cache based on the alerter status
     cache_witness = self.get_current_witness_kwargs(demo_mode=self.cfg_demo_mode)
-    cache_witness_debug_info = cache_witness['debug_info']
-    cache_witness_original_image = cache_witness['original_image']
-    cache_witness_inferences = cache_witness['inferences']
-    cache_witness_debug_results = cache_witness['debug_results']
+    debug_info = cache_witness['debug_info']
+    original_image = cache_witness['original_image']
+    object_detector_inferences = cache_witness['object_detector_inferences']
+    debug_results = cache_witness['debug_results']
 
-    object_detector_inferences = cache_witness_inferences[self._get_detector_ai_engine()][0]
-
-    for dct_debug_info in cache_witness_debug_info:
+    for dct_debug_info in debug_info:
       self.add_debug_info(**dct_debug_info)
     self.add_debug_info({'Alerter Status': alerter_status})
-
-    debug_results = cache_witness_debug_results
-    original_image = cache_witness_original_image
 
     # create witness
     img_witness = self._create_witness_image(
@@ -431,13 +427,19 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     )
 
     # reset alerter if forced lower
+    status_changed = (
+      self.alerter_status_changed() or
+      (self._alerter_re_raised and not self._alerter_forced_lower) or
+      self._alerter_forced_lower
+    )
+
     payload_kwargs = {
       'is_re_raise': self._alerter_re_raised if not self._alerter_forced_lower else False,
       'is_forced_lower': self._alerter_forced_lower,
       'is_new_re_raise': self._alerter_re_raised if not self._alerter_forced_lower else False,
       'is_new_forced_lower': self._alerter_forced_lower,
       'is_new_lower': self.alerter_is_new_lower() or self._alerter_forced_lower,
-      'is_alert_status_changed': self.alerter_status_changed() or (self._alerter_re_raised and not self._alerter_forced_lower) or self._alerter_forced_lower,
+      'is_alert_status_changed': status_changed,
     }
 
     if self._alerter_re_raised and not self._alerter_forced_lower:
@@ -485,16 +487,16 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     area_prc = None
     if dct_inference['TYPE'] == 'person':
-        t, l, b, r = dct_inference['TLBR_POS']
-        area = (r - l) * (b - t)
-        area_prc = area / image_area
+      t, l, b, r = dct_inference['TLBR_POS']
+      area = (r - l) * (b - t)
+      area_prc = area / image_area
 
-        area_too_small = area_prc < self.cfg_person_min_area_threshold
-        confident_in_detection = dct_inference['PROB_PRC'] >= self.cfg_person_min_area_prob_threshold
-        if area_too_small and not confident_in_detection:
-          # ignore small detections with low confidence
-          area_prc = None
-    
+      area_too_small = area_prc < self.cfg_person_min_area_threshold
+      confident_in_detection = dct_inference['PROB_PRC'] >= self.cfg_person_min_area_prob_threshold
+      if area_too_small and not confident_in_detection:
+        # ignore small detections with low confidence
+        area_prc = None
+
     return area_prc
 
   def __people_areas_prc(self, image, lst_obj_inferences, round_digits=None):
@@ -520,7 +522,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
     return all_persons_small or exists_person_big
 
-  def _prepare_debug_info_for_witness(self, img, object_detector_inferences, debug_results, **kwargs):
+  def _prepare_debug_info_for_witness(self, img, object_detector_inferences, debug_results):
     human_readable_last_anchor_time = self.datetime.fromtimestamp(self._anchor_last_save_time)
     human_readable_last_anchor_time = self.datetime.strftime(human_readable_last_anchor_time, "%Y-%m-%d %H:%M:%S")
 
@@ -536,7 +538,7 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
         frame_entropy,
       )},
       {'value': "Last Anchor Time: {}   Anchor Save Period (s): {} Anchor E: {:.02f}".format(
-        human_readable_last_anchor_time, self.serving_anchor_reload_period, anchor_entropy)},
+        human_readable_last_anchor_time, self.anchor_reload_period, anchor_entropy)},
     ]
     if self.cfg_demo_mode:
       if self.cfg_forced_lower:
@@ -555,11 +557,11 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     debug_info.append({'value': debug_results})
     return debug_info
 
-  def _update_cache_witness_image(self, img, debug_info, result, debug_results):
+  def _update_cache_witness_image(self, img, object_detector_inferences, debug_info, result, debug_results):
     self.update_witness_kwargs(
       witness_args={
         'debug_info': debug_info,
-        'inferences': self.dataapi_inferences(),
+        'object_detector_inferences': object_detector_inferences,
         'debug_results': debug_results,
         'original_image': img,
       },
@@ -567,11 +569,11 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     )
     return
 
-  def _update_cache_last_witness_image(self, img, debug_info, debug_results):
+  def _update_cache_last_witness_image(self, img, object_detector_inferences, debug_info, debug_results):
     self.update_witness_kwargs(
       witness_args={
         'debug_info': debug_info,
-        'inferences': self.dataapi_inferences(),
+        'object_detector_inferences': object_detector_inferences,
         'debug_results': debug_results,
         'original_image': img,
       },
@@ -582,19 +584,17 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
   def get_last_witness_image(self):
     cache_witness = self.get_current_witness_kwargs(pos=0, alerter="__last_witness_cache__")
-    cache_witness_debug_info = cache_witness['debug_info']
-    cache_witness_original_image = cache_witness['original_image']
-    cache_witness_inferences = cache_witness['inferences']
-    cache_witness_debug_results = cache_witness['debug_results']
+    debug_info = cache_witness['debug_info']
+    original_image = cache_witness['original_image']
+    object_detector_inferences = cache_witness['object_detector_inferences']
+    debug_results = cache_witness['debug_results']
 
-    object_detector_inferences = cache_witness_inferences[self._get_detector_ai_engine()][0]
-
-    for dct_debug_info in cache_witness_debug_info:
+    for dct_debug_info in debug_info:
       self.add_debug_info(**dct_debug_info)
 
     last_witness_image = self._create_witness_image(
-      original_image=cache_witness_original_image,
-      debug_results=cache_witness_debug_results,
+      original_image=original_image,
+      debug_results=debug_results,
       object_detector_inferences=object_detector_inferences,
     )
 
@@ -614,7 +614,6 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     self.__last_capture_image = self.dataapi_image()
 
     object_detector_inferences = self.dataapi_inferences()[self._get_detector_ai_engine()][0]
-
     object_detector_inferences = self._intersect_tlbrs_with_target_zone(object_detector_inferences)
 
     # update the people cooldown counter
@@ -627,79 +626,76 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     if self._anchor is None or self._force_save_anchor:
       self._maybe_save_anchor(self.__last_capture_image, object_detector_inferences)
 
-    if self._anchor is None and not self.cfg_allow_comparison_with_no_anchor:
-      # if we do not have an anchor, we wait for it
+    # if we do not have an anchor, we wait for it
+    if self._anchor is None:
       return
 
     # process the current image
     result, debug_results = self.compare_image_with_anchor(self.__last_capture_image)
 
+    ###### START DEBUG INFO AND CACHING ######
     debug_info = self._prepare_debug_info_for_witness(
       img=self.__last_capture_image,
       object_detector_inferences=object_detector_inferences,
-      result=result,
       debug_results=debug_results,
     )
 
     # prepare the witness image used for the GET_LAST_WITNESS command
     self._update_cache_last_witness_image(
       img=self.__last_capture_image,
+      object_detector_inferences=object_detector_inferences,
       debug_info=debug_info,
       debug_results=debug_results,
     )
 
-    if result is not None or self.cfg_demo_mode:
+    if self.cfg_demo_mode:
       # save results in the cache -- this will be used for the witness image when the alerter status changes
       self._update_cache_witness_image(
         img=self.__last_capture_image,
-        result=result,
+        object_detector_inferences=object_detector_inferences,
         debug_info=debug_info,
+        result=result,
         debug_results=debug_results,
       )
+    # endif
+    ###### END DEBUG INFO AND CACHING ######
 
-    # decide if we keep it or not,
-    # based on the presence of people in the image
-    result_ok = result is not None
+    # if result is None, then the comparison failed
+    if result is None:
+      # we do not have a valid comparison, so
+      # we do not go further with the alerter and payload logic
+      return
+
+    result_similar = result < self.cfg_alert_raise_value
     validation_ok = self._validate_image_for_analysis(self.__last_capture_image, object_detector_inferences)
-    if result_ok and validation_ok:
-      # we don't have people in the image, or they occupy the whole image
-      # and we have a valid comparison result,
-      # so we consider this observation
+
+    if not result_similar and not validation_ok:
+      # found people in image and comparison shows a change
+      # since we cannot decide if people are the cause of the change
+      # we skip adding the observation to the alerter
+      return
+    else:
+      # either found people in image and comparison shows no change
+      # or no people in the image and comparison shows a change
+      # or no people in the image and comparison shows no change
+      # we add the observation to the alerter
       self.alerter_add_observation(result)
-
-      # save the anchor if we successfully compared the current image with the previous anchor
-      # we do this because we want images that do not generate alerts
-      # if we do not save the anchor here, we can risk saving an image for which
-      # changes cannot be computed (when `result is None`)
-      self._maybe_save_anchor(self.__last_capture_image, object_detector_inferences)
     # endif
 
-    if result_ok and not validation_ok:
-      # we have people in the image
-      # and we have a valid comparison result,
-      # so we do not consider this observation
-      # if the alerter is raised, we add the middle value (no need to lower if people are in the image)
-      # if the alerter is not raised, we add 0 (people generate a lot of noise in the alerter series)
-      if self.alerter_is_alert():
-        # if we add 0, we can risk lowering the alert because of the people in the image
-        # and so we generate a lot of false positives
-        middle_value = (self.cfg_alert_raise_value + self.cfg_alert_lower_value) / 2
-        self.alerter_add_observation(middle_value)
-      else:
-        self.alerter_add_observation(0)
-    # endif
-
-    if not result_ok and not self.cfg_discard_failed_analysis:
-      # indifferent to the presence of people in the image, our analysis failed
-      # if we do not discard failed analysis, we consider this observation
-      # and so we lower the alerter no matter what
-      self.alerter_add_observation(0)
-    # endif
+    # should we check if image is valid?
+    # since now we add the observation to the alerter indifferent of the validation
+    # we can leave this unchecked
+    self._update_cache_witness_image(
+      img=self.__last_capture_image,
+      object_detector_inferences=object_detector_inferences,
+      debug_info=debug_info,
+      result=result,
+      debug_results=debug_results,
+    )
 
     alerter_status_changed, current_alerter_status = self._custom_alerter_status_changed()
 
     if alerter_status_changed or self.cfg_demo_mode:
-
       self._print_alert_status_changed(current_alerter_status)
 
       payload = self._get_payload(
@@ -707,13 +703,13 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
       )
     # endif
 
-    if alerter_status_changed:
-      # when alerter changes, we add a dummy value in the alerter train to make sure
-      # we generate a single alert status change event
-      # If we do not do this, then we can raise the same alert multiple times
-      # if there are people in the frame and the analysis fails
-      middle_value = (self.cfg_alert_raise_value + self.cfg_alert_lower_value) / 2
-      self.alerter_add_observation(middle_value)
+    if result_similar and validation_ok:
+      # no people in the image and comparison shows no change
+      # we can save the anchor
+
+      # this method validates both the comparison and the people in the image
+      # so it might not be necessary to validate the image again
+      self._maybe_save_anchor(self.__last_capture_image, object_detector_inferences)
     # endif
 
     return payload
@@ -737,16 +733,16 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
   # Can be overridden by the user
   @property
-  def serving_anchor_reload_period(self):
+  def anchor_reload_period(self):
     """
     The serving anchor reload period. This is the period after which the anchor will be reloaded.
     This property can be used to add custom logic for the anchor reload period.
-    (Like in the IQA case where this period is taken from serving config)
+    (Like in the model based comparison, where this period is taken from the serving config)
 
     Returns
     -------
     int
-        The serving anchor reload period
+        The anchor reload period
     """
     return self.cfg_anchor_reload_period
 

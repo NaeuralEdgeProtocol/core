@@ -8,7 +8,6 @@ _CONFIG = {
   },
 
   # Developer config
-  "ALLOW_COMPARISON_WITH_NO_ANCHOR": True,
   "ANCHOR_RELOAD_PERIOD": None,
   "SERVING_DATETIME_FORMAT": "%Y/%m/%d_%H:%M:%S",
   "WARNING_ANCHOR_NOT_SYNCHRONIZED_TIME": 10,  # seconds
@@ -43,8 +42,8 @@ _CONFIG = {
   "ANALYSIS_IGNORE_MAX_PERSON_AREA": 70,  # percent
   "ANALYSIS_IGNORE_MIN_PERSON_AREA": 0,  # percent
 
-  "PERSON_MIN_AREA_THRESHOLD": 0.02,  # percent
-  "PERSON_MIN_AREA_PROB_THRESHOLD": 0.5,  # percent
+  "PERSON_MIN_AREA_THRESHOLD": 0.02,  # between 0 and 1
+  "PERSON_MIN_AREA_PROB_THRESHOLD": 0.5,  # between 0 and 1
 
   "MIN_ENTROPY_THRESHOLD": 4,
   "PEOPLE_IN_FRAME_COOLDOWN_FRAMES": 10,  # <= 0 means no cooldown
@@ -69,28 +68,22 @@ class CvImageAnchorComparisonModelBasedPlugin(BasePlugin):
     return
 
   @property
-  def serving_anchor_reload_period(self):
+  def anchor_reload_period(self):
     # we get the anchor reload period from serving
     if not self.__found_anchor_reload_period:
-      # if we haven't found the anchor reload period yet, we will simply wait for it
-      return None
+      dct_inferences = self.inferences
+      if dct_inferences is None:
+        # we haven't received any inference yet, so we can't get the anchor reload period
+        return None
+      # endif dct_inferences is None
+
+      # the anchor reload period is in minutes, but we need it in seconds
+      self.__anchor_reload_period = dct_inferences[self.ct.ThAnchor.ANCHOR_RELOAD_TIME]
+      self.__found_anchor_reload_period = True
+    # endif anchor reload period not found
     return self.__anchor_reload_period
 
-  def __maybe_read_serving_anchor_reload_period(self):
-    dct_inferences = self.inferences
-    if dct_inferences is None:
-      return
-
-    # the anchor reload period is in minutes, but we need it in seconds
-    self.__anchor_reload_period = dct_inferences[self.ct.ThAnchor.ANCHOR_RELOAD_TIME]
-    self.__found_anchor_reload_period = True
-    return
-
   def compare_image_with_anchor(self, image):
-    self.__maybe_read_serving_anchor_reload_period()
-
-    # we perform this check here because we can call while the anchor is not loaded
-    # and this generally results in inferences being `None`
     if not self._inference_validation():
       return None, None
 
@@ -225,6 +218,7 @@ class CvImageAnchorComparisonModelBasedPlugin(BasePlugin):
     anchor_last_save_time = self.datetime.strptime(anchor_last_save_time, self.cfg_serving_datetime_format)
     anchor_last_save_time = self.datetime.timestamp(anchor_last_save_time)
 
+    self.P("Loaded anchor from serving cache. Last save time: " + metadata[self.str_unique_identification][self.ct.ThAnchor.ANCHOR_UPDATED_AT], boxed=True)
     return anchor, anchor_last_save_time
 
   @property
