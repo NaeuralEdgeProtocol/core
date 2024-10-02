@@ -1165,10 +1165,12 @@ class NetworkMonitor(DecentrAIObject):
       temperatures = [x[ct.HB.TEMPERATURE_INFO] for x in lst_heartbeats if x is not None]
       max_temps = [x['max_temp'] for x in temperatures if x is not None]
       temps = [x['temperatures'] for x in temperatures if x is not None]
+      max_temp_sensor = [x['max_temp_sensor'] for x in temperatures if x is not None]
+
       result = {
         'all_sensors' : temperatures,
         'max_temp'   : max_temps,
-        'max_temp_sensor' :  temperatures[-1]['max_temp_sensor'] if len(temperatures) > 0 else None,
+        'max_temp_sensor' :  max_temp_sensor[-1] if len(max_temp_sensor) > 0 else None,
       }
       return result
       
