@@ -343,7 +343,7 @@ class ApplicationMonitor(DecentrAIObject):
     pc_occupied_mem = round(self.log.total_memory - self.avail_memory_log[-1], 1)
     pc_total_mem = round(self.log.total_memory, 1)
 
-    gpu_load, gpu_total_mem, gpu_occupied_memory, gpu_temp = None, None, None, None
+    gpu_load, gpu_total_mem, gpu_occupied_memory, gpu_temp, gpu_fan, gpu_fan_unit = None, None, None, None, None, None
 
     for i, dct_gpu in self.gpu_log.items():
       if gpu_load is None:
@@ -354,24 +354,24 @@ class ApplicationMonitor(DecentrAIObject):
 
         gpu_total_mem = dct_gpu[ct.GPU_INFO.TOTAL_MEM]
         gpu_total_mem = round(gpu_total_mem, 1) if isinstance(gpu_total_mem, (int, float)) else None
-        
+
         lst_gpu_occupied_memory = list(dct_gpu[ct.GPU_INFO.ALLOCATED_MEM])
         if any(isinstance(x, str) or x is None for x in lst_gpu_occupied_memory):
           lst_gpu_occupied_memory = [-1] * len(lst_gpu_occupied_memory)
         gpu_occupied_memory = round(lst_gpu_occupied_memory[-1], 1)
-        
+
         lst_gpu_temp = list(dct_gpu[ct.GPU_INFO.GPU_TEMP])
         if any(isinstance(x, str) or x is None for x in lst_gpu_temp):
           lst_gpu_temp = [-1] * len(lst_gpu_temp)
         gpu_temp = round(lst_gpu_temp[-1], 1)
-        
+
         lst_gpu_fan = list(dct_gpu[ct.GPU_INFO.GPU_FAN_SPEED])
         if any(isinstance(x, str) or x is None for x in lst_gpu_fan):
           lst_gpu_fan = [-1] * len(lst_gpu_fan)
         gpu_fan = round(lst_gpu_fan[-1], 1)
 
         gpu_fan_unit = dct_gpu[ct.GPU_INFO.GPU_FAN_SPEED_UNIT]
-      
+
       gpu_load_mean = round(np.mean(lst_gpu_load[-last_n:]), 1)
       str_gpu_info = "cuda:{} {}%, mem {}/{}GB, {}°C, gpu fan {}{}".format(
         i,
