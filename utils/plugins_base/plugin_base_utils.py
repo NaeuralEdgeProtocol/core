@@ -1307,7 +1307,57 @@ class _UtilsBaseMixin(
       b_text = zlib.decompress(b_text)
     str_text = b_text.decode('utf-8')
     return str_text
-  
+
+  def execute_remote_code(self, code: str, debug: bool = False, timeout: int = 10):
+    """
+    Execute code received remotely.
+    Parameters
+    ----------
+    code : str
+        the code to be executed
+    debug : bool, optional
+        if True, the code will be executed in debug mode. The default is False.
+    timeout : int, optional
+        the timeout for the code execution. The default is 10.
+    Returns
+    -------
+    dict: the result of the code execution
+    If the code execution was successful, the result will contain the following keys:
+    - result: the result of the code execution
+    - errors: the errors that occurred during the execution
+    - warnings: the warnings that occurred during the execution
+    - prints: the printed messages during the execution
+    - timestamp: the timestamp of the execution
+    If the code execution failed, the result will contain the following key:
+    - error: the error message
+    """
+    if not isinstance(code, str):
+      return {'error': 'Code must be a string'}
+    if len(code) == 0:
+      return {'error': 'Code should not be an empty string'}
+    result, errors, warnings, printed = None, None, [], []
+    self.P(f'Executing code:\n{code}')
+    b64_code, errors = self.code_to_base64(code, return_errors=True)
+    if errors is not None:
+      return {'error': errors}
+    res = self.exec_code(
+      str_b64code=b64_code,
+      debug=debug,
+      self_var='plugin',
+      modify=True,
+      return_printed=True,
+      timeout=timeout
+    )
+    if isinstance(res, tuple):
+      result, errors, warnings, printed = res
+    return {
+      'result': result,
+      'errors': errors,
+      'warnings': warnings,
+      'prints': printed,
+      'timestamp': self.time()
+    }
+
   def image_entropy(self, image):
     """
     Computes the entropy of an image.
