@@ -17,6 +17,7 @@ _CONFIG = {
   "PASS": '#DEFAULT',
   "QOS": '#DEFAULT',
   "TOPIC": "#DEFAULT",
+  "SECURED": "#DEFAULT",
   "PROTOCOL": "#DEFAULT",
 
   "URL": None,
@@ -27,7 +28,8 @@ _CONFIG = {
     "PASS": '#DEFAULT',
     "QOS": '#DEFAULT',
     "TOPIC": "#DEFAULT",
-    "PROTOCOL": "#DEFAULT"
+    "SECURED": "#DEFAULT",
+    "PROTOCOL": "#DEFAULT",
   },
   'RECONNECTABLE': True,
 
@@ -101,7 +103,8 @@ class BaseIoTQueueListenerDataCapture(DataCaptureThread):
       ct.COMMS.PORT: self.__get_stream_config_metadata_property(ct.COMMS.PORT),
       ct.COMMS.USER: self.__get_stream_config_metadata_property(ct.COMMS.USER),
       ct.COMMS.PASS: self.__get_stream_config_metadata_property(ct.COMMS.PASS),
-      ct.COMMS.QOS: self.__get_stream_config_metadata_property(ct.COMMS.QOS)
+      ct.COMMS.QOS: self.__get_stream_config_metadata_property(ct.COMMS.QOS),
+      ct.COMMS.SECURED: self.__get_stream_config_metadata_property(ct.COMMS.SECURED),
     }
 
     # build the kwargs of the wrapper server
