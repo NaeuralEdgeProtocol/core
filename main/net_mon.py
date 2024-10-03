@@ -1383,6 +1383,11 @@ class NetworkMonitor(DecentrAIObject):
       elif len(gpu_fan_hist) == 0:
         gpu_fan = None
         gpu_fan_past1h = None
+      elif any(isinstance(x, str) for x in gpu_fan_hist):
+        # Handle the case when the fan speed is a string
+        # Meaning errors most of the time ()
+        gpu_fan = None
+        gpu_fan_past1h = None
       else:
         gpu_fan = gpu_fan_hist[-1]
         gpu_fan_past1h = np.mean(gpu_fan_hist)
