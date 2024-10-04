@@ -58,7 +58,7 @@ class SelfCheck01Plugin(BasePluginExecutor):
     is_issue = False
     dct_results = self.OrderedDict()
     dct_check_data = self.OrderedDict()
-    for method_name, func in self._get_methods(self.__class__):
+    for method_name, func in self._get_methods(self.__class__, include_parent=False):
       if method_name.startswith('_self_check_'):
         try:
           is_check_alert, msg, dct_alert_info = func(self)
