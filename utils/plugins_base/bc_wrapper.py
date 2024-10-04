@@ -16,6 +16,42 @@ class BCWrapper:
     """
     return self.__bc.address
   
+  def sign(self, dct_data: dict) -> str:
+    """
+    Signs a string using the private key of the current node
+
+    Parameters
+    ----------
+    dct_data : dict
+        the data to be signed
+    
+    Returns
+    -------
+    str
+        the base64 encoded signature
+    """
+    return self.__bc.sign(dct_data)
+  
+  def verify(self, dct_data: str, str_signature: str, sender_address: str) -> bool:
+    """
+    Verifies a signature using the public key of the signer
+
+    Parameters
+    ----------
+    dct_data : dict
+        the data that was signed
+    str_signature : str
+        the base64 encoded signature
+    str_signer : str
+        the signer's address (string) used as the public key for verification
+
+    Returns
+    -------
+    bool
+        True if the signature is valid, False otherwise
+    """
+    return self.__bc.verify(dct_data=dct_data, signature=str_signature, sender_address=sender_address)
+
   def encrypt_str(self, str_data : str, str_recipient : str):
     """
     Encrypts a string using the public key of the recipient using asymmetric encryption
