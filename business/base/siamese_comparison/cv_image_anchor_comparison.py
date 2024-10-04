@@ -675,23 +675,30 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
       # we skip adding the observation to the alerter
       return
     else:
+      # because we consider this observation in the alerter 
+      # we update the cache with the current image
+      # before we add the observation to the alerter
+      # otherwise, if (
+      #   result < self.cfg_alert_raise_value and
+      #   result > self.cfg_alert_lower_value and
+      #   and alerter_is_new_raise
+      # )
+      # the current frame will be added in the alertable cache,
+      # even though (result < self.cfg_alert_raise_value)
+      self._update_cache_witness_image(
+        img=self.__last_capture_image,
+        object_detector_inferences=object_detector_inferences,
+        debug_info=debug_info,
+        result=result,
+        debug_results=debug_results,
+      )
+
       # either found people in image and comparison shows no change
       # or no people in the image and comparison shows a change
       # or no people in the image and comparison shows no change
       # we add the observation to the alerter
       self.alerter_add_observation(result)
     # endif
-
-    # should we check if image is valid?
-    # since now we add the observation to the alerter indifferent of the validation
-    # we can leave this unchecked
-    self._update_cache_witness_image(
-      img=self.__last_capture_image,
-      object_detector_inferences=object_detector_inferences,
-      debug_info=debug_info,
-      result=result,
-      debug_results=debug_results,
-    )
 
     alerter_status_changed, current_alerter_status = self._custom_alerter_status_changed()
 
