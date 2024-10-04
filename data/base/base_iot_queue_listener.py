@@ -32,6 +32,8 @@ _CONFIG = {
     "PROTOCOL": "#DEFAULT",
   },
   'RECONNECTABLE': True,
+  'STREAM_WINDOW': 256,
+  'ONE_AT_A_TIME': False,
 
   'VALIDATION_RULES': {
     **DataCaptureThread.CONFIG['VALIDATION_RULES'],
@@ -188,10 +190,7 @@ class BaseIoTQueueListenerDataCapture(DataCaptureThread):
     # end try-except
     return
 
-  def _run_data_aquisition_step(self):
-    if len(self.message_queue) == 0:
-      return
-
+  def _extract_and_process_one_message(self):
     msg = self.message_queue.popleft()
     dict_msg = json.loads(msg)
     processed_message, message_type = self.__process_iot_message(dict_msg)
@@ -206,7 +205,18 @@ class BaseIoTQueueListenerDataCapture(DataCaptureThread):
     else:
       self.P("Unknown message type: {}".format(message_type), color='r')
       self.P("Full message: {}".format(processed_message), color='r')
+    return
 
+  def _run_data_aquisition_step(self):
+    if len(self.message_queue) == 0:
+      return
+    
+    if self.cfg_one_at_a_time:
+      self._extract_and_process_one_message()
+    else:
+      L = max(len(self.message_queue), self.cfg_stream_window)
+      for _ in range(L):
+        self._extract_and_process_one_message()
     return
 
   def __process_iot_message(self, msg):
