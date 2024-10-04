@@ -214,7 +214,7 @@ class BaseIoTQueueListenerDataCapture(DataCaptureThread):
     if self.cfg_one_at_a_time:
       self._extract_and_process_one_message()
     else:
-      L = max(len(self.message_queue), self.cfg_stream_window)
+      L = min(len(self.message_queue), self.cfg_stream_window)
       for _ in range(L):
         self._extract_and_process_one_message()
     return
