@@ -7,6 +7,7 @@ from pathlib import Path
 import json
 import re
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 from os import path as file_path
 
 from core.utils.uvicorn_fast_api_ipc_manager import UvicornPluginComms
@@ -16,6 +17,13 @@ app = FastAPI(
   summary={{ api_summary }},
   description={{ api_description }},
   version={{ api_version }},
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
 )
 
 STATIC_DIR = "{{ static_directory }}"

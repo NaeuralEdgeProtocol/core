@@ -221,7 +221,6 @@ class FastApiWebAppPlugin(BasePlugin):
         value = None
 
       if isinstance(value, PostponedRequest):
-        self.P("Further postponing request: {}".format(method))
         new_postponed_requests.append(self.get_postponed_dict(
           request_id=id,
           request_value=value,
@@ -258,7 +257,7 @@ class FastApiWebAppPlugin(BasePlugin):
         value = None
 
       if isinstance(value, PostponedRequest):
-        self.P("Postponing request: {}".format(method))
+        self.P(f"Postponing request {id} for {method}.")
         self.postponed_requests.append(self.get_postponed_dict(
           request_id=id,
           request_value=value,

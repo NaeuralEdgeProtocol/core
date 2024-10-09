@@ -103,7 +103,7 @@ class LlmModelMixin(object):
 
     model_params = dict(
       cache_dir=cache_dir,
-      use_auth_token=token,
+      token=token,
       low_cpu_mem_usage=True,
       torch_dtype=torch_dtype,
       device_map=device_map,
@@ -112,6 +112,30 @@ class LlmModelMixin(object):
     )
     return model_params, quantization_params
 
+  def load_tokenizer(self, model_id, cache_dir, token):
+    """
+    Load the tokenizer from the model and set up padding.
+    Parameters
+    ----------
+    model_id : str
+        the model identifier
+    cache_dir : str
+        the cache directory
+    token : str
+        the token to use for authentication
+    Returns
+    -------
+
+    """
+    self.tokenizer = LlmTokenizer.from_pretrained(
+      model_id,
+      cache_dir=cache_dir,
+      use_auth_token=token,
+    )
+
+    # Fix for missing system roles in transformers.
+    self._set_tokenizer_chat_template()
+    return
 
   def _load_tokenizer(self):
     """Loads the tokenizer from the model and sets up padding.
@@ -121,14 +145,7 @@ class LlmModelMixin(object):
     token = self.hf_token
     model_id = self.cfg_model_name
     self.P("Loading tokenizer for {} in '{}'...".format(model_id, cache_dir))
-    self.tokenizer = LlmTokenizer.from_pretrained(
-      model_id,
-      cache_dir=cache_dir,
-      use_auth_token=token,
-    )
-
-    # Fix for missing system roles in transformers.
-    self._set_tokenizer_chat_template()
+    self.load_tokenizer(model_id, cache_dir, token)
 
     # Use the unknown token as the padding token. It seems that at least
     # when quantized llama2 will look at the embeddings of padding tokens
@@ -155,11 +172,24 @@ class LlmModelMixin(object):
     self.P("  Loaded `{}` tokenizer".format(self.tokenizer.__class__.__name__))
     return
 
+  def load_pretrained_model(self, model_id, **kwargs):
+    """
+    Load the pretrained model with the given model id and additional parameters.
+    Parameters
+    ----------
+    model_id  : str - the model identifier
+    kwargs : dict - additional parameters
+
+    Returns
+    -------
+    model : _BaseAutoModelClass - the loaded model
+    """
+    return LlmForCausalLM.from_pretrained(model_id, **kwargs)
 
   def _load_model(self):
     """
     Load the model from the given configured model name and set up padding.
-    Will first setup the model loading configuration and then load the model
+    Will first set up the model loading configuration and then load the model
 
     """
     model_id = self.cfg_model_name
@@ -176,10 +206,9 @@ class LlmModelMixin(object):
       quantization_config = BitsAndBytesConfig(**quantization_params)
     model_params['quantization_config'] = quantization_config
 
-    self.model = LlmForCausalLM.from_pretrained(
-        model_id,
-        **model_params
-    )
+    self.P(f'Trying to load pretrained for {model_id} with the following params:\n {model_params}')
+
+    self.model = self.load_pretrained_model(model_id, **model_params)
 
     compiled = self.cfg_th_compile
     if compiled:

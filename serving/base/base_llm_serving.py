@@ -46,7 +46,7 @@ and for history based command:
   "PAYLOAD" : {
     "NAME": "llm-on-demand",
     "PIPELINE_COMMAND" : {
-      "STRUCT_DATA" : {
+      "STRUCT_DATA" : [{
         "request" : "return ",
         "history" : [
           {
@@ -55,7 +55,7 @@ and for history based command:
           }
         ],
         "system_info" : "You are a funny python programmer assistant. your task is to complete the code you are given. return only the completion, not the whole program."
-      }
+      }]
     }
   }
 }
@@ -72,8 +72,9 @@ import accelerate
 
 
 
-from core.serving.mixins_llm import LlmCT, LlmTokenizerMixin
+from core.serving.mixins_llm import LlmTokenizerMixin
 from core.serving.mixins_llm import LlmModelMixin
+from core.serving.mixins_llm.llm_utils import LlmCT
 
 from core.serving.base import ModelServingProcess as BaseServingProcess
 
@@ -101,6 +102,9 @@ _CONFIG = {
   "MODEL_NAME"            : None,
 
   "REPETITION_PENALTY"    : 1.1,
+
+  "ADD_SPECIAL_TOKENS": False,
+  "ADD_GENERATION_PROMPT": False,
 
   "TH_COMPILE"            : False,
 
@@ -137,6 +141,15 @@ class BaseLlmServing(
     super(BaseLlmServing, self).__init__(**kwargs)
     return
 
+  @property
+  def th(self):
+    """
+    Proxy to the torch module.
+    Returns
+    -------
+    torch module
+    """
+    return th
 
   @property
   def hf_token(self):
@@ -162,7 +175,7 @@ class BaseLlmServing(
     models_cache = self.log.get_models_folder()
     model_name = 'models/{}'.format(self.cfg_model_name)
     model_subfolder = model_name.replace('/', '--')
-    path =self.os_path.join(models_cache, model_subfolder)
+    path = self.os_path.join(models_cache, model_subfolder)
     if self.os_path.isdir(path):
       return path
     else:
@@ -217,11 +230,11 @@ class BaseLlmServing(
 
   def _warmup(self):
     warmup_request = {
-      LlmCT.REQ : "hello",
-      LlmCT.HIST : [],
-      LlmCT.PRMP : "You are a useful python assistant, generate some python code"
+      LlmCT.REQ: "hello",
+      LlmCT.HIST: [],
+      LlmCT.SYS: "You are a python assistant. Generate some python code."
     }
-    # Perform a predict with a batch of one request.
+    # Perform a prediction with a batch of one request.
     warmup_inputs_one = {
       "DATA" : [
         warmup_request
@@ -229,9 +242,9 @@ class BaseLlmServing(
     }
     # TODO: maybe add warmup flag to predict for printing only in case of warmup
     self._predict(self._pre_process(warmup_inputs_one))
-    # Perform a predict with a batch of four requests.
+    # Perform a prediction with a batch of four requests.
     warmup_inputs_four = {
-      "DATA" : [
+      "DATA": [
         warmup_request,
         warmup_request,
         warmup_request,
@@ -313,7 +326,9 @@ class BaseLlmServing(
       # Note that we are passing 'pt' in return_tensors to get torch tensors.
       tokens = self.tokenizer.encode(
         prompt,
-        add_special_tokens=False, # Otherwise we would get and extra <bos> at the start.
+        add_special_tokens=self.cfg_add_special_tokens,  # False for the majority,
+        # Otherwise we would get and extra <bos> at the start.
+        # In the case of the pansophic Llama3.1 romanian fine-tuned model, this needs to be True.
         return_tensors='pt'
       ).to(self.device)
 
@@ -346,7 +361,7 @@ class BaseLlmServing(
     # strategies i.e. beam searching etc).
     # TODO: change this to pipeline as it seems is the preferred way.
     # TODO: explore more generation strategies, as this is currently
-    # using the greeedy strategy.
+    # using the greedy strategy.
 
     model_args = {
       'attention_mask' : attn_mask,
@@ -354,17 +369,21 @@ class BaseLlmServing(
 
     self.P("Running with repetition penalty {}".format(self.cfg_repetition_penalty))
 
-    t0 = self.time()
-    # Note that there's no need to set the padding ID since we've passed
-    # the appropriate attention mask.
-    yhat = self.model.generate(
-      inputs=batch_tokens,
-      max_new_tokens=4096,
-      repetition_penalty=self.cfg_repetition_penalty,
-      **model_args
-    )
-    elapsed = self.time() - t0
-
+    with th.no_grad():
+      t0 = self.time()
+      # Note that there's no need to set the padding ID since we've passed
+      # the appropriate attention mask.
+      # TODO: maybe explore assistant_model parameter from
+      #  https://huggingface.co/docs/transformers/v4.44.2/en/llm_optims
+      yhat = self.model.generate(
+        inputs=batch_tokens,
+        max_new_tokens=1024,
+        repetition_penalty=self.cfg_repetition_penalty,
+        **model_args
+      )
+      elapsed = self.time() - t0
+    # endwith
+    self.P(f'Done inference in {elapsed} seconds')
     # Calculate number of generated token per seconds and add it to __tps
     # in order to track inference performance. Generated padding is not
     # counted since it is an artefact of the batching strategy.
@@ -376,12 +395,10 @@ class BaseLlmServing(
     self.P("Model ran at {} tokens per second".format(num_tps))
 
     dct_result = {
-      LlmCT.PRED : yhat,
-      LlmCT.PRMP : prompt_lst,
-      LlmCT.TKNS : batch_tokens,
-      LlmCT.TPS  : num_tps,
-      # TODO: find a way to send the model metadata to the plugin, other than through the inferences.
-      'MODEL_NAME': self.cfg_model_name
+      LlmCT.PRED: yhat,
+      LlmCT.PRMP: prompt_lst,
+      LlmCT.TKNS: batch_tokens,
+      LlmCT.TPS: num_tps,
     }
     return dct_result
 
@@ -407,7 +424,9 @@ class BaseLlmServing(
         LlmCT.PRMP : prompts[i],
         LlmCT.TEXT : decoded,
         LlmCT.TKNS : tokens[i].tolist(),
-        LlmCT.TPS  : tps
+        LlmCT.TPS  : tps,
+        # TODO: find a way to send the model metadata to the plugin, other than through the inferences.
+        'MODEL_NAME': self.cfg_model_name
       }
       result.append(dct_result)
     return result
