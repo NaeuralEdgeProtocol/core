@@ -75,6 +75,8 @@ class MinioMonit01Plugin(BasePluginExecutor):
     self.__errors_during_iteration = 0
     self.__minio_idle_wait_time = self.cfg_minio_idle_seconds
     
+    self.__iter_start = self.time()
+    
     
     self.__default_host = self.cfg_minio_host
     self.__default_access_key = self.cfg_minio_access_key
@@ -253,8 +255,8 @@ class MinioMonit01Plugin(BasePluginExecutor):
     elapsed_time = self.time() - start_time + 1e-10
     if self.cfg_minio_debug_mode:
       if local_count > 0:
-        self.P("  Processed {} objects in {:.1f}s, {:.0f} files/s".format(
-          local_count, elapsed_time, local_count / elapsed_time)
+        self.P("  Processed {} objects in {:.1f}s, {:.0f} files/s (total time: {:.1f})".format(
+          local_count, elapsed_time, local_count / elapsed_time), self.time() - self.__iter_start,
         )
         n_o = self.__bucket_size[self.__current_bucket.name]['objects']
         cut = self.cfg_max_files_per_iter * 3
@@ -280,6 +282,8 @@ class MinioMonit01Plugin(BasePluginExecutor):
       if (self.time() - self.__idle_start) > self.__minio_idle_wait_time:
         self.__plugin_state = MINIO_STATES.IN_PROC
         self.__idle_start = None
+        self.__iter_start = self.time()
+        self.P("Restarting S3 full inspection iteration..")
       else:
         return payload
 
@@ -311,14 +315,16 @@ class MinioMonit01Plugin(BasePluginExecutor):
       
       if (self.time() - self.__last_minio_payload_time) > self.cfg_min_time_between_payloads:
         self.__last_minio_payload_time = self.time()
+        elapsed = self.time() - self.__iter_start
         msg = """Server size: 
         Total size: {:.1f} {} 
         Configured quota: {:.1f} {}
         Quota percentage: {:.1f} %
         Minio errors during iteration: {}
+        Time during analysis: {:.1f}s
         Alerter: {}""".format(
           converted_size, self.cfg_quota_unit, self.cfg_max_server_quota, self.cfg_quota_unit,
-          percentage_used * 100, self.__errors_during_iteration, 
+          percentage_used * 100, self.__errors_during_iteration, elapsed,
           self.get_alerter_status(),
         )
         color = 'r' if self.alerter_is_alert() else None
