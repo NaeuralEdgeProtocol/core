@@ -7,12 +7,12 @@ import torchvision as tv
 import json
 import cv2
 
-from core import Logger
+from naeural_core import Logger
 from decentra_vision.draw_utils import DrawUtils
-from core.local_libraries.nn.th.utils import th_resize_with_pad
+from naeural_core.local_libraries.nn.th.utils import th_resize_with_pad
 from plugins.serving.architectures.y5.general import scale_coords
 
-from core.xperimental.th_y8.utils import predict
+from naeural_core.xperimental.th_y8.utils import predict
 
 USE_LOCAL_MODELS = False
 MODELS_TORCHSCRIPT = [

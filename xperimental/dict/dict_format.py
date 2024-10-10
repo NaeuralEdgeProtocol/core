@@ -1,4 +1,4 @@
-from core import Logger
+from naeural_core import Logger
 import json
 
 if __name__ == '__main__':

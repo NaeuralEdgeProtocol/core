@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from decentra_vision.draw_utils import DrawUtils
-from core import Logger
+from naeural_core import Logger
 from decentrai_inference.graphs import EfficientDet0InferenceGraph, EfficientDet2InferenceGraph, EfficientDet2640x1132InferenceGraph
 
 FONT = cv2.FONT_HERSHEY_SIMPLEX

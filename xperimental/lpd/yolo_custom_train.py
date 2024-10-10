@@ -1,7 +1,7 @@
 from ultralytics import YOLO
-# from core.xperimental.torchscript.base_torch_scripter import BaseTorchScripter
-# from core import Logger
-from core.local_libraries.nn.th.utils import th_resize_with_pad
+# from naeural_core.xperimental.torchscript.base_torch_scripter import BaseTorchScripter
+# from naeural_core import Logger
+from naeural_core.local_libraries.nn.th.utils import th_resize_with_pad
 
 import cv2 as cv
 import yaml

@@ -3,7 +3,7 @@ import mmap
 import posix_ipc as pipc
 import cv2
 
-from core.xperimental.shm_config import SIZE_DEF, WIDTH_DEF, HEIGHT_DEF, CHANNELS_DEF, SHM_STREAMER_VAPOR, SHM_VAPOR_STREAMER
+from naeural_core.xperimental.shm_config import SIZE_DEF, WIDTH_DEF, HEIGHT_DEF, CHANNELS_DEF, SHM_STREAMER_VAPOR, SHM_VAPOR_STREAMER
 
 USE_DUMMY = False
 

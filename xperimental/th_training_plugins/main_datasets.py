@@ -1,5 +1,5 @@
-from core.core_logging import SBLogger
-from core.local_libraries.nn.th.training.data.simple_image_classifier import SimpleImageClassifierDataLoaderFactory
+from naeural_core.core_logging import SBLogger
+from naeural_core.local_libraries.nn.th.training.data.simple_image_classifier import SimpleImageClassifierDataLoaderFactory
 
 if __name__ == '__main__':
 

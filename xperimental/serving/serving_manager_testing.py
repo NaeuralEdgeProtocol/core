@@ -1,8 +1,8 @@
 import multiprocessing as mp
 
-from core import Logger
+from naeural_core import Logger
 
-from core.serving.serving_manager import ServingManager
+from naeural_core.serving.serving_manager import ServingManager
 
 if __name__ == '__main__':
   mp.set_start_method('spawn')

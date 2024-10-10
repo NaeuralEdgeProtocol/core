@@ -4,7 +4,7 @@ from time import time
 
 # local dependencies
 
-from core import Logger
+from naeural_core import Logger
 
 CONFIG_MINIO = {
     "ENDPOINT"   : 'MINIO_ENDPOINT',

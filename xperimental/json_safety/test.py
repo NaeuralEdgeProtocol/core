@@ -1,8 +1,8 @@
 import numpy as np
 from copy import deepcopy
 
-from core import Logger
-from core.bc import DefaultBlockEngine, BCct
+from naeural_core import Logger
+from naeural_core.bc import DefaultBlockEngine, BCct
 
 if __name__ == '__main__':
   

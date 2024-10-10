@@ -1,6 +1,6 @@
 import os
 
-from core import Logger
+from naeural_core import Logger
 from decentrai_inference.graphs import EffDet0InferenceGraph, EffDet3768x1358BS1InferenceGraph, \
   EffDet2768x1358BS1InferenceGraph, EffDet4InferenceGraph, EffDet5BS1InferenceGraph, EffDet7BS1InferenceGraph
 from decentra_vision.draw_utils import DrawUtils

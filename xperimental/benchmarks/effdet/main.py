@@ -3,9 +3,9 @@ import numpy as np
 import pandas as pd
 
 #local dependenciess
-from core import Logger
-from core.local_libraries.vision.benchmark.model_benchmarker import ModelBenchmarker
-# from core.local_libraries.nn.tf.utils import tfodapi2_ckpt_to_graph
+from naeural_core import Logger
+from naeural_core.local_libraries.vision.benchmark.model_benchmarker import ModelBenchmarker
+# from naeural_core.local_libraries.nn.tf.utils import tfodapi2_ckpt_to_graph
 
 if __name__ == '__main__':
   cfg_file = 'main_config.txt'

@@ -2,7 +2,7 @@
 import itertools
 
 #local dependencies
-from core import Logger
+from naeural_core import Logger
 
 CONFIG = {
     "CAP_RESOLUTION": 50,

@@ -1,7 +1,7 @@
 import json
 import numpy as np
 import paho.mqtt.client as mqtt
-from core import Logger
+from naeural_core import Logger
 from time import sleep
 
 DEVICE_ID = '1234'

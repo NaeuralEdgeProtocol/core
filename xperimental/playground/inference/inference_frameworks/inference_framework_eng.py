@@ -1,6 +1,6 @@
-from core import constants as ct
+from naeural_core import constants as ct
 
-from core import DecentrAIObject
+from naeural_core import DecentrAIObject
 from playground.inference.inference_frameworks.registered_frameworks import _DEFINED_FRAMEWORKS
 
 __MODULE__ = ct.INFERENCE

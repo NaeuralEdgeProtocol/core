@@ -3,8 +3,8 @@ import json
 
 from copy import deepcopy
 
-from core import Logger
-from core.bc import DefaultBlockEngine
+from naeural_core import Logger
+from naeural_core.bc import DefaultBlockEngine
 
 def diff(str1, str2):
   offset = 40

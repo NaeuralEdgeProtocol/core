@@ -1,4 +1,4 @@
-from core import DecentrAIObject
+from naeural_core import DecentrAIObject
 
 
 class _TestCommandsMixin:

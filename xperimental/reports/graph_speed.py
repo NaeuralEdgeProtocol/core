@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from core import Logger
+from naeural_core import Logger
 from decentrai_inference.graphs import EffDet2640x1132BS4InferenceGraph, EffDet2768x1358BS4InferenceGraph, EffDet3768x1358BS4InferenceGraph, EffDet5BS4InferenceGraph, EffDet7BS4InferenceGraph,\
   EffDet2640x1132BS1InferenceGraph, EffDet2768x1358BS1InferenceGraph, EffDet3768x1358BS1InferenceGraph, EffDet5BS1InferenceGraph, EffDet7BS1InferenceGraph
     

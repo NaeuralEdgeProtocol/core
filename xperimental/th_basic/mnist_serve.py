@@ -3,7 +3,7 @@ import os
 import torch as th
 import torchvision as tv
 
-from core import Logger
+from naeural_core import Logger
 
 
 

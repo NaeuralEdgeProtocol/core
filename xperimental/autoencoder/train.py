@@ -1,5 +1,5 @@
-from core.core_logging import SBLogger
-from core.local_libraries.nn.th.training.pipelines.autoencoder import AutoencoderTrainingPipeline
+from naeural_core.core_logging import SBLogger
+from naeural_core.local_libraries.nn.th.training.pipelines.autoencoder import AutoencoderTrainingPipeline
 
 if __name__ == '__main__':
   log = SBLogger()

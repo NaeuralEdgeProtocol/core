@@ -1,6 +1,6 @@
 
 if __name__ == '__main__':
-  from core import Logger
+  from naeural_core import Logger
 
   Logger.set_nice_prints()
   import pandas as pd
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     df_event[col] = df_event[col].map(lambda x: x.total_seconds())
   df_e = df_event.copy()
 
-  from core import Logger
+  from naeural_core import Logger
 
   Logger.set_nice_prints()
   import pandas as pd

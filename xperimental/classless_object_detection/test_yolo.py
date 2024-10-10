@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import os
 
-from core import Logger
+from naeural_core import Logger
 from decentra_vision.draw_utils import DrawUtils
 
 from plugins.serving.architectures.y5.general import (
@@ -12,7 +12,7 @@ from plugins.serving.architectures.y5.general import (
 
 # direct yolo tests
 
-from core.serving.serving_manager import get_raw_server
+from naeural_core.serving.serving_manager import get_raw_server
 
 
 def get_test_data(files, resize=None):

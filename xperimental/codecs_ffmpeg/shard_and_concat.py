@@ -2,10 +2,10 @@ import cv2 as cv
 import os
 import numpy as np
 import time
-from core.core_logging import SBLogger
-from core.local_libraries.vision.ffmpeg_utils import FFMPEGUtils
-from core.local_libraries.vision.ffmpeg_writer import FFmpegWriter
-from core.xperimental.video_checking.video_checking import get_rotate_code_from_orientation, correct_rotation
+from naeural_core.core_logging import SBLogger
+from naeural_core.local_libraries.vision.ffmpeg_utils import FFMPEGUtils
+from naeural_core.local_libraries.vision.ffmpeg_writer import FFmpegWriter
+from naeural_core.xperimental.video_checking.video_checking import get_rotate_code_from_orientation, correct_rotation
 
 
 def display_video(video_path, use_good_rotation=True, show_orientation=False, name='Video'):

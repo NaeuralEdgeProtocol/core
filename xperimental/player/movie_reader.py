@@ -1,8 +1,8 @@
 import cv2
 
 from collections import deque
-from core import DecentrAIObject
-from core import Logger
+from naeural_core import DecentrAIObject
+from naeural_core import Logger
 
 class SimpleMovieReader(DecentrAIObject):
   def __init__(self, path_file, **kwargs):

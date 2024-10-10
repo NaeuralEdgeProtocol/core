@@ -7,7 +7,7 @@ import numpy as np
 import torch as th
 import torchvision.transforms as T
 
-from core.local_libraries.nn.th.utils import th_resize_with_pad
+from naeural_core.local_libraries.nn.th.utils import th_resize_with_pad
 from plugins.serving.pipelines.data.lpl import read_labeling_xml
 
 

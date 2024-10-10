@@ -2,8 +2,8 @@ import numpy as np
 from decentrai_inference import constants as ct
 
 from enum import Enum
-from core import DecentrAIObject
-from core import Logger
+from naeural_core import DecentrAIObject
+from naeural_core import Logger
 from decentrai_inference.graphs import InferenceGraphsEnum
 
 __version__ = '1.0.1.0'

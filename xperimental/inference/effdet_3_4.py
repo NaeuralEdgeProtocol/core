@@ -4,7 +4,7 @@ import pandas as pd
 
 from tqdm import tqdm
 from time import time
-from core import Logger
+from naeural_core import Logger
 from decentra_vision.draw_utils import DrawUtils
 from decentrai_inference.graphs import EfficientDet0InferenceGraph, \
     EfficientDet3InferenceGraph, EfficientDet4InferenceGraph

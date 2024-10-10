@@ -30,10 +30,31 @@ These modules can be used as the core for implementing edge nodes within the Nae
 - **Interoperability**: Compatible with a variety of data sources and communication protocols.
 - **Ease of Use**: Provides low-code/no-code development capabilities for rapid pipeline creation.
 
-
 ### Contributing
 
 We welcome contributions from the community. Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to the project.
+
+### Installation
+
+To install the naeural-core package on systems without cuda capabilities, run
+
+```bash
+pip install naeural-core
+```
+
+To install the naeural-core package on systems with cuda capabilities, run
+
+```bash
+pip install naeural-core --extra-index-url https://download.pytorch.org/whl/cu121
+```
+
+You can change the cuda driver with the one you already have. (For cuda 11.7, use cu117)
+
+If the installation fails, try to run it again with the flags `--upgrade` and `--force-reinstall`
+
+```bash
+pip install naeural-core --upgrade --force-reinstall --extra-index-url https://download.pytorch.org/whl/cu121
+```
 
 ### License
 

@@ -8,8 +8,8 @@ import gc
 import numpy as np
 import abc
 
-from core.local_libraries.nn.th.utils import th_resize_with_pad
-from core.xperimental.tracing.base_scripter import BaseScripter
+from naeural_core.local_libraries.nn.th.utils import th_resize_with_pad
+from naeural_core.xperimental.tracing.base_scripter import BaseScripter
 from PyE2 import load_dotenv
 
 load_dotenv()
@@ -39,7 +39,7 @@ class BaseTensorRTScripter(BaseScripter):
     return
 
   def load(self, fn_path, device, batch_size, use_fp16):
-    from core.serving.base.backends.trt import TensorRTModel
+    from naeural_core.serving.base.backends.trt import TensorRTModel
     trt_model = TensorRTModel(self.log)
     trt_model.load_or_rebuild_model(fn_path, use_fp16, batch_size, device)
     config = trt_model._metadata[TensorRTModel.ONNX_METADATA_KEY]
@@ -47,8 +47,8 @@ class BaseTensorRTScripter(BaseScripter):
     return trt_model, config
 
   def convert(self, inputs, config, fn):
-    from core.serving.base.backends.trt import TensorRTModel
-    from core.xperimental.onnx.utils import create_from_torch
+    from naeural_core.serving.base.backends.trt import TensorRTModel
+    from naeural_core.xperimental.onnx.utils import create_from_torch
     import copy
     print('saving to {}'.format(fn))
     device = th.device('cuda')

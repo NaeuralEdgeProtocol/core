@@ -1,6 +1,6 @@
 import numpy as np
 
-from core import Logger
+from naeural_core import Logger
 
 if __name__ == '__main__':
   import os

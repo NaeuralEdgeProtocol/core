@@ -1,7 +1,7 @@
 import random
 import codecs
 
-from core import Logger
+from naeural_core import Logger
 from time import time
 
 

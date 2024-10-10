@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from core import Logger
+from naeural_core import Logger
 
 def load_payloads(log, path_folder):
   l = filter(lambda x: x.endswith('.txt'), os.listdir(path_folder))

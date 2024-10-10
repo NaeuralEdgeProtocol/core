@@ -5,9 +5,9 @@ from copy import deepcopy
 from collections import OrderedDict
 
 #local dependencies
-from core import DecentrAIObject
+from naeural_core import DecentrAIObject
 from decentrai_inference import constants as ct
-from core.serving.serving_manager import ServingManager
+from naeural_core.serving.serving_manager import ServingManager
 
 __version__ = '1.0.4.2'
 

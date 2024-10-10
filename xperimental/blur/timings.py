@@ -3,7 +3,7 @@ import pandas as pd
 import random
 from datetime import datetime, timedelta
 
-from core import Logger
+from naeural_core import Logger
 
 def get_timings(sz, fs, nw):
   dct = dct_timings[sz.upper()][fs.lower()][nw.lower()]

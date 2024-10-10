@@ -1,5 +1,5 @@
 #local dependenciess
-from core.local_libraries.vision.benchmark.plugins.pb_model import PbModel
+from naeural_core.local_libraries.vision.benchmark.plugins.pb_model import PbModel
 
 _CONFIG_ED4_None_BS1 = {
     'GRAPH': 'effdet4_None/efficientdetd4_b1_None/efficientdet-d4_frozen.pb',

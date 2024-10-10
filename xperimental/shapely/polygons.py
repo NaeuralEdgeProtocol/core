@@ -3,7 +3,7 @@ import numpy as np
 
 from decentra_vision.draw_utils import DrawUtils
 from shapely.geometry import Polygon, LineString
-from core import Logger
+from naeural_core import Logger
 
 if __name__ == '__main__':
   cfg_file = 'main_config.txt'

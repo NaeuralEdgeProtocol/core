@@ -1,7 +1,7 @@
 import multiprocessing
 import numpy as np
-from core.utils.system_shared_memory import NumpySharedMemory
-from core import Logger
+from naeural_core.utils.system_shared_memory import NumpySharedMemory
+from naeural_core import Logger
 
 
 class Slave(multiprocessing.Process):

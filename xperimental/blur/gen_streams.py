@@ -1,7 +1,7 @@
 import os
 import random
 
-from core import Logger
+from naeural_core import Logger
 
 def get_template_stream_uninode(cfg_name, cfg_url, cfg_use_local_system):
   return {

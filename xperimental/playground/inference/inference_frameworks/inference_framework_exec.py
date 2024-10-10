@@ -1,4 +1,4 @@
-from core import DecentrAIObject
+from naeural_core import DecentrAIObject
 
 __version__ = '1.0.0.0'
 

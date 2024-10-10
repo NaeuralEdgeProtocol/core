@@ -4,9 +4,9 @@ import pandas as pd
 import tensorflow.compat.v1 as tf
 
 from decentrai_inference import constants as ct
-from core import DecentrAIObject
-from core import Logger
-from core.local_libraries.nn.tf import utils as TFUtils
+from naeural_core import DecentrAIObject
+from naeural_core import Logger
+from naeural_core.local_libraries.nn.tf import utils as TFUtils
 
 from decentrai_inference.graphs import EffDetInferenceGraph, TFOdapiInferenceGraph, \
   TFOdapi1InferenceGraph, TFOdapi2InferenceGraph

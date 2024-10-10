@@ -1,4 +1,4 @@
-from core import Logger
+from naeural_core import Logger
 from threading import Thread
 from time import time
 import os

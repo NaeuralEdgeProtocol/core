@@ -8,7 +8,7 @@ from tqdm import tqdm
 from datetime import datetime
 
 # local dependencies
-from core import Logger
+from naeural_core import Logger
 from decentra_vision.draw_utils import DrawUtils
 from base.app_setup import ApplicationSetup
 from decentrai_inference.graphs_benchmark import EFFDET2_640x1132_BS4, \

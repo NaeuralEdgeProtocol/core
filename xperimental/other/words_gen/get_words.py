@@ -1,7 +1,7 @@
 import gensim
 import gensim.downloader as api
 
-from core import Logger
+from naeural_core import Logger
 
 if __name__ == '__main__':
   l = Logger('WORDS', base_folder='.', app_folder='_local_cache')

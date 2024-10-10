@@ -3,12 +3,12 @@ from time import sleep
 import cv2
 import numpy as np
 
-from core.local_libraries.vision import FFmpegWriter
+from naeural_core.local_libraries.vision import FFmpegWriter
 
 if __name__ == '__main__':
 
   
-  from core import Logger
+  from naeural_core import Logger
   
   l = Logger('h264', base_folder='.', app_folder='_local_cache')
   

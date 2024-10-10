@@ -1,11 +1,11 @@
 import cv2 as cv
 import os
 import numpy as np
-from core.core_logging import SBLogger
-from core.local_libraries.vision.ffmpeg_utils import FFMPEGUtils
-from core.local_libraries.vision.ffmpeg_writer import FFmpegWriter
+from naeural_core.core_logging import SBLogger
+from naeural_core.local_libraries.vision.ffmpeg_utils import FFMPEGUtils
+from naeural_core.local_libraries.vision.ffmpeg_writer import FFmpegWriter
 from decentra_vision.draw_utils import DrawUtils
-from core.xperimental.video_checking.video_checking import get_rotate_code_from_orientation, correct_rotation
+from naeural_core.xperimental.video_checking.video_checking import get_rotate_code_from_orientation, correct_rotation
 from threading import Thread
 from functools import partial
 import random

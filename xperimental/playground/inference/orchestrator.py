@@ -9,8 +9,8 @@
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-from core import DecentrAIObject
-from core import Logger
+from naeural_core import DecentrAIObject
+from naeural_core import Logger
 from playground.inference.inference_frameworks.inference_framework_eng import InferenceFrameworkEngine
 from playground.inference.inference_models.inference_model_eng import InferenceModelEngine
 from playground.inference.inference_jobs.inference_job_eng import InferenceJobEngine

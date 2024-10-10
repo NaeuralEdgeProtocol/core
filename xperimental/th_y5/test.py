@@ -129,7 +129,7 @@
 
 """
 from decentra_vision.draw_utils import DrawUtils
-from core import Logger
+from naeural_core import Logger
 import numpy as np
 import torch as th
 import cv2

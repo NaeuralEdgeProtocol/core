@@ -3,7 +3,7 @@ import cv2
 
 from tqdm import tqdm
 from decentra_vision.draw_utils import DrawUtils
-from core import Logger
+from naeural_core import Logger
 from decentrai_inference.graphs import LPDetectionInferenceGraph, LPDv2InferenceGraph
 
 FONT = cv2.FONT_HERSHEY_SIMPLEX

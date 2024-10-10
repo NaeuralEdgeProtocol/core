@@ -13,9 +13,9 @@ import time
 
 from uuid import uuid4
 
-from core.xperimental.manager_shm.slave import Slave1, Slave2  # Ensure this import matches your file organization
-from core.utils.system_shared_memory import NumpySharedMemory
-from core import Logger
+from naeural_core.xperimental.manager_shm.slave import Slave1, Slave2  # Ensure this import matches your file organization
+from naeural_core.utils.system_shared_memory import NumpySharedMemory
+from naeural_core import Logger
 from math import prod
 
 

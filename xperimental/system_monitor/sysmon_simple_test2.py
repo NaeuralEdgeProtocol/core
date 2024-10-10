@@ -1,9 +1,9 @@
 import threading
 import psutil
 from time import sleep
-from core import Logger
+from naeural_core import Logger
 
-from core.utils.sys_mon import SystemMonitor
+from naeural_core.utils.sys_mon import SystemMonitor
                   
 
 if __name__ == '__main__':

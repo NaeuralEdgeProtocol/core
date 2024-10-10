@@ -7,7 +7,7 @@ import shutil
 import gc
 import torchvision
 
-from core import Logger
+from naeural_core import Logger
 
 def yolo_models(log):
   model_cfgs = {

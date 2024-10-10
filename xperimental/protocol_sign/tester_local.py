@@ -4,8 +4,8 @@ import os
 
 from copy import deepcopy
 
-from core import Logger
-from core.bc import DefaultBlockEngine, BCct
+from naeural_core import Logger
+from naeural_core.bc import DefaultBlockEngine, BCct
 
 def diff(str1, str2):
   offset = 40

@@ -14,9 +14,9 @@ from time import time
 from datetime import datetime
 from collections import OrderedDict, defaultdict
 from decentrai_inference import constants as ct
-from core import DecentrAIObject
-from core import Logger
-from core.local_libraries.nn.tf import utils as TFUtils
+from naeural_core import DecentrAIObject
+from naeural_core import Logger
+from naeural_core.local_libraries.nn.tf import utils as TFUtils
 
 __version__ = '1.3.8.0'
 

@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 
 from tqdm import tqdm
-from core import Logger
+from naeural_core import Logger
 
 if __name__ == '__main__':
   cfg_file = 'main_config.txt'

@@ -17,7 +17,7 @@ if __name__ == '__main__':
   frame_count = 0
   CAP_RESOLUTION = 25
 
-  from core import Logger
+  from naeural_core import Logger
   log = Logger(lib_name='DCTR', base_folder='.', app_folder='_local_cache', TF_KERAS=False)
 
 

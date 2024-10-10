@@ -9,7 +9,7 @@ import numpy as np
 import torch as th
 import torchvision as tv
 
-from core import Logger
+from naeural_core import Logger
 
   
 

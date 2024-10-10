@@ -2,7 +2,7 @@ import torch as th
 import cv2
 from collections import OrderedDict
 
-from core import Logger
+from naeural_core import Logger
 
 if __name__ == '__main__':
   

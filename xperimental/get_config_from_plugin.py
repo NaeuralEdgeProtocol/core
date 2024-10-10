@@ -1,4 +1,4 @@
-from core.utils.config_utils import get_config_from_code
+from naeural_core.utils.config_utils import get_config_from_code
 
 _CONFIG  = {
   "TEST" : 1,

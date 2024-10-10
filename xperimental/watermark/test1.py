@@ -1,6 +1,6 @@
 import cv2
-from core.local_libraries.vision.watermark import apply_watermark, apply_watermark_from_file, prepare_watermark
-from core import Logger
+from naeural_core.local_libraries.vision.watermark import apply_watermark, apply_watermark_from_file, prepare_watermark
+from naeural_core import Logger
 
 if __name__ == '__main__':
   l = Logger('WMRK', base_folder='.', app_folder='_local_cache')

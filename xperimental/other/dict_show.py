@@ -1,4 +1,4 @@
-from core import Logger
+from naeural_core import Logger
 
 if __name__ == '__main__':
   d = {'STREAM_NAME': 'TS_REST_AND_OTHER',

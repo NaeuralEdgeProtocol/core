@@ -13,9 +13,9 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtWidgets import QDialog
 from decentra_vision.draw_utils import DrawUtils
-from core.business.utils import intersect_box_irregular_target
-from core.xperimental.player.movie_reader import SimpleMovieReader
-from core.xperimental.player.selected_zones import SelectedZones
+from naeural_core.business.utils import intersect_box_irregular_target
+from naeural_core.xperimental.player.movie_reader import SimpleMovieReader
+from naeural_core.xperimental.player.selected_zones import SelectedZones
 
 
 class PlayWidget(QDialog):

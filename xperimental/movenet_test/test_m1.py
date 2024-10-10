@@ -4,7 +4,7 @@ import os
 import numpy as np
 import traceback
 
-from core import Logger
+from naeural_core import Logger
 
 POSE_POINTS = {
   'nose': 0,

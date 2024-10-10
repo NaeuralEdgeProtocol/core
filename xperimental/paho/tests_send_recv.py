@@ -1,7 +1,7 @@
 import json
 from tqdm import tqdm
 from time import sleep
-from core import Logger
+from naeural_core import Logger
 from datetime import datetime
 from comm.comm_plugins.paho_comm import PahoCommThread
 

@@ -1,6 +1,6 @@
 import numpy as np
 import torch as th
-from core.local_libraries.nn.th.utils import th_resize_with_pad
+from naeural_core.local_libraries.nn.th.utils import th_resize_with_pad
 
 if __name__ == "__main__":
     img1 = np.zeros((600,400,3), dtype=np.uint8)

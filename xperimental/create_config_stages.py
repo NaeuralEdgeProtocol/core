@@ -1,6 +1,6 @@
 import os
 
-from core import Logger
+from naeural_core import Logger
 from collections import OrderedDict
 
 NAMES = {

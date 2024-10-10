@@ -1,6 +1,6 @@
 import os, platform, subprocess, re
 
-from core import Logger
+from naeural_core import Logger
 
 def get_processor_platform():
     if platform.system() == "Windows":

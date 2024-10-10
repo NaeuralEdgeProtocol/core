@@ -5,7 +5,7 @@ import numpy as np
 
 from tqdm import tqdm
 from decentra_vision.draw_utils import DrawUtils
-from core import Logger
+from naeural_core import Logger
 from decentrai_inference.graphs import LPRInferenceGraph
 
 lst_lpr_chars = list(range(10)) + list(string.ascii_uppercase) + [' ']

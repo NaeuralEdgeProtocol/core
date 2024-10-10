@@ -1,4 +1,4 @@
-from core import Logger
+from naeural_core import Logger
 from time import sleep
 
 if __name__ == '__main__':

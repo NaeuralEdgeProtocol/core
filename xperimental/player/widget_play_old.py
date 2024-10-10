@@ -12,7 +12,7 @@ from PyQt5 import QtGui
 from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtWidgets import QDialog
 from decentra_vision.draw_utils import DrawUtils
-from core.business.utils import intersect_box_irregular_target
+from naeural_core.business.utils import intersect_box_irregular_target
 
 
 class PlayWidget(QDialog):

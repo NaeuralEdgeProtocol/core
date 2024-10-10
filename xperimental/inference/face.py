@@ -4,7 +4,7 @@ import cv2
 import tensorflow.compat.v1 as tf
 from tqdm import tqdm
 from decentra_vision.draw_utils import DrawUtils
-from core import Logger
+from naeural_core import Logger
 from decentrai_inference.graphs import FaceInferenceGraph
 
 FONT = cv2.FONT_HERSHEY_SIMPLEX

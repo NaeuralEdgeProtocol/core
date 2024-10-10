@@ -9,9 +9,9 @@ from datetime import datetime
 from collections import OrderedDict
 
 #local dependencies
-from core import constants as ct
+from naeural_core import constants as ct
 
-from core import DecentrAIObject
+from naeural_core import DecentrAIObject
 from decentrai_inference.engine import InferenceEngine
 from decentrai_inference.graphs import InferenceGraphsEnum
 

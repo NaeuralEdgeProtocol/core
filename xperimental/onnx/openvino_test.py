@@ -1,8 +1,8 @@
-from core.serving.base.backends.ovino import OpenVINOModel
-from core.xperimental.onnx.utils import create_from_torch
-from core.xperimental.th_y8.generate import get_test_images
-from core.xperimental.th_y8.utils import Y8, BackendType
-from core.local_libraries.nn.th.utils import th_resize_with_pad
+from naeural_core.serving.base.backends.ovino import OpenVINOModel
+from naeural_core.xperimental.onnx.utils import create_from_torch
+from naeural_core.xperimental.th_y8.generate import get_test_images
+from naeural_core.xperimental.th_y8.utils import Y8, BackendType
+from naeural_core.local_libraries.nn.th.utils import th_resize_with_pad
 
 import torch as th
 from ultralytics import YOLO

@@ -21,10 +21,10 @@ import numpy as np
 import torch as th
 import torchvision as tv
 
-from core import Logger
-from core.local_libraries.nn.th.trainer import ModelTrainer
-from core.local_libraries.nn.th.layers import InputPlaceholder
-from core.local_libraries.nn.th.utils import conv_output_shape
+from naeural_core import Logger
+from naeural_core.local_libraries.nn.th.trainer import ModelTrainer
+from naeural_core.local_libraries.nn.th.layers import InputPlaceholder
+from naeural_core.local_libraries.nn.th.utils import conv_output_shape
 
   
 

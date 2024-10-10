@@ -1,6 +1,6 @@
 import numpy as np
 
-from core.utils.basic_anomaly_model import BasicAnomalyModel
+from naeural_core.utils.basic_anomaly_model import BasicAnomalyModel
 
 ANOMALY_THRESHOLD = 0.02
 

@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import seaborn as sns
 
-from core import Logger
+from naeural_core import Logger
 from decentra_vision.draw_utils import DrawUtils
 
 if __name__ =='__main__':

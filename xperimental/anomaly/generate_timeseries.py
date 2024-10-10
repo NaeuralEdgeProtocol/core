@@ -2,7 +2,7 @@ import pandas as pd
 import datetime
 import numpy as np
 
-from core.core_logging import SBLogger
+from naeural_core.core_logging import SBLogger
 
 
 if __name__ == "__main__":

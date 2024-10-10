@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from core import DecentrAIObject
+from naeural_core import DecentrAIObject
 
 __VER__ = '1.0.0.0'
 

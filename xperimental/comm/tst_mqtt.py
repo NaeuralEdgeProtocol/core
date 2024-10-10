@@ -1,5 +1,5 @@
-from core.comm import MQTTWrapper
-from core.core_logging import SBLogger
+from naeural_core.comm import MQTTWrapper
+from naeural_core.core_logging import SBLogger
 from collections import deque
 from time import sleep
 

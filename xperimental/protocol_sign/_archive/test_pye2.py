@@ -1,8 +1,8 @@
 import os
 import numpy as np
-from core.bc import DefaultBlockEngine, BCct
+from naeural_core.bc import DefaultBlockEngine, BCct
 import json
-from core import Logger
+from naeural_core import Logger
 
 if __name__ == '__main__':
   l = Logger('BC', base_folder='.', app_folder='_local_cache')

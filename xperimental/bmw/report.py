@@ -12,9 +12,9 @@ from shutil import move, copyfile
 # local dependencies
 import decentra_vision.vision.constants as draw_ct
 
-from core import DecentrAIObject
-from core import Logger
-from core.xperimental.bmw.utils import connect_postgresql, select_data_postgresql, connect_sqlserver, select_data_sqlserver
+from naeural_core import DecentrAIObject
+from naeural_core import Logger
+from naeural_core.xperimental.bmw.utils import connect_postgresql, select_data_postgresql, connect_sqlserver, select_data_sqlserver
 from decentra_vision.draw_utils import DrawUtils, DEFAULT_FONT, DEFAULT_FONT_SIZE
 
 

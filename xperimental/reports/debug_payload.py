@@ -12,7 +12,7 @@ from psycopg2.extras import RealDictCursor
 # local dependencies
 import decentra_vision.vision.constants as draw_ct
 
-from core import Logger
+from naeural_core import Logger
 from decentra_vision.draw_utils import DrawUtils, DEFAULT_FONT, DEFAULT_FONT_SIZE
 
 

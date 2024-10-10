@@ -1,7 +1,7 @@
 import cv2
 
 
-from core.utils.basic_qr_reader import read_qr
+from naeural_core.utils.basic_qr_reader import read_qr
   
 
 if __name__ == '__main__':

@@ -9,7 +9,7 @@ from psycopg2.extras import RealDictCursor
   
 #local dependencies
 
-from core import Logger
+from naeural_core import Logger
 
 
 def connect_db(log, db_config):

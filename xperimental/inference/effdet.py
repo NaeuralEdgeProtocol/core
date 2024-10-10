@@ -2,7 +2,7 @@ import os
 import cv2
 
 from decentra_vision.draw_utils import DrawUtils
-from core import Logger
+from naeural_core import Logger
 import tensorflow.compat.v1 as tf
 from decentrai_inference.graphs import EfficientDet0InferenceGraph, YoloInferenceGraph
 

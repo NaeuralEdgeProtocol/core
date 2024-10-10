@@ -1,6 +1,6 @@
-from core.local_libraries import _ConfigHandlerMixin
-from core import DecentrAIObject
-from core import Logger
+from naeural_core.local_libraries import _ConfigHandlerMixin
+from naeural_core import DecentrAIObject
+from naeural_core import Logger
 
 
 _CONFIG1 = {

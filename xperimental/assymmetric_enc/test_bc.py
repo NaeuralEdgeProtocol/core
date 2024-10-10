@@ -3,8 +3,8 @@
 """
 import json
 
-from core.bc import DefaultBlockEngine
-from core import Logger
+from naeural_core.bc import DefaultBlockEngine
+from naeural_core import Logger
 
 
 if __name__ == '__main__':

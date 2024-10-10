@@ -87,8 +87,8 @@ SIGNATURES_X_ZONES = {
 
 
 if __name__ == '__main__':  
-  from core.xperimental.central_data.generator_v1 import DataGenerator as DataGeneratorV1, data_worker, COLUMNS
-  from core.xperimental.central_data.generator_v2 import DataGenerator as DataGeneratorV2
+  from naeural_core.xperimental.central_data.generator_v1 import DataGenerator as DataGeneratorV1, data_worker, COLUMNS
+  from naeural_core.xperimental.central_data.generator_v2 import DataGenerator as DataGeneratorV2
   
   pd.set_option('display.max_rows', 500)
   

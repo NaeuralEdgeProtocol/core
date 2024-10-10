@@ -4,9 +4,9 @@ import sys
 from PyQt5.QtWidgets import QApplication
 
 #local dependencies
-from core import Logger 
+from naeural_core import Logger 
 from xperimental.player.widget_play import PlayWidget
-from core.serving.serving_manager import ServingManager
+from naeural_core.serving.serving_manager import ServingManager
 
 
 ####USAGE

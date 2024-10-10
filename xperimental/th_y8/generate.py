@@ -63,16 +63,16 @@ try:
 except:
   print("WARNING: Only TESTS and GENERATE_FULL will work !", flush=True)
 
-from core import Logger
+from naeural_core import Logger
 from decentra_vision.draw_utils import DrawUtils
-from core.local_libraries.nn.th.utils import th_resize_with_pad
+from naeural_core.local_libraries.nn.th.utils import th_resize_with_pad
 from plugins.serving.architectures.y5.general import scale_coords
 
-from core.xperimental.th_y8.utils import predict
-from core.xperimental.th_y8.utils import Y5, Y8, BackendType
+from naeural_core.xperimental.th_y8.utils import predict
+from naeural_core.xperimental.th_y8.utils import Y5, Y8, BackendType
   
-from core.xperimental.onnx.utils import create_from_torch
-from core.xperimental.th_y8.y_generate import yolo_models
+from naeural_core.xperimental.onnx.utils import create_from_torch
+from naeural_core.xperimental.th_y8.y_generate import yolo_models
 
 def get_test_images():
   folder = os.path.split(__file__)[0]
@@ -121,7 +121,7 @@ def load_ths(path, log, dev, half=None, max_batch_size=None):
   return loaded_model, config
 
 def load_trt(path, log, dev, half=None, max_batch_size=None):
-  from core.serving.base.backends.trt import TensorRTModel
+  from naeural_core.serving.base.backends.trt import TensorRTModel
   loaded_model = TensorRTModel(log=log)
   if half is None and max_batch_size is None:
     engine_p, config_p = TensorRTModel._get_engine_and_config_path(path, half, max_batch_size)
@@ -148,7 +148,7 @@ def load_trt(path, log, dev, half=None, max_batch_size=None):
   return loaded_model, config
 
 def load_onnx(path, log, dev, half=None, max_batch_size=None):
-  from core.serving.base.backends.onnx import ONNXModel
+  from naeural_core.serving.base.backends.onnx import ONNXModel
   if max_batch_size is None:
     max_batch_size = 64
   loaded_model = ONNXModel()
@@ -506,7 +506,7 @@ if __name__ == "__main__":
         traced_model.save(fn, _extra_files=extra_files)
       elif export_type == 'trt' or export_type == 'onnx':
         # This should be irrelevant. Left in case of error at testing
-        # from core.serving.base.backends.trt import TensorRTModel
+        # from naeural_core.serving.base.backends.trt import TensorRTModel
         if export_type == 'trt':
           log.P("  Exporting to ONNX for TensorRT...")
           log.P("  Exporting with config {}".format(config))
