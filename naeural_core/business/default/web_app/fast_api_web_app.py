@@ -125,7 +125,7 @@ class FastApiWebAppPlugin(BasePlugin):
         self.P("Skipping `main.py` rendering, package 'naeural_core' not found.", color='r')
         self.failed = True
         return
-      template_dir = self.os_path.join(package_base_path, 'business', 'base', 'uvicorn_templates')
+      template_dir = self.os_path.join(package_base_path, 'naeural_core', 'business', 'base', 'uvicorn_templates')
       app_template = self.os_path.join(template_dir, f'{self.cfg_template}.jinja')
       # env.get_template expects forward slashes, even on Windows.
       app_template = app_template.replace(os.sep, '/')
