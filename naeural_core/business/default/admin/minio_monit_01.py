@@ -256,7 +256,7 @@ class MinioMonit01Plugin(BasePluginExecutor):
     if self.cfg_minio_debug_mode:
       if local_count > 0:
         self.P("  Processed {} objects in {:.1f}s, {:.0f} files/s (total time: {:.1f})".format(
-          local_count, elapsed_time, local_count / elapsed_time), self.time() - self.__iter_start,
+          local_count, elapsed_time, local_count / elapsed_time, self.time() - self.__iter_start,) 
         )
         n_o = self.__bucket_size[self.__current_bucket.name]['objects']
         cut = self.cfg_max_files_per_iter * 3
