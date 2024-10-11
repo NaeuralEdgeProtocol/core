@@ -1,3 +1,4 @@
+import importlib
 import os
 
 from jinja2 import Environment, FileSystemLoader
@@ -64,6 +65,28 @@ class FastApiWebAppPlugin(BasePlugin):
   def get_web_server_path(self):
     return self.script_temp_dir
 
+  def get_package_base_path(self, package_name):
+    """
+    Return the file path of an installed package parent directory.
+    This method was copied from the _PluginsManagerMixin class from PyE2 SDK.
+    
+    Parameters
+    ----------
+    package_name : str
+        The name of the installed package.
+        
+    Returns
+    -------
+    str
+        The path to the package parent.
+    """
+    spec = importlib.util.find_spec(package_name)
+    if spec is not None and spec.submodule_search_locations:
+      return os.path.dirname(spec.submodule_search_locations[0])
+    else:
+      self.P("Package '{}' not found.".format(package_name), color='r')
+    return None
+
   def initialize_assets(self, src_dir, dst_dir, jinja_args):
     """
     Initialize and copy fastapi assets, expanding any jinja templates.
@@ -97,7 +120,12 @@ class FastApiWebAppPlugin(BasePlugin):
 
     if self.cfg_template is not None:
       # Finally render main.py
-      template_dir = self.os_path.join('core', 'business', 'base', 'uvicorn_templates')
+      package_base_path = self.get_package_base_path('naeural_core')
+      if package_base_path is None:
+        self.P("Skipping `main.py` rendering, package 'naeural_core' not found.", color='r')
+        self.failed = True
+        return
+      template_dir = self.os_path.join(package_base_path, 'business', 'base', 'uvicorn_templates')
       app_template = self.os_path.join(template_dir, f'{self.cfg_template}.jinja')
       # env.get_template expects forward slashes, even on Windows.
       app_template = app_template.replace(os.sep, '/')
