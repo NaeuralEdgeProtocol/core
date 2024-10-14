@@ -141,6 +141,15 @@ class BaseLlmServing(
     super(BaseLlmServing, self).__init__(**kwargs)
     return
 
+  def shorten_str(self, s, max_len=32):
+    if isinstance(s, str):
+      return s[:max_len] + '...' if len(s) > max_len else s
+    if isinstance(s, list):
+      return [self.shorten_str(x, max_len) for x in s]
+    if isinstance(s, dict):
+      return {k: self.shorten_str(v, max_len) for k, v in s.items()}
+    return s
+
   @property
   def th(self):
     """
@@ -303,7 +312,7 @@ class BaseLlmServing(
     lst_inputs = inputs.get('DATA', [])
     serving_params = inputs.get('SERVING_PARAMS', [])
     if True and len(serving_params) > 0:
-      self.P("Received full inputs:\n{}".format(self.json_dumps(inputs)))
+      self.P("Received full inputs:\n{}".format(self.json_dumps(self.shorten_str(inputs))))
       self.P("Detected 'SERVING_PARAMS': {}".format(serving_params))
     #endif debug
     tokens_lst = []
@@ -312,7 +321,7 @@ class BaseLlmServing(
 
     for i, inp in enumerate(lst_inputs):
       if not isinstance(inp, dict):
-        msg = "Each input must be a dict. Received {}: {}".format(type(inp), inputs)
+        msg = "Each input must be a dict. Received {}: {}".format(type(inp), self.shorten_str(inputs))
         raise ValueError(msg)
       predict_kwargs = serving_params[i] if i < len(serving_params) else {}
       request = inp.get(LlmCT.REQ, None)
@@ -347,8 +356,8 @@ class BaseLlmServing(
       batch_tokens[i,:toks.shape[1]] = toks
       attn_mask[i,:toks.shape[1]] = 1
 
-    self.P("Generated tokens batch: {}".format(batch_tokens))
-    self.P("Found attention mask: {}".format(attn_mask))
+    self.P(f"Generated tokens batch of shape {batch_tokens.shape}")
+    self.P(f"Found attention mask of shape {attn_mask}")
     return [batch_tokens, attn_mask, predict_kwargs_lst, prompt_lst]
 
 
@@ -364,7 +373,7 @@ class BaseLlmServing(
     # using the greedy strategy.
 
     model_args = {
-      'attention_mask' : attn_mask,
+      'attention_mask': attn_mask,
     }
 
     self.P("Running with repetition penalty {}".format(self.cfg_repetition_penalty))
@@ -416,8 +425,7 @@ class BaseLlmServing(
       skip_special_tokens=True
     )
 
-    self.P("Found batch text prediction {}".format(text_lst))
-
+    self.P(f"Found batch text prediction for {len(text_lst)} texts:\n{self.shorten_str(text_lst)}")
     for i, decoded in enumerate(text_lst):
       dct_result = {
         LlmCT.PRED : yhat[i].tolist(),
