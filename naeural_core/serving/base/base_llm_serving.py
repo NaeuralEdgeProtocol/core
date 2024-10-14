@@ -357,7 +357,7 @@ class BaseLlmServing(
       attn_mask[i,:toks.shape[1]] = 1
 
     self.P(f"Generated tokens batch of shape {batch_tokens.shape}")
-    self.P(f"Found attention mask of shape {attn_mask}")
+    self.P(f"Found attention mask of shape {attn_mask.shape}")
     return [batch_tokens, attn_mask, predict_kwargs_lst, prompt_lst]
 
 
