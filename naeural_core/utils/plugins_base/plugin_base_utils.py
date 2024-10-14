@@ -1386,6 +1386,25 @@ class _UtilsBaseMixin(
 
     return entropy
 
+  def shorten_str(self, s, max_len=32):
+    """
+    Shortens a string to a given max length.
+    Parameters
+    ----------
+    s : str | list | dict
+    max_len : int, optional
+
+    Returns
+    -------
+    str | list | dict : the shortened string
+    """
+    if isinstance(s, str):
+      return s[:max_len] + '...' if len(s) > max_len else s
+    if isinstance(s, list):
+      return [self.shorten_str(x, max_len) for x in s]
+    if isinstance(s, dict):
+      return {k: self.shorten_str(v, max_len) for k, v in s.items()}
+    return s
 
   def normalize_text(self, text):
     """

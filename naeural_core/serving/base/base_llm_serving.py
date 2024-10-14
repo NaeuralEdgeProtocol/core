@@ -141,15 +141,6 @@ class BaseLlmServing(
     super(BaseLlmServing, self).__init__(**kwargs)
     return
 
-  def shorten_str(self, s, max_len=32):
-    if isinstance(s, str):
-      return s[:max_len] + '...' if len(s) > max_len else s
-    if isinstance(s, list):
-      return [self.shorten_str(x, max_len) for x in s]
-    if isinstance(s, dict):
-      return {k: self.shorten_str(v, max_len) for k, v in s.items()}
-    return s
-
   @property
   def th(self):
     """
