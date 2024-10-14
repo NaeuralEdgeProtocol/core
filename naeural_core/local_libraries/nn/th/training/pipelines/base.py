@@ -12,7 +12,7 @@ from naeural_core import DecentrAIObject
 from naeural_core import Logger
 from naeural_core.local_libraries.nn.th.image_dataset_stage_preprocesser import preprocess_to_str
 # TODO !!!! move this to non-experimental location
-from naeural_core.xperimental.torchscript.base_torch_scripter import BaseTorchScripter
+from naeural_core.utils.tracing.base_torch_scripter import BaseTorchScripter
 from naeural_core.local_libraries.nn.th.trainer import ModelTrainer
 from PyE2 import _PluginsManagerMixin
 from naeural_core import constants as ct
