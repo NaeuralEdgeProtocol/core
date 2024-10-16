@@ -3,12 +3,12 @@ import os
 import torch as th
 
 from naeural_core.serving.base.backends.onnx import ONNXModel
-from naeural_core.xperimental.onnx.utils import create_from_torch
+from naeural_core.utils.tracing.onnx.utils import create_from_torch
 
 
 if __name__ == '__main__':
   from ultralytics import YOLO
-  from naeural_core.xperimental.th_y8.generate import get_test_images
+  from xperimental.th_y8.generate import get_test_images
   from naeural_core.local_libraries.nn.th.utils import th_resize_with_pad
 
   device = th.device('cpu')
@@ -46,7 +46,7 @@ if __name__ == '__main__':
   print(o2.shape)
   print(o3.shape)
 
-  from naeural_core.xperimental.th_y8.utils import Y8, BackendType
+  from xperimental.th_y8.utils import Y8, BackendType
   model = YOLO('yolov8n.pt').model
   config = {
     'foo' : 'bar'

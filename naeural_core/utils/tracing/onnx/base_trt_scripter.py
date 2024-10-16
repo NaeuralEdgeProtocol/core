@@ -9,7 +9,7 @@ import numpy as np
 import abc
 
 from naeural_core.local_libraries.nn.th.utils import th_resize_with_pad
-from naeural_core.xperimental.tracing.base_scripter import BaseScripter
+from naeural_core.utils.tracing.base_scripter import BaseScripter
 from PyE2 import load_dotenv
 
 load_dotenv()
@@ -48,7 +48,7 @@ class BaseTensorRTScripter(BaseScripter):
 
   def convert(self, inputs, config, fn):
     from naeural_core.serving.base.backends.trt import TensorRTModel
-    from naeural_core.xperimental.onnx.utils import create_from_torch
+    from naeural_core.utils.tracing.onnx.utils import create_from_torch
     import copy
     print('saving to {}'.format(fn))
     device = th.device('cuda')
