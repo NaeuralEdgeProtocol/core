@@ -15,6 +15,8 @@ _CONFIG = {
 
 
 class NaeuralFastApiWebApp(BasePlugin):
+  _CONFIG = _CONFIG
+
   def __init__(self, **kwargs):
     self.requests_responses = {}
     self.requests_meta = {}
