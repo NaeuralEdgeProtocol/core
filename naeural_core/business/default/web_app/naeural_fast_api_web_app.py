@@ -6,6 +6,8 @@ __VER__ = '0.1.0.0'
 _CONFIG = {
   **BasePlugin.CONFIG,
 
+  'SAVE_PERIOD': 60,
+
   'VALIDATION_RULES': {
     **BasePlugin.CONFIG['VALIDATION_RULES'],
   },
@@ -18,6 +20,8 @@ class NaeuralFastApiWebApp(BasePlugin):
     self.requests_meta = {}
     self.unsolved_requests = set()
     self.session = None
+    self.last_save_time = None
+    self.force_persistence = False
     super(NaeuralFastApiWebApp, self).__init__(**kwargs)
     return
 
@@ -34,6 +38,7 @@ class NaeuralFastApiWebApp(BasePlugin):
       on_notification=self.on_notification,
     )
     super(NaeuralFastApiWebApp, self).on_init()
+    self.__maybe_load_persistence_data()
     return
 
   def relevant_plugin_signatures(self):
@@ -158,3 +163,53 @@ class NaeuralFastApiWebApp(BasePlugin):
 
   def maybe_get_network_response(self, request_id):
     return self.__maybe_get_network_response(request_id)
+
+  def webapp_get_persistence_data_object(self):
+    """
+    Here the user can define a dictionary with the data that needs to be saved in the plugin's cache.
+    For example, the user can save the plugin's state as follows:
+    return {'state': self.state}
+    Returns
+    -------
+    res : dict - the data object to be saved
+    """
+    return {}
+
+  def __webapp_persistence_save(self):
+    data_obj = self.webapp_get_persistence_data_object()
+    if len(data_obj.keys()) > 0:
+      self.persistence_serialization_save(obj=data_obj)
+    # endif data object not empty
+    return
+
+  def maybe_persistence_save(self):
+    is_save_time = self.last_save_time is None or (self.time() - self.last_save_time > self.cfg_save_period)
+    if self.force_persistence or is_save_time:
+      self.last_save_time = self.time()
+      self.__webapp_persistence_save()
+      self.force_persistence = False
+    # endif save time
+    return
+
+  def webapp_load_persistence_data_object(self, data):
+    """
+    Here the user can define the logic to load the data object saved in the plugin's cache.
+    For example, the user can update the plugin's state based on the loaded data as follows:
+    self.state = data['state']
+    Parameters
+    ----------
+    data : dict - the data object to be loaded
+    """
+    return
+
+  def __maybe_load_persistence_data(self):
+    saved_data = self.persistence_serialization_load()
+    if saved_data is not None:
+      self.webapp_load_persistence_data_object(saved_data)
+    # endif saved data available
+    return
+
+  def process(self):
+    super(NaeuralFastApiWebApp, self).process()
+    self.maybe_persistence_save()
+    return
