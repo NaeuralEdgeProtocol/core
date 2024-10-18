@@ -61,7 +61,7 @@ _CONFIG = {
   **BaseServingProcess.CONFIG,
 
   # "MODEL_NAME": "pansophic/pansophic-1-preview-LLaMA3.1-8b",
-  "MODEL_NAME": "OpenLLM-Ro/RoGemma2-9b-Instruct-DPO",
+  "MODEL_NAME": "OpenLLM-Ro/RoLlama3.1-8b-Instruct-DPO",
 
   "PICKED_INPUT": "STRUCT_DATA",
   "RUNS_ON_EMPTY_INPUT": False,
