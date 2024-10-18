@@ -15,7 +15,7 @@ _CONFIG = {
   #############################
 
   # Plugin dependant config
-  "AI_ENGINE": ["planogram_stage1_refactor", "general_detector"],
+  "AI_ENGINE": ["lowres_general_detector"],
   "SERVING_SERIALIZATION_NAME": "th_planos1_refactor",
   #############################
 
@@ -37,6 +37,7 @@ _CONFIG = {
   "IS_ATM": False,
   "ATM_ANALYSIS_IGNORE_MAX_PERSON_AREA": 101,  # percent
   "ATM_PEOPLE_IN_FRAME_COOLDOWN_FRAMES": 20,  # <= 0 means no cooldown
+  "ATM_AI_ENGINE": ["lowres_general_detector"],
 
   "ANCHOR_MAX_SUM_PERSON_AREA": 0,  # percent
   "ANALYSIS_IGNORE_MAX_PERSON_AREA": 70,  # percent

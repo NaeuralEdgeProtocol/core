@@ -38,6 +38,7 @@ _CONFIG = {
   "IS_ATM": False,
   "ATM_ANALYSIS_IGNORE_MAX_PERSON_AREA": 101,  # percent
   "ATM_PEOPLE_IN_FRAME_COOLDOWN_FRAMES": 20,  # <= 0 means no cooldown
+  "ATM_AI_ENGINE": ["lowres_general_detector"],
 
   "ANCHOR_MAX_SUM_PERSON_AREA": 0,  # percent
   "ANALYSIS_IGNORE_MAX_PERSON_AREA": 70,  # percent
@@ -100,6 +101,12 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
       # increase the cooldown for ATM, because people can stay in front of the camera in strange positions
       return self._instance_config.get('ATM_PEOPLE_IN_FRAME_COOLDOWN_FRAMES', 20)
     return self._instance_config.get('PEOPLE_IN_FRAME_COOLDOWN_FRAMES', 10)
+
+  @property
+  def cfg_ai_engine(self):
+    if self.cfg_is_atm:
+      return self._instance_config.get('ATM_AI_ENGINE', self._instance_config.get('AI_ENGINE', []))
+    return self._instance_config.get('AI_ENGINE', [])
 
   def _can_save_newer_anchor(self):
     """
