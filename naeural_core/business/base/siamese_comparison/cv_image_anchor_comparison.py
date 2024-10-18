@@ -537,12 +537,13 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
     anchor_entropy = self.image_entropy(self._anchor) if self._anchor is not None else 0  # anchor can be None
 
     debug_info = [
-      {'value': "A <{} F <{} >{}: {}  (E {:.02f})".format(
+      {'value': "A <{} F <{} >{}: {}  (E {:.02f}) IS_ATM={}".format(
         self.cfg_anchor_max_sum_person_area,
         self.cfg_analysis_ignore_min_person_area,
         self.cfg_analysis_ignore_max_person_area,
         [area * 100 for area in self.__people_areas_prc(img, object_detector_inferences, 2)],
         frame_entropy,
+        self.cfg_is_atm,
       )},
       {'value': "Last Anchor Time: {}   Anchor Save Period (s): {} Anchor E: {:.02f}".format(
         human_readable_last_anchor_time, self.anchor_reload_period, anchor_entropy)},
