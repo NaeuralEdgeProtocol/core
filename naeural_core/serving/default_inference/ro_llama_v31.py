@@ -60,13 +60,11 @@ __VER__ = '0.1.0.0'
 _CONFIG = {
   **BaseServingProcess.CONFIG,
 
-  "MODEL_NAME": "pansophic/pansophic-1-preview-LLaMA3.1-8b",
+  # "MODEL_NAME": "pansophic/pansophic-1-preview-LLaMA3.1-8b",
+  "MODEL_NAME": "OpenLLM-Ro/RoGemma2-9b-Instruct-DPO",
 
   "PICKED_INPUT": "STRUCT_DATA",
   "RUNS_ON_EMPTY_INPUT": False,
-  "ADD_SPECIAL_TOKENS": True,
-  "ADD_GENERATION_PROMPT": True,
-  "REPETITION_PENALTY": 1.2,
 
   'VALIDATION_RULES': {
     **BaseServingProcess.CONFIG['VALIDATION_RULES'],

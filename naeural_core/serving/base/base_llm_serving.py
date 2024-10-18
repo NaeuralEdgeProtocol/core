@@ -369,6 +369,7 @@ class BaseLlmServing(
 
     self.P("Running with repetition penalty {}".format(self.cfg_repetition_penalty))
 
+    # TODO: test if some gpu mem can be freed after this
     with th.no_grad():
       t0 = self.time()
       # Note that there's no need to set the padding ID since we've passed
@@ -377,7 +378,7 @@ class BaseLlmServing(
       #  https://huggingface.co/docs/transformers/v4.44.2/en/llm_optims
       yhat = self.model.generate(
         inputs=batch_tokens,
-        max_new_tokens=1024,
+        max_new_tokens=512,
         repetition_penalty=self.cfg_repetition_penalty,
         **model_args
       )
