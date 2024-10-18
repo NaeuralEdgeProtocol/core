@@ -433,7 +433,8 @@ class BusinessManager(Manager):
     currently_used_ai_engines = set()
 
     for instance_hash, (stream_id, signature, instance_config) in self.dct_instances_details.items():
-      ai_engine = instance_config.get('AI_ENGINE', None)
+      plugin = self._dct_current_instances[instance_hash]
+      ai_engine = plugin.cfg_ai_engine
       if ai_engine is None:
         continue
 

@@ -90,21 +90,24 @@ class CvImageAnchorComparisonPlugin(BasePlugin):
 
   @property
   def cfg_analysis_ignore_max_person_area(self):
-    if self.cfg_is_atm:
+    # cfg_is_atm can be created after this one
+    if self._instance_config.get("IS_ATM", False):
       # increase the max person area for ATM, because people will occupy the full frame most of the time
       return self._instance_config.get('ATM_ANALYSIS_IGNORE_MAX_PERSON_AREA', 101)
     return self._instance_config.get('ANALYSIS_IGNORE_MAX_PERSON_AREA', 70)
 
   @property
   def cfg_people_in_frame_cooldown_frames(self):
-    if self.cfg_is_atm:
+    # cfg_is_atm can be created after this one
+    if self._instance_config.get("IS_ATM", False):
       # increase the cooldown for ATM, because people can stay in front of the camera in strange positions
       return self._instance_config.get('ATM_PEOPLE_IN_FRAME_COOLDOWN_FRAMES', 20)
     return self._instance_config.get('PEOPLE_IN_FRAME_COOLDOWN_FRAMES', 10)
 
   @property
   def cfg_ai_engine(self):
-    if self.cfg_is_atm:
+    # cfg_is_atm can be created after this one
+    if self._instance_config.get("IS_ATM", False):
       return self._instance_config.get('ATM_AI_ENGINE', self._instance_config.get('AI_ENGINE', []))
     return self._instance_config.get('AI_ENGINE', [])
 
