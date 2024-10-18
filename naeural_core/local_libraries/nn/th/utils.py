@@ -230,6 +230,7 @@ def th_resize_with_pad(img, h, w,
                        normalize_callback=None,
                        fill_value=None,
                        return_pad=False,
+                       shrink_factor=None,
                        **kwargs
                        ):
 
@@ -256,6 +257,8 @@ def th_resize_with_pad(img, h, w,
     shape = th_img.shape[-2:]  # current shape [height, width] 
     # next code is quite tensor/graph safe
     r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
+    if shrink_factor is not None:
+      r /= shrink_factor
     new_unpad = int(round(shape[0] * r)), int(round(shape[1] * r))
     dw, dh = new_shape[1] - new_unpad[1], new_shape[0] - new_unpad[0]  # wh padding
     dw /= 2  # divide padding into 2 sides
