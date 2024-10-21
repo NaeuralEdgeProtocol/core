@@ -162,14 +162,16 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     failed = False
     try:
       process.wait(timeout)
-      for log_reader in lst_log_reader:
-        if log_reader is not None:
-          log_reader.stop()
-      # endfor
       failed = process.returncode != 0
       process_finished = True
     except subprocess.TimeoutExpired:
       pass
+    finally:
+      # stop log readers
+      for log_reader in lst_log_reader:
+        if log_reader is not None:
+          log_reader.stop()
+      # endfor
 
     return process_finished, failed
 
