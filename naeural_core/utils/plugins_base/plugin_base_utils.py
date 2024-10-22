@@ -162,8 +162,9 @@ class LogReader():
     try:
       while not self.done:
         text = self.buff_reader.read(self.buf_reader_size)
-        if text:
-          self.on_text(text)
+        if text is not None:
+          if len(text) > 0:
+            self.on_text(text)
         else:
           break
     except ct.ForceStopException:
