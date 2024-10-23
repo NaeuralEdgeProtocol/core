@@ -155,9 +155,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     err_logs_reader = self.LogReader(process.stderr) if read_stderr else None
     return process, logs_reader, err_logs_reader
 
-  def __wait_for_command(self, process, timeout, lst_log_reader=None):
-    if lst_log_reader is None:
-      lst_log_reader = []
+  def __wait_for_command(self, process, timeout):
     process_finished = False
     failed = False
     try:
@@ -166,12 +164,6 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
       process_finished = True
     except subprocess.TimeoutExpired:
       pass
-    finally:
-      # stop log readers
-      for log_reader in lst_log_reader:
-        if log_reader is not None:
-          log_reader.stop()
-      # endfor
 
     return process_finished, failed
 
@@ -185,7 +177,6 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
       self.__wait_for_command(
         process=process,
         timeout=3,
-        lst_log_reader=[self.dct_logs_reader[key], self.dct_err_logs_reader[key]]
       )
       self.__maybe_print_key_logs(key)
       self.P(f"Killed process {key}")
@@ -320,10 +311,6 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
       finished, failed = self.__wait_for_command(
         process=self.setup_commands_processes[idx],
         timeout=0.1,
-        lst_log_reader=[
-          self.dct_logs_reader[f"setup_{idx}"],
-          self.dct_err_logs_reader[f"setup_{idx}"]
-        ]
       )
 
       self.setup_commands_finished[idx] = finished
@@ -419,10 +406,6 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
       finished, _ = self.__wait_for_command(
         process=self.start_commands_processes[idx],
         timeout=0.1,
-        lst_log_reader=[
-          self.dct_logs_reader[f"start_{idx}"],
-          self.dct_err_logs_reader[f"start_{idx}"]
-        ]
       )
 
       self.start_commands_finished[idx] = finished
