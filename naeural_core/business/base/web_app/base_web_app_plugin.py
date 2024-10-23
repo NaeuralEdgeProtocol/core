@@ -465,12 +465,16 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     if isinstance(self.cfg_assets, dict) and self.cfg_assets.get('operation') == 'clone':
       if self.__git_url is not None:
         # check if the git url has changed
+        # TODO: maybe instead of using cached values, we should always extract them from self.cfg_assets
         commit_hash = self.git_get_last_commit_hash(
           repo_url=self.__git_url,
           user=self.__git_username,
           token=self.__git_token,
         )
-        if commit_hash != self.__git_commit_hash:        
+        if commit_hash is None:
+          self.P("Could not get the commit hash. Assuming no new version.")
+          result = False
+        elif commit_hash != self.__git_commit_hash:        
           self.P(f"New git assets available: local hash {self.__git_commit_hash} differs from git {commit_hash} . Server reloading procedure will be initiated...")
           result = True
       else:
@@ -530,28 +534,31 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
     # now download the assets there
     if operation == "clone":
+      username = dct_data.get("username", None)
+      token = dct_data.get("token", None)
       if self.__git_url is None:
         # cache of the git url and local folder
+        # TODO: maybe update the cached url, username, token, on each download.
         self.__git_url = assets_path
-        self.__git_username = dct_data.get("username", None)
-        self.__git_token = dct_data.get("token", None)
+        self.__git_username = username
+        self.__git_token = token
         self.__git_local = relative_assets_path
       self.git_clone(
         repo_url=assets_path,
         repo_dir=relative_assets_path,
         target='output',
-        user=self.__git_username,
-        token=self.__git_token,
+        user=username,
+        token=token,
         pull_if_exists=True, # no need to pull if each time we delete the folder
       )
       # now we cache the commit hash
+      # TODO: `git_get_last_commit_hash` can return None, so we need to handle this
       commit_hash = self.git_get_last_commit_hash(
         repo_url=assets_path,
-        user=self.__git_username,
-        token=self.__git_token,
+        user=username,
+        token=token,
       )
-      if commit_hash is not None:
-        self.__git_commit_hash = commit_hash
+      self.__git_commit_hash = commit_hash
       self.P("Finished cloning git repository. Current commit hash: {}".format(self.__git_commit_hash))
       #
     elif operation == "download":
