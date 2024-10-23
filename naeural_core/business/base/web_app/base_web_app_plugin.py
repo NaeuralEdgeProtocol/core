@@ -193,23 +193,27 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
       self.P(f'Could not kill process {key}. Reason: {exc}')
 
     return
+  
 
   # logs handling methods
-  def __maybe_print_all_logs(self):
+  def __maybe_print_all_logs(self, indent=35):
     for key, logs_reader in self.dct_logs_reader.items():
       if logs_reader is not None:
         logs = logs_reader.get_next_characters()
         if len(logs) > 0:
-          self.P(f"[{key}]: {logs}")
+          indented_logs = self.indent_strings(logs, indent=indent)
+          self.P(f"Showing stdout logs [{key}]:\n{indented_logs}")
           self.logs.append(f"[{key}]: {logs}")
 
     for key, err_logs_reader in self.dct_err_logs_reader.items():
       if err_logs_reader is not None:
         err_logs = err_logs_reader.get_next_characters()
         if len(err_logs) > 0:
-          self.P(f"[{key}]: {err_logs}")
-          self.logs.append(f"[{key}]: {err_logs}")
+          indented_err_logs = self.indent_strings(err_logs, indent=indent)
+          self.P(f"Showing error logs [{key}]:\n{indented_err_logs}")
+          self.err_logs.append(f"[{key}]: {err_logs}")
     return
+
 
   def __maybe_print_key_logs(self, key):
     logs_reader = self.dct_logs_reader.get(key)
@@ -224,8 +228,9 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
       err_logs = err_logs_reader.get_next_characters()
       if len(err_logs) > 0:
         self.P(f"[{key}]: {err_logs}")
-        self.logs.append(f"[{key}]: {err_logs}")
+        self.err_logs.append(f"[{key}]: {err_logs}")
     return
+
 
   def __get_delta_logs(self):
     logs = list(self.logs)
@@ -274,6 +279,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
       self.__maybe_run_nth_setup_command(idx)
     return
 
+
   def __maybe_close_setup_commands(self):
     if not any(self.setup_commands_started):
       self.P("No setup commands were started. Skipping teardown.")
@@ -289,6 +295,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
         self.__maybe_kill_process(process, f"setup_{idx}")
     # endfor all setup commands
     return
+
 
   def __maybe_run_nth_setup_command(self, idx, timeout=None):
     if self.failed:
@@ -355,8 +362,10 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     # endif setup command finished
     return
 
+
   def __has_finished_setup_commands(self):
     return all(self.setup_commands_finished)
+
 
   # start commands methods
   def __maybe_run_all_start_commands(self):
@@ -442,6 +451,46 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
   def __has_finished_start_commands(self):
     return all(self.start_commands_finished)
+  
+  
+  def __reload_server(self):
+    self.P("Initiating server reload...")
+    self.__maybe_close_setup_commands()
+    self.__maybe_close_start_commands()
+    self.__maybe_read_and_stop_all_log_readers()
+
+    self.assets_initialized = False
+    self.failed = False
+
+    self.setup_commands_started = [False] * len(self.get_setup_commands())
+    self.setup_commands_finished = [False] * len(self.get_setup_commands())
+    self.setup_commands_processes = [None] * len(self.get_setup_commands())
+    self.setup_commands_start_time = [None] * len(self.get_setup_commands())
+
+    self.start_commands_started = [False] * len(self.get_start_commands())
+    self.start_commands_finished = [False] * len(self.get_start_commands())
+    self.start_commands_processes = [None] * len(self.get_start_commands())
+    self.start_commands_start_time = [None] * len(self.get_start_commands())
+
+    self.P("Reloading server at next _maybe_init ...")  
+    return  
+  
+  
+  
+  def __check_new_repo_version(self):
+    result = False # return false by default including if no git url is provided
+    if isinstance(self.cfg_assets, dict) and self.cfg_assets.get('operation') == 'clone':
+      if self.__git_url is not None:
+        # check if the git url has changed
+        commit_hash = self.git_get_last_commit_hash(self.__git_url)
+        if commit_hash != self.__git_commit_hash:        
+          self.P(f"New git assets available: local hash {self.__git_commit_hash} differs from git {commit_hash} . Server reloading procedure will be initiated...")
+          result = True
+      else:
+        # no previous git info found so we assume we need to perform setup
+        self.P("No previous local git info found. Assuming new repo version and initializing...")
+        result = True
+    return result
 
   # assets handling methods
   def __maybe_download_assets(self):
@@ -494,13 +543,22 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
     # now download the assets there
     if operation == "clone":
+      if self.__git_url is None:
+        # cache of the git url and local folder
+        self.__git_url = assets_path
+        self.__git_local = relative_assets_path
       self.git_clone(
         repo_url=assets_path,
         repo_dir=relative_assets_path,
         target='output',
         user=dct_data.get("username", None),
-        token=dct_data.get("token", None)
+        token=dct_data.get("token", None),
+        pull_if_exists=True, # no need to pull if each time we delete the folder
       )
+      # now we cache the commit hash
+      self.__git_commit_hash = self.git_get_last_commit_hash(assets_path)
+      self.P("Finished cloning git repository. Current commit hash: {}".format(self.__git_commit_hash))
+      #
     elif operation == "download":
       self.maybe_download(
         url=assets_path,
@@ -541,8 +599,14 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     assets_path = self.os_path.join(self.get_output_folder(), relative_assets_path)
     return assets_path
 
+
   def __maybe_init_assets(self):
     if self.assets_initialized:
+      # check if new git assets are available
+      new_repo_version = self.__check_new_repo_version()
+      if new_repo_version:
+        self.P("New git assets available. Reloading server...")
+        self.__reload_server()
       return
     
     self.P("Initializing assets (`assets_initialized: {}`)".format(self.assets_initialized))
@@ -563,8 +627,16 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     self.assets_initialized = True
     return
 
+  
+
   # plugin default methods
   def _on_init(self):
+
+    self.__git_url = None
+    self.__git_local = None
+    self.__git_commit_hash = None
+
+    
     self.__allocate_port()
 
     self.prepared_env = None
@@ -573,8 +645,17 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     self.script_temp_dir = tempfile.mkdtemp()
 
     self.assets_initialized = False
-    self.failed = False
+    self.failed = False    
+    
+    self.__setup_commands()
 
+    self.can_run_start_commands = self.cfg_auto_start
+
+    super(BaseWebAppPlugin, self)._on_init()
+    return
+  
+  
+  def __setup_commands(self):
     self.setup_commands_started = [False] * len(self.get_setup_commands())
     self.setup_commands_finished = [False] * len(self.get_setup_commands())
     self.setup_commands_processes = [None] * len(self.get_setup_commands())
@@ -594,10 +675,6 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     self.P(f"Port: {self.port}")
     self.P(f"Setup commands: {self.get_setup_commands()}")
     self.P(f"Start commands: {self.get_start_commands()}")
-
-    self.can_run_start_commands = self.cfg_auto_start
-
-    super(BaseWebAppPlugin, self)._on_init()
     return
 
 
@@ -640,24 +717,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
       self.P("Starting server")
 
     if (isinstance(data, str) and data.upper() == 'RELOAD') or reload:
-      self.__maybe_close_setup_commands()
-      self.__maybe_close_start_commands()
-      self.__maybe_read_and_stop_all_log_readers()
-
-      self.assets_initialized = False
-      self.failed = False
-
-      self.setup_commands_started = [False] * len(self.get_setup_commands())
-      self.setup_commands_finished = [False] * len(self.get_setup_commands())
-      self.setup_commands_processes = [None] * len(self.get_setup_commands())
-      self.setup_commands_start_time = [None] * len(self.get_setup_commands())
-
-      self.start_commands_started = [False] * len(self.get_start_commands())
-      self.start_commands_finished = [False] * len(self.get_start_commands())
-      self.start_commands_processes = [None] * len(self.get_start_commands())
-      self.start_commands_start_time = [None] * len(self.get_start_commands())
-
-      self.P("Reloading server")
+      self.__reload_server()
 
     return
 
@@ -781,7 +841,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
     self.__maybe_run_all_start_commands()
 
-    self.__maybe_print_all_logs()
+    self.__maybe_print_all_logs() # Check: must review 
 
     super(BaseWebAppPlugin, self)._process() # Check: why is this required
     return

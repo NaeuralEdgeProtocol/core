@@ -994,16 +994,27 @@ class _UtilsBaseMixin(
       self.P('Errors while downloading: {}'.format([str(x) for x in msgs]))
     return res
   
-  def git_clone(self, repo_url, repo_dir, target='output', user=None, token=None):
+  def git_clone(self, repo_url, repo_dir, target='output', user=None, token=None, pull_if_exists=True):
     """
-    Clones a git repository
+    Clones a git repository or pulls if the repository already exists.
 
     Parameters
     ----------
     repo_url : str
       The git repository URL
+      
     token : str, optional
       The token to be used for authentication. The default is None.
+      
+    user: str, optional
+      The username to be used for authentication. The default is None.
+          
+    token : str, optional
+      The token to be used for authentication. The default is None.
+      
+    pull_if_exists : bool, optional
+      If True, the repository will be pulled if it already exists. The default is True.
+      
 
     Returns
     -------
@@ -1012,18 +1023,32 @@ class _UtilsBaseMixin(
     """
 
     repo_path = self.os_path.join(self.get_target_folder(target), repo_dir)
-    self.P(f"Cloning git repository from {repo_url} to {repo_path}")
+    self.P(f"Cloning or updating git repository from {repo_url} to {repo_path}")
 
     if user is not None and token is not None:
       repo_url = repo_url.replace('https://', f'https://{user}:{token}@')
 
-    command = ["git", "clone", repo_url, repo_path]
 
-    process = subprocess.Popen(
-      command,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.PIPE,
-    )
+    if self.os_path.exists(repo_path) and pull_if_exists:
+      # Repository already exists, perform git pull
+      self.P(f"Repository already exists at {repo_path}. Performing 'git pull'.")
+      command = ["git", "pull"]
+      process = subprocess.Popen(
+          command,
+          cwd=repo_path,
+          stdout=subprocess.PIPE,
+          stderr=subprocess.PIPE,
+      )
+    else:
+      # Clone the repository
+      command = ["git", "clone", repo_url, repo_path]
+      process = subprocess.Popen(
+          command,
+          stdout=subprocess.PIPE,
+          stderr=subprocess.PIPE,
+      )
+    # end if
+    
     logs_reader = self.LogReader(process.stdout)
     err_logs_reader = self.LogReader(process.stderr)
 
@@ -1040,6 +1065,77 @@ class _UtilsBaseMixin(
     err_logs_reader.stop()
 
     return repo_path
+  
+    
+  def git_get_last_commit_hash(self, repo_url, user=None, token=None):
+    """
+    Retrieves the latest commit hash from the remote git repository.
+
+    Parameters
+    ----------
+    repo_url : str
+      The git repository URL
+
+    user : str, optional
+      The username to be used for authentication. The default is None.
+
+    token : str, optional
+      The token to be used for authentication. The default is None.
+
+    Returns
+    -------
+    str
+      The latest commit hash from the remote repository.
+    """
+
+    self.P(f"Retrieving latest commit hash from {repo_url}")
+
+    if user is not None and token is not None:
+      repo_url = repo_url.replace('https://', f'https://{user}:{token}@')
+
+    command = ["git", "ls-remote", repo_url, "HEAD"]
+    process = subprocess.Popen(
+      command,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.PIPE,
+    )
+
+    logs_reader = self.LogReader(process.stdout)
+    err_logs_reader = self.LogReader(process.stderr)
+
+    process.wait()
+    logs = logs_reader.get_next_characters()
+    err_logs = err_logs_reader.get_next_characters()
+
+    commit_hash = None
+
+    if len(logs) > 0:
+      self.P(f"Git ls-remote logs: {logs}")
+      # Parse the commit hash from logs
+      # The output is in the format: '<commit_hash>\tHEAD\n'
+      lines = logs.strip().split('\n')
+      if len(lines) > 0:
+        parts = lines[0].split()
+        if len(parts) > 0:
+          commit_hash = parts[0]
+    if len(err_logs) > 0:
+      self.P(f"Git ls-remote errors: {err_logs}")
+    self.P(f"Git ls-remote process finished with code {process.returncode}")
+
+    logs_reader.stop()
+    err_logs_reader.stop()
+
+    return commit_hash
+  
+
+  def indent_strings(self, strings, indent=2):
+    """ Indents a string or a list of strings by a given number of spaces."""
+    lst_strings = strings.split('\n')
+    lst_strings = [f"{' ' * indent}{string}" for string in lst_strings]
+    result = '\n'.join(lst_strings)
+    return result
+  
+
 
   def dict_to_str(self, dct:dict):
     """
