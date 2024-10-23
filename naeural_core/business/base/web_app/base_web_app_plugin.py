@@ -465,7 +465,11 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     if isinstance(self.cfg_assets, dict) and self.cfg_assets.get('operation') == 'clone':
       if self.__git_url is not None:
         # check if the git url has changed
-        commit_hash = self.git_get_last_commit_hash(self.__git_url)
+        commit_hash = self.git_get_last_commit_hash(
+          repo_url=self.__git_url,
+          user=self.__git_username,
+          token=self.__git_token,
+        )
         if commit_hash != self.__git_commit_hash:        
           self.P(f"New git assets available: local hash {self.__git_commit_hash} differs from git {commit_hash} . Server reloading procedure will be initiated...")
           result = True
@@ -529,17 +533,25 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
       if self.__git_url is None:
         # cache of the git url and local folder
         self.__git_url = assets_path
+        self.__git_username = dct_data.get("username", None)
+        self.__git_token = dct_data.get("token", None)
         self.__git_local = relative_assets_path
       self.git_clone(
         repo_url=assets_path,
         repo_dir=relative_assets_path,
         target='output',
-        user=dct_data.get("username", None),
-        token=dct_data.get("token", None),
+        user=self.__git_username,
+        token=self.__git_token,
         pull_if_exists=True, # no need to pull if each time we delete the folder
       )
       # now we cache the commit hash
-      self.__git_commit_hash = self.git_get_last_commit_hash(assets_path)
+      commit_hash = self.git_get_last_commit_hash(
+        repo_url=assets_path,
+        user=self.__git_username,
+        token=self.__git_token,
+      )
+      if commit_hash is not None:
+        self.__git_commit_hash = commit_hash
       self.P("Finished cloning git repository. Current commit hash: {}".format(self.__git_commit_hash))
       #
     elif operation == "download":
@@ -616,6 +628,8 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
   def _on_init(self):
 
     self.__git_url = None
+    self.__git_username = None
+    self.__git_token = None
     self.__git_local = None
     self.__git_commit_hash = None
 
