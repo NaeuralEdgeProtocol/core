@@ -264,8 +264,11 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     if self.failed:
       return
 
-    if self.__has_finished_setup_commands():
+    has_finished_setup_commands = self.__has_finished_setup_commands()
+    if has_finished_setup_commands:
       return
+    
+    self.P("Running setup commands (`has_finished_setup_commands: {}`)".format(has_finished_setup_commands))
 
     for idx in range(len(self.get_setup_commands())):
       self.__maybe_run_nth_setup_command(idx)
@@ -368,6 +371,8 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
     if not self.can_run_start_commands:
       return
+    
+    self.P("Running START commands...")
 
     for idx in range(len(self.get_start_commands())):
       self.__maybe_run_nth_start_command(idx)
@@ -539,6 +544,8 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
   def __maybe_init_assets(self):
     if self.assets_initialized:
       return
+    
+    self.P("Initializing assets (`assets_initialized: {}`)".format(self.assets_initialized))
 
     # download/clone/create/unzip assets
     assets_path = self.__maybe_download_assets()
@@ -593,17 +600,6 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     super(BaseWebAppPlugin, self)._on_init()
     return
 
-  def _process(self):
-    self.__maybe_init_assets()
-
-    self.__maybe_run_all_setup_commands()
-
-    self.__maybe_run_all_start_commands()
-
-    self.__maybe_print_all_logs()
-
-    super(BaseWebAppPlugin, self)._process()
-    return
 
   def _on_close(self):
     self.__maybe_close_setup_commands()
@@ -774,4 +770,18 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
 
     self.P("Assets copied successfully")
 
+    return
+
+
+  def _process(self):  # Check: _process as opposed to process
+    
+    self.__maybe_init_assets() # Check: auto-updates point here?
+
+    self.__maybe_run_all_setup_commands()
+
+    self.__maybe_run_all_start_commands()
+
+    self.__maybe_print_all_logs()
+
+    super(BaseWebAppPlugin, self)._process() # Check: why is this required
     return
