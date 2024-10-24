@@ -119,12 +119,12 @@ class FastApiWebAppPlugin(BasePlugin):
       self.failed = True
       return
     # endif package base path not found
+    static_directory = self.jinja_args.get('static_directory')
 
     if self.cfg_template is not None:
       env = Environment(loader=FileSystemLoader(package_base_path))
 
       # make sure static directory folder exists
-      static_directory = self.cfg_jinja_args.get('static_directory', self.cfg_static_directory)
       os.makedirs(self.os_path.join(dst_dir, static_directory), exist_ok=True)
 
       # Finally render main.py
@@ -141,7 +141,7 @@ class FastApiWebAppPlugin(BasePlugin):
 
     # Here additional generic assets can be added if needed
     favicon_path = self.os_path.join(package_base_path, 'naeural_core', 'utils', 'web_app', 'favicon.ico')
-    favicon_dst = self.os_path.join(dst_dir, 'favicon.ico')
+    favicon_dst = self.os_path.join(dst_dir, static_directory, 'favicon.ico')
     if self.os_path.exists(favicon_path):
       self.P(f'Copying favicon from {favicon_path} to {favicon_dst}')
       os.makedirs(self.os_path.dirname(favicon_dst), exist_ok=True)
