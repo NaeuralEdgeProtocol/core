@@ -15,6 +15,8 @@ _CONFIG = {
   'ALLOW_EMPTY_INPUTS': True,
   'RUN_WITHOUT_IMAGE': True,
   'PROCESS_DELAY': 5,
+  
+  'GIT_REQUEST_DELAY' : 60 * 10, # 10 minutes
 
   'USE_NGROK': False,
   'NGROK_ENABLED': False,
@@ -53,8 +55,9 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
   
   def _on_init(self):
 
-    self.__git_url = None
     self.__git_commit_hash = None
+    self.__git_request_time = 0
+    
 
     
     self.__allocate_port()
@@ -74,6 +77,13 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     super(BaseWebAppPlugin, self)._on_init()
     return
   
+  
+  def __can_request_git(self):
+    if self.time() - self.__git_request_time > self.cfg_git_request_delay:
+      self.__git_request_time = self.time()
+      return True
+    return False
+
 
   # Port allocation
   def __check_port_valid(self):
@@ -487,24 +497,27 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
   def __check_new_repo_version(self):
     result = False # return false by default including if no git url is provided
     # first check not to run this operation too many times
-        
     if isinstance(self.cfg_assets, dict) and self.cfg_assets.get('operation') == 'clone':
       url = self.cfg_assets.get('url')
       username = self.cfg_assets.get('username')
       token = self.cfg_assets.get('token')
       if self.__git_commit_hash is not None:
-        # check if the git url has changed
-        commit_hash = self.git_get_last_commit_hash(
-          repo_url=url,
-          user=username,
-          token=token,
-        )
-        if commit_hash is None:
-          self.P("Could not get the commit hash. Assuming no new version.")
-          result = False
-        elif commit_hash != self.__git_commit_hash:        
-          self.P(f"New git assets available: local hash {self.__git_commit_hash} differs from git {commit_hash} . Server reloading procedure will be initiated...")
-          result = True
+        # check if we can request git based on a configured delay
+        can_request_git = self.__can_request_git()
+        if can_request_git:
+          commit_hash = self.git_get_last_commit_hash(
+            repo_url=url,
+            user=username,
+            token=token,
+          )
+          if commit_hash is None:
+            self.P("Could not get the commit hash. Assuming no new version.")
+            result = False
+          elif commit_hash != self.__git_commit_hash:        
+            self.P(f"New git assets available: local hash {self.__git_commit_hash} differs from git {commit_hash} . Server reloading procedure will be initiated...")
+            result = True
+          # endif commit hash
+        # endif can request git
       else:
         # no previous git info found so we assume we need to perform setup
         self.P("No previous local git info found. Assuming new repo version and initializing...")
