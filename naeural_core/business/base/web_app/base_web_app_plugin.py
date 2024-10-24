@@ -587,7 +587,7 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
       )
       # now we cache the commit hash
       commit_hash = self.git_get_local_commit_hash(
-        repo_dir=relative_assets_path,
+        repo_dir=self.os_path.join(self.get_output_folder(), relative_assets_path),
       )
       self.__git_commit_hash = commit_hash
       self.P("Finished cloning git repository. Current commit hash: {}".format(self.__git_commit_hash))
