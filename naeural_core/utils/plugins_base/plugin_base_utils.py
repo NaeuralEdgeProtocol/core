@@ -1096,6 +1096,10 @@ class _UtilsBaseMixin(
     err_logs_reader = self.LogReader(process.stderr)
 
     process.wait()
+
+    logs_reader.stop()
+    err_logs_reader.stop()
+
     logs = logs_reader.get_next_characters()
     err_logs = err_logs_reader.get_next_characters()
 
@@ -1107,9 +1111,6 @@ class _UtilsBaseMixin(
     if len(err_logs) > 0:
       printer(f"Git rev-parse errors: {err_logs}")
     printer(f"Git rev-parse process finished with code {process.returncode}")
-
-    logs_reader.stop()
-    err_logs_reader.stop()
 
     return commit_hash
   
@@ -1151,6 +1152,10 @@ class _UtilsBaseMixin(
     err_logs_reader = self.LogReader(process.stderr)
 
     process.wait()
+
+    logs_reader.stop()
+    err_logs_reader.stop()
+
     logs = logs_reader.get_next_characters()
     err_logs = err_logs_reader.get_next_characters()
 
@@ -1168,9 +1173,6 @@ class _UtilsBaseMixin(
     if len(err_logs) > 0:
       printer(f"Git ls-remote errors: {err_logs}")
     printer(f"Git ls-remote process finished with code {process.returncode}")
-
-    logs_reader.stop()
-    err_logs_reader.stop()
 
     return commit_hash
   
