@@ -50,6 +50,30 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
   """
 
   CONFIG = _CONFIG
+  
+  def _on_init(self):
+
+    self.__git_url = None
+    self.__git_commit_hash = None
+
+    
+    self.__allocate_port()
+
+    self.prepared_env = None
+    self.base_env = None
+
+    self.script_temp_dir = tempfile.mkdtemp()
+
+    self.assets_initialized = False
+    self.failed = False    
+    
+    self.__setup_commands()
+
+    self.can_run_start_commands = self.cfg_auto_start
+
+    super(BaseWebAppPlugin, self)._on_init()
+    return
+  
 
   # Port allocation
   def __check_port_valid(self):
@@ -462,14 +486,18 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
   
   def __check_new_repo_version(self):
     result = False # return false by default including if no git url is provided
+    # first check not to run this operation too many times
+        
     if isinstance(self.cfg_assets, dict) and self.cfg_assets.get('operation') == 'clone':
-      if self.__git_url is not None:
+      url = self.cfg_assets.get('url')
+      username = self.cfg_assets.get('username')
+      token = self.cfg_assets.get('token')
+      if self.__git_commit_hash is not None:
         # check if the git url has changed
-        # TODO: maybe instead of using cached values, we should always extract them from self.cfg_assets
         commit_hash = self.git_get_last_commit_hash(
-          repo_url=self.__git_url,
-          user=self.__git_username,
-          token=self.__git_token,
+          repo_url=url,
+          user=username,
+          token=token,
         )
         if commit_hash is None:
           self.P("Could not get the commit hash. Assuming no new version.")
@@ -536,13 +564,6 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     if operation == "clone":
       username = dct_data.get("username", None)
       token = dct_data.get("token", None)
-      if self.__git_url is None:
-        # cache of the git url and local folder
-        # TODO: maybe update the cached url, username, token, on each download.
-        self.__git_url = assets_path
-        self.__git_username = username
-        self.__git_token = token
-        self.__git_local = relative_assets_path
       self.git_clone(
         repo_url=assets_path,
         repo_dir=relative_assets_path,
@@ -552,11 +573,8 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
         pull_if_exists=True, # no need to pull if each time we delete the folder
       )
       # now we cache the commit hash
-      # TODO: `git_get_last_commit_hash` can return None, so we need to handle this
-      commit_hash = self.git_get_last_commit_hash(
-        repo_url=assets_path,
-        user=username,
-        token=token,
+      commit_hash = self.git_get_local_commit_hash(
+        repo_dir=relative_assets_path,
       )
       self.__git_commit_hash = commit_hash
       self.P("Finished cloning git repository. Current commit hash: {}".format(self.__git_commit_hash))
@@ -630,34 +648,8 @@ class BaseWebAppPlugin(_NgrokMixinPlugin, BasePluginExecutor):
     return
 
   
-
-  # plugin default methods
-  def _on_init(self):
-
-    self.__git_url = None
-    self.__git_username = None
-    self.__git_token = None
-    self.__git_local = None
-    self.__git_commit_hash = None
-
-    
-    self.__allocate_port()
-
-    self.prepared_env = None
-    self.base_env = None
-
-    self.script_temp_dir = tempfile.mkdtemp()
-
-    self.assets_initialized = False
-    self.failed = False    
-    
-    self.__setup_commands()
-
-    self.can_run_start_commands = self.cfg_auto_start
-
-    super(BaseWebAppPlugin, self)._on_init()
-    return
   
+  # other plugin default methods
   
   def __setup_commands(self):
     self.setup_commands_started = [False] * len(self.get_setup_commands())

@@ -130,7 +130,7 @@ class UpdateMonitor01Plugin(BasePluginExecutor):
     self.P("Loading and sending config file {}".format(config_file))
     with open(config_file, 'r') as f:
       str_config = f.read()
-    str_b64 = self.str_to_base64(str_config, compress=compress)
+    str_b64 = self.string_to_base64(str_config, compress=compress)
     return str_b64
   
   def _send_config_payload(self):

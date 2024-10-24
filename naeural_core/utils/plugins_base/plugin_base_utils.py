@@ -1067,6 +1067,53 @@ class _UtilsBaseMixin(
     return repo_path
   
     
+  def git_get_local_commit_hash(self, repo_dir):
+    """
+    Retrieves the latest commit hash from the local git repository.
+
+    Parameters
+    ----------
+    repo_dir : str
+      The local directory where the repository is cloned.
+
+    Returns
+    -------
+    str
+      The latest commit hash from the local repository.
+    """
+    printer = self.P if hasattr(self, 'P') else print
+    printer(f"Retrieving latest commit hash from local repository at {repo_dir}")
+
+    command = ["git", "rev-parse", "HEAD"]
+    process = subprocess.Popen(
+      command,
+      cwd=repo_dir,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.PIPE,
+    )
+
+    logs_reader = self.LogReader(process.stdout)
+    err_logs_reader = self.LogReader(process.stderr)
+
+    process.wait()
+    logs = logs_reader.get_next_characters()
+    err_logs = err_logs_reader.get_next_characters()
+
+    commit_hash = None
+
+    if len(logs) > 0:
+      printer(f"Git rev-parse logs: {logs}")
+      commit_hash = logs.strip()
+    if len(err_logs) > 0:
+      printer(f"Git rev-parse errors: {err_logs}")
+    printer(f"Git rev-parse process finished with code {process.returncode}")
+
+    logs_reader.stop()
+    err_logs_reader.stop()
+
+    return commit_hash
+  
+    
   def git_get_last_commit_hash(self, repo_url, user=None, token=None):
     """
     Retrieves the latest commit hash from the remote git repository.
@@ -1087,8 +1134,8 @@ class _UtilsBaseMixin(
     str
       The latest commit hash from the remote repository.
     """
-
-    self.P(f"Retrieving latest commit hash from {repo_url}")
+    printer = self.P if hasattr(self, 'P') else print
+    printer(f"Retrieving latest commit hash from {repo_url}")
 
     if user is not None and token is not None:
       repo_url = repo_url.replace('https://', f'https://{user}:{token}@')
@@ -1110,7 +1157,7 @@ class _UtilsBaseMixin(
     commit_hash = None
 
     if len(logs) > 0:
-      self.P(f"Git ls-remote logs: {logs}")
+      printer(f"Git ls-remote logs: {logs}")
       # Parse the commit hash from logs
       # The output is in the format: '<commit_hash>\tHEAD\n'
       lines = logs.strip().split('\n')
@@ -1119,8 +1166,8 @@ class _UtilsBaseMixin(
         if len(parts) > 0:
           commit_hash = parts[0]
     if len(err_logs) > 0:
-      self.P(f"Git ls-remote errors: {err_logs}")
-    self.P(f"Git ls-remote process finished with code {process.returncode}")
+      printer(f"Git ls-remote errors: {err_logs}")
+    printer(f"Git ls-remote process finished with code {process.returncode}")
 
     logs_reader.stop()
     err_logs_reader.stop()
@@ -1727,6 +1774,36 @@ class _UtilsBaseMixin(
     return self.log.get_gpu_info(device_id=device_id)
 
 
+  
+  
+
+  def string_to_base64(self, txt, compress=False):
+    """Transforms a string into a base64 encoded string
+
+    Parameters
+    ----------
+    txt : str
+        the input string
+        
+    compress : bool, optional
+        if True, the string will be compressed before encoding. The default is False.
+
+    Returns
+    -------
+    str: base64 encoded string
+    """
+    b_text = bytes(txt, 'utf-8')    
+    if compress:
+      b_code = zlib.compress(b_text, level=9)
+    else:
+      b_code = b_text
+    b_encoded = base64.b64encode(b_code)
+    str_encoded = b_encoded.decode('utf-8')
+    return str_encoded
+
+
+
+
 if __name__ == '__main__':
   from naeural_core import Logger
   from copy import deepcopy
@@ -1735,6 +1812,7 @@ if __name__ == '__main__':
 
   e = _UtilsBaseMixin()
   e.log = log
+  e.P = print
 
   d1 = e.DefaultDotDict(str)
   d1.a = "test"
@@ -1764,11 +1842,11 @@ if __name__ == '__main__':
   s = json.dumps(d20)
   print(s)
   
-  b64 = e.str_to_base64(s)
+  b64 = e.string_to_base64(s)
   print("{}: {}".format(len(b64), b64[:50]))
   print(e.base64_to_str(b64))
 
-  b64c = e.str_to_base64(s, compress=True)
+  b64c = e.string_to_base64(s, compress=True)
   print("{}: {}".format(len(b64c), b64c[:50]))
   print(e.base64_to_str(b64c, decompress=True))
     
@@ -1789,3 +1867,9 @@ if __name__ == '__main__':
   
   print("All tests passed.")
 
+  repo = 'https://github.com/NaeuralEdgeProtocol/core'
+  remote_hash = e.git_get_last_commit_hash(repo_url=repo)
+  local_hash = e.git_get_local_commit_hash(repo_dir='.')
+  log.P("Remote: "+ remote_hash)
+  log.P("Local:  " + local_hash)
+  
