@@ -64,6 +64,7 @@ and for history based command:
 
 
 """
+import gc
 import numpy as np
 import torch as th
 import transformers
@@ -387,11 +388,15 @@ class BaseLlmServing(
       elapsed = self.time() - t0
     # endwith
     self.P(f'Done inference in {elapsed} seconds')
+    yhat = yhat.cpu().numpy()
+    batch_tokens = batch_tokens.cpu().numpy()
+    gc.collect()
+    self.th.cuda.empty_cache()
     # Calculate number of generated token per seconds and add it to __tps
     # in order to track inference performance. Generated padding is not
     # counted since it is an artefact of the batching strategy.
     batch_y_size = batch_tokens.shape[1]
-    num_generated_toks = (yhat[:, batch_y_size:] != self.padding_id).to(th.int32).sum().item()
+    num_generated_toks = (yhat[:, batch_y_size:] != self.padding_id).astype(self.np.int32).sum().item()
     num_tps = num_generated_toks / elapsed
     self.__tps.append(num_tps)
 
