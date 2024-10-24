@@ -94,6 +94,8 @@ _CONFIG = {
   "DEFAULT_DEVICE"        : "cuda:0",
 
   "MAX_WAIT_TIME"         : 1000,
+  "SERVER_COLLECTOR_TIMEDELTA": 172800,  # 48 hours -> this is done because the llm model is very large and
+  # we want to keep it in memory for a long time.
 
   "PICKED_INPUT"          : "STRUCT_DATA",
 

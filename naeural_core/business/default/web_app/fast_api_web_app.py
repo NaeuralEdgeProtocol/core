@@ -1,5 +1,6 @@
 import importlib
 import os
+import shutil
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -112,13 +113,14 @@ class FastApiWebAppPlugin(BasePlugin):
 
     super(FastApiWebAppPlugin, self).initialize_assets(src_dir, dst_dir, jinja_args)
 
-    if self.cfg_template is not None:
-      package_base_path = self.get_package_base_path('naeural_core')
-      if package_base_path is None:
-        self.P("Skipping `main.py` rendering, package 'naeural_core' not found.", color='r')
-        self.failed = True
-        return
+    package_base_path = self.get_package_base_path('naeural_core')
+    if package_base_path is None:
+      self.P("Skipping `main.py` rendering, package 'naeural_core' not found.", color='r')
+      self.failed = True
+      return
+    # endif package base path not found
 
+    if self.cfg_template is not None:
       env = Environment(loader=FileSystemLoader(package_base_path))
 
       # make sure static directory folder exists
@@ -136,6 +138,15 @@ class FastApiWebAppPlugin(BasePlugin):
       with open(self.os_path.join(dst_dir, 'main.py'), 'w') as f:
         f.write(rendered_content)
     # endif render main.py
+
+    # Here additional generic assets can be added if needed
+    favicon_path = self.os_path.join(package_base_path, 'naeural_core', 'utils', 'web_app', 'favicon.ico')
+    favicon_dst = self.os_path.join(dst_dir, 'favicon.ico')
+    if self.os_path.exists(favicon_path):
+      self.P(f'Copying favicon from {favicon_path} to {favicon_dst}')
+      os.makedirs(self.os_path.dirname(favicon_dst), exist_ok=True)
+      shutil.copy2(favicon_path, favicon_dst)
+    # endif favicon exists
 
     return
 
